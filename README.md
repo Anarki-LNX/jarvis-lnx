@@ -1,27 +1,66 @@
 # NuOrb
 
-**An old Xiaomi Mi 11 Lite 4G, reborn as a self-hosted, German-speaking voice assistant terminal.**
+**Your own private voice assistant – self-hosted in one Docker container, used from your phone.**
 
-The phone runs **NixOS with a mainline Linux 7.3 kernel** – no Android left. A `cage` kiosk shows one thing only:
-a full-screen NuOrb web UI with an animated orb. You hold (or tap) the mic button and talk; speech recognition,
-the language model and speech synthesis all run on your own hardware at home. A cloud model (Claude) is optional,
-as a fallback or on demand.
+NuOrb runs a complete voice assistant on your own hardware: an agent ([Hermes Agent](https://github.com/NousResearch/hermes-agent)),
+a web UI with an animated orb, an admin panel, local speech recognition and local speech synthesis.
+The "brain" is your own [Ollama](https://ollama.com) (e.g. a gaming PC), the Claude API, or both with a switch.
+Audio is processed on your server; nothing is sent anywhere unless you choose a cloud model.
 
 <p align="center">
-  <img src="docs/screenshots/phone-orb-local-commands.png" width="240" alt="Orb UI on the phone, idle, with local commands">
-  <img src="docs/screenshots/phone-voice-conversation.png" width="240" alt="Voice conversation on the phone">
-  <img src="docs/screenshots/phone-confirmation-card.png" width="240" alt="Confirmation card before a reboot">
+  <img src="docs/screenshots/phone-voice-conversation.png" width="240" alt="Voice conversation">
+  <img src="docs/screenshots/phone-confirmation-card.png" width="240" alt="Confirmation card before an action">
+  <img src="docs/screenshots/phone-orb-local-commands.png" width="240" alt="Orb UI, idle">
 </p>
+
+---
+
+## Get started in ~10 minutes
+
+| Step | What |
+|---|---|
+| **1. Server** | Run the Docker container on any Proxmox VM/LXC, home server or PC (amd64 or arm64): **[`docker/README.md`](docker/README.md)** |
+| **2. Brain** | In the setup wizard choose your Ollama (≥ 64k context) and/or enter a Claude API key |
+| **3. App** | Install the Android app (Google Play release coming soon) – or just use any browser in your home network |
+| **4. Pair** | Admin panel → *Pair device* → scan the QR code with the app. Done. |
+
+```bash
+git clone https://github.com/Anarki-LNX/nuorb && cd nuorb/docker
+cp .env.example .env && nano .env        # at least NUORB_HOSTS (your server IP), NUORB_LANG, TZ
+docker compose up -d                      # pulls ghcr.io/anarki-lnx/nuorb
+docker compose logs nuorb | grep -iE "einrichtungscode|setup code"
+# then open https://<server-ip>:8444
+```
+
+**You need:** Docker with Compose v2, ~4 GB free RAM, ~8 GB disk, internet once for the speech models (~530 MB),
+and either an Ollama server or an [Anthropic API key](https://console.anthropic.com).
+Phone and server in the same network – or connected via VPN (WireGuard, Tailscale). **Never expose the ports to the internet.**
+
+### Features
+
+- **Talk to it** – tap to talk with automatic end-of-speech detection, or hold to talk; answers are spoken back.
+- **Brain switch** – *local* (only your Ollama, nothing leaves your network), *auto* (Ollama, Claude as fallback), *remote* (Claude Haiku/Sonnet/Opus).
+- **German and English** – speech recognition (NVIDIA Parakeet-TDT v3, on CPU), voices (Piper).
+- **Safe by design** – confirmation cards before risky actions, pairing with certificate pinning, no telemetry.
+- **Admin panel** – model & fallback, persona, memory, skills, schedules, MCP servers (connect e.g. Home Assistant), keys, logs, backups.
+
+**Status:** first public release. The orb UI is German-first (English UI in progress); a custom wake word for the
+app is in training. See [`docker/README.md`](docker/README.md) for details, security notes and troubleshooting.
+
+---
+
+# Bonus for tinkerers: a Xiaomi Mi 11 Lite as a dedicated NuOrb device
+
+Where this project started: an old **Xiaomi Mi 11 Lite 4G (`courbet`)**, wiped and reborn with
+**NixOS and a mainline Linux 7.3 kernel** – no Android left. A `cage` kiosk shows only the NuOrb orb UI, it listens
+for **"Hey NuOrb"** (openWakeWord, on-device) and executes device commands (Wi-Fi, reboot, brightness, volume)
+only after a confirmation tap. **This part is specific to that phone model and wipes it – read the safety notes.**
+
 <p align="center">
   <img src="docs/screenshots/admin-voice-settings.png" width="720" alt="Admin panel, voice settings">
 </p>
 
-The UI is in German (screenshots: idle orb with local commands, a spoken question answered in ~3 s,
-a confirmation card before rebooting the phone, and the admin panel's voice page).
-
----
-
-## What it does
+### What it does
 
 - **Talk to it in German.** Push-to-talk (hold) or tap-to-talk (hands-free with end-of-speech detection).
   Answers are spoken back by a local Piper voice; the orb reacts to listening / thinking / speaking.
@@ -39,7 +78,7 @@ a confirmation card before rebooting the phone, and the admin panel's voice page
 - **Survives being offline.** The phone keeps a local copy of the UI (`nuorb-shell`); without Wi-Fi it shows a
   "Wi-Fi on / reboot" emergency page and returns to NuOrb automatically.
 
-## Architecture
+### Architecture
 
 ```mermaid
 flowchart LR
@@ -75,7 +114,7 @@ flowchart LR
 Audio never leaves your network: recording happens on the phone, STT and TTS run on the LXC's CPU. Only in *auto*
 (when the PC is off) or *remote* mode are the **text** transcripts sent to Anthropic.
 
-## Hardware & software
+### Hardware & software
 
 | Part | What |
 |---|---|
@@ -89,7 +128,7 @@ Audio never leaves your network: recording happens on the phone, STT and TTS run
 | STT | NVIDIA Parakeet-TDT-0.6B-v3 (int8) via [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx), ~1.5 s per 5 s utterance on CPU |
 | TTS | [Piper](https://github.com/OHF-Voice/piper1-gpl) with the [Thorsten](https://www.thorsten-voice.de) voice `de_DE-thorsten-medium`, first audio after 45–240 ms |
 
-## Status (honest)
+### Status (honest)
 
 **Works (tested on the device):**
 - NixOS boots from `boot` + `userdata`; display, touch, buttons, speaker + microphone, GPU (with the zap shader),
@@ -97,19 +136,19 @@ Audio never leaves your network: recording happens on the phone, STT and TTS run
 - Kiosk comes up full-screen after every reboot (~55 s), NuOrb is the only UI.
 - Voice loop speaker → mic → STT → Hermes → TTS, about 3 s for simple questions in local mode.
 - Brain switch from phone and admin panel; Claude fallback when the PC is off.
+- **"Hey NuOrb"** wake word on the phone ([openWakeWord](https://github.com/dscripka/openWakeWord), RAM ring buffer only, nothing stored or sent before detection), tap-to-talk and a conversation mode (keeps listening after an answer).
 - Confirmation cards for device actions (local patterns and the decline path tested on the device; the full
   reboot-through-the-card path is still in final testing).
 
 **Work in progress / planned:**
-- **Own voice:** recording tools and a 1000-sentence corpus are in `voice/`; fine-tuning (Piper, then Kokoro-82M) not done yet.
-- **Wake word "Hey NuOrb"** via [openWakeWord](https://github.com/dscripka/openWakeWord) on the phone – planned; the UI side exists.
-- **Tap-to-talk** (hands-free with silence detection) is implemented but still being tuned with real voices on the phone.
+- **Own voice:** recording tools and a 1000-sentence corpus are in `voice/`; a Piper fine-tune is in training.
 - Device commands through Gemma without "thinking" are hit-and-miss (local pattern matching in the UI is the main path).
 - Occasional `dpu frame done timeout` display hang observed once; suspend, modem/telephony, sensors untested.
 
-## Repository layout
+### Repository layout
 
 ```
+docker/    the self-hosted server as one container (start here)  → docker/README.md
 nixos/     phone NixOS configuration (flake, kiosk, device service, restricted SSH entry)  → nixos/README.md
 ui/        nuorb-ui: FastAPI server + orb web UI (static/), phone shell (phone/), test tools
 admin/     nuorb-admin: admin panel server + UI, privileged helper (ctl/) for service restarts
@@ -120,7 +159,7 @@ docs/      screenshots
 
 Comments and most docs inside the code are in German.
 
-## Configuration
+### Configuration
 
 All private LAN addresses were replaced by placeholders: `NUORB_SERVER_IP` (backend LXC), `PHONE_HOST`,
 `OLLAMA_HOST` (GPU PC), `PROXMOX_HOST`, `APT_CACHE_HOST`. See **[`config.env.example`](config.env.example)** for
@@ -130,7 +169,7 @@ Nothing secret is in this repository. You create your own: SSH keys, the home CA
 the user password hash, the admin password (set on first login with a one-time code), API keys (entered in
 the admin panel, stored in `~/.hermes/.env` on the backend).
 
-## Installation overview
+### Installation overview
 
 > This is a hobby build log made reusable, not a one-click installer. Expect to adapt paths and names.
 
@@ -150,7 +189,7 @@ the admin panel, stored in `~/.hermes/.env` on the backend).
 Note: the Hermes gateway unit name (`hermes-gateway-<id>.service`) is instance-specific; adjust it in
 `admin/server.py` and `admin/ctl/nuorb-admin-ctl.sh`.
 
-## Safety notes – read before touching your phone
+### Safety notes – read before touching your phone
 
 - **This wipes the phone.** `userdata` becomes the NixOS root filesystem, `boot` is overwritten and `dtbo` erased.
   Android will not start any more. Back up everything first, including the critical partitions such as `persist`,
@@ -195,17 +234,13 @@ respective owners.
 
 ## Kurzfassung (Deutsch)
 
-**NuOrb** macht aus einem alten Xiaomi Mi 11 Lite 4G ein selbst gehostetes Sprachassistenz-Terminal. Auf dem
-Handy läuft **NixOS mit Mainline-Kernel 7.3** (Port von ElXreno), ein `cage`-Kiosk zeigt ausschließlich die
-NuOrb-Oberfläche mit animiertem Orb. Im Hintergrund arbeitet **Hermes Agent** in einem Debian-LXC mit **Gemma 4 26B**
-über Ollama auf dem eigenen PC; Claude ist optional als Ausweich- oder Remote-Gehirn (Schalter Lokal / Automatisch /
-Remote). Spracherkennung (**Parakeet-TDT v3**) und Sprachausgabe (**Piper, Thorsten-Stimme**) laufen lokal auf der CPU.
-Gerätebefehle (WLAN, Neustart, Helligkeit …) laufen über MCP und werden erst nach einer Bestätigungskarte auf dem
-Handy ausgeführt. Ein Admin-Panel verwaltet Modell, Persona, Gedächtnis, Skills, Schlüssel und Dienste.
+**NuOrb** ist ein privater Sprachassistent zum Selbsthosten: **ein Docker-Container** (Proxmox, Heimserver
+oder PC) mit Agent, Orb-Oberfläche, Admin-Panel, lokaler Spracherkennung und Sprachausgabe. Gedacht wird mit dem
+eigenen **Ollama** oder **Claude** (oder beidem, umschaltbar). Bedient wird per **Android-App** (bald im Play Store)
+oder Browser im Heimnetz: Container starten, Einrichtung im Admin-Panel, Handy per QR-Code koppeln – fertig.
+Anleitung: [`docker/README.md`](docker/README.md).
 
-**Stand:** Läuft im Alltag. In Arbeit: eigene Stimme, Wake-Word „Hey NuOrb“ (openWakeWord), Feinschliff
-Tippen-zum-Sprechen.
-
-**Achtung:** Bootloader-Entsperrung nötig, Android-Daten werden gelöscht. Anti-Rollback-Index des Geräts beachten
-(hier 3) – **niemals MIUI mit niedrigerem Index flashen**. Proprietäre Firmware ist nicht enthalten.
-Alle privaten Adressen sind durch Platzhalter ersetzt (`config.env.example`).
+**Für Bastler:** Das Projekt begann mit einem alten **Xiaomi Mi 11 Lite 4G**, auf dem jetzt **NixOS** läuft und
+NuOrb die einzige Oberfläche ist (mit „Hey NuOrb“ und Gerätesteuerung). Das ist gerätespezifisch und löscht das
+Handy: Bootloader-Entsperrung nötig, **niemals MIUI mit niedrigerem Anti-Rollback-Index flashen**. Alle privaten
+Adressen sind durch Platzhalter ersetzt (`config.env.example`).

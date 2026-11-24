@@ -1,0 +1,14 @@
+# NuOrb: Python-Pakete für Oberfläche, Admin und Spracherkennung (eigenes venv, getrennt von Hermes)
+fastapi==0.165.0
+starlette==1.10.0
+uvicorn==0.54.0
+httpx==0.28.1
+python-multipart==0.0.34
+ruamel.yaml==0.19.1
+piper-tts==1.8.0
+onnxruntime==1.32.0
+sherpa-onnx==2.0.3
+numpy==2.5.5
+cryptography
+segno
+zeroconf

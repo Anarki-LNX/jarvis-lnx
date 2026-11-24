@@ -1,0 +1,6 @@
+.env
+.work/
+certs/
+__pycache__/
+*.pyc
+tools/sanitize_local.py

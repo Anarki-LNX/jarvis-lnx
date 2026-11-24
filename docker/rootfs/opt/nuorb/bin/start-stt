@@ -1,0 +1,5 @@
+#!/bin/sh
+# Spracherkennung: Modelle bei Bedarf laden (erster Start), dann Parakeet-Router auf 127.0.0.1.
+. /opt/nuorb/bin/nuorb-env
+$PY -I /opt/nuorb/app/fetch_models.py voices stt || { echo "[nuorb-stt] Modelle fehlen, neuer Versuch in 60 s"; sleep 60; exit 1; }
+exec $PY -I /opt/nuorb/stt/stt_router.py

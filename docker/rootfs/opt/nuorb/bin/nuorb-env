@@ -1,0 +1,24 @@
+# NuOrb: gemeinsame Umgebung aller NuOrb-Dienste im Container (wird von den s6-run-Skripten eingelesen).
+export HOME=/opt/nuorb/home NUORB_HOME=/opt/nuorb/home
+export HERMES_HOME=/opt/data HERMES_BIN=/opt/hermes/bin/hermes
+export NUORB_MODELS=/opt/models
+export PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 ORT_DISABLE_TELEMETRY=1 HF_HUB_DISABLE_TELEMETRY=1
+export LANG=C.UTF-8
+: "${NUORB_LANG:=de}" "${UI_PORT:=8443}" "${ADMIN_PORT:=8444}" "${HERMES_API_PORT:=8642}" "${STT_ROUTER_PORT:=8178}"
+export NUORB_LANG UI_PORT ADMIN_PORT HERMES_API_PORT STT_ROUTER_PORT
+case "${NUORB_TLS:-selfsigned}" in off) SCHEME=http ;; *) SCHEME=https ;; esac
+D=/opt/data/nuorb
+export UI_CERT_DIR=$D/certs ADMIN_CERTS=$D/certs
+export UI_CONFIG=$D/config/ui.json NUORB_UI_SETTINGS=$D/config/ui.json ADMIN_TOKEN_FILE=$D/config/internal.token
+export ADMIN_DATA=$D/admin NUORB_UI_STATIC=/opt/nuorb/ui/static
+export HERMES_URL=http://127.0.0.1:$HERMES_API_PORT
+export STT_URL=http://127.0.0.1:$STT_ROUTER_PORT/v1/audio/transcriptions STT_HEALTH_URL=http://127.0.0.1:$STT_ROUTER_PORT/health
+export STT_ROUTER_HOST=127.0.0.1 PARAKEET_DIR=/opt/models/stt/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8
+export NUORB_UI_URL=$SCHEME://127.0.0.1:$UI_PORT ADMIN_URL=$SCHEME://127.0.0.1:$ADMIN_PORT
+export OLLAMA_URL="${NUORB_INIT_OLLAMA_URL:-http://ollama:11434}"
+export BRAIN_URL="${OLLAMA_URL%/}/api/version"
+NETS="${NUORB_ALLOWED_NETS:-127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,fc00::/7,fe80::/10}"
+export UI_ALLOWED_NETS="$NETS" ADMIN_ALLOWED_NETS="$NETS"
+export NUORB_MODE=live NUORB_FEATURE_ZUHAUSE="${NUORB_FEATURE_ZUHAUSE:-0}" NUORB_FEATURE_GERAET=0
+export PHONE_HOST="" PATH="/opt/hermes/bin:/opt/hermes/.venv/bin:/command:/usr/local/bin:/usr/bin:/bin"
+PY=/opt/nuorb/venv/bin/python

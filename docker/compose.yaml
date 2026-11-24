@@ -1,0 +1,54 @@
+# NuOrb – Installation: .env.example nach .env kopieren, anpassen, dann `docker compose up -d`.
+# Details: README.md
+name: nuorb
+
+services:
+  nuorb:
+    # Fertiges Image von GitHub (amd64/arm64). Ist es (noch) nicht abrufbar, baut Compose es aus diesem Ordner.
+    image: ghcr.io/anarki-lnx/nuorb:${NUORB_VERSION:-latest}
+    build:
+      context: .
+    pull_policy: missing
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/opt/nuorb/bin/healthcheck"]
+      interval: 30s
+      timeout: 5s
+      start_period: 90s
+      retries: 3
+    env_file: .env
+    ports:
+      # Nur im Heimnetz/VPN nutzen – diese Ports NICHT im Router ins Internet freigeben.
+      - "${NUORB_BIND:-0.0.0.0}:${NUORB_UI_PORT_PUBLIC:-8443}:8443"    # Oberfläche + App-API
+      - "${NUORB_BIND:-0.0.0.0}:${NUORB_ADMIN_PORT_PUBLIC:-8444}:8444" # Admin-Panel
+    volumes:
+      - data:/opt/data        # Konfiguration, Schlüssel, Gedächtnis, Sitzungen, Zertifikate
+      - models:/opt/models    # Stimmen und Spracherkennungs-Modell (beim ersten Start geladen)
+      # Eigenes Zertifikat (NUORB_TLS=custom): Ordner mit fullchain.pem + privkey.pem einbinden
+      # - ./certs:/certs:ro
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  # Optional: eigenes Ollama im selben Compose-Projekt (`docker compose --profile ollama up -d`).
+  # Dann in der .env NUORB_INIT_OLLAMA_URL=http://ollama:11434 setzen. Ohne GPU-Freigabe läuft es auf der CPU (langsam).
+  ollama:
+    profiles: ["ollama"]
+    image: ollama/ollama:${OLLAMA_VERSION:-0.40.18}
+    restart: unless-stopped
+    environment:
+      OLLAMA_CONTEXT_LENGTH: "65536"   # Hermes verlangt mindestens 64k Kontext
+      OLLAMA_KEEP_ALIVE: "10m"
+    volumes:
+      - ollama:/root/.ollama
+    # GPU (NVIDIA, Container-Toolkit nötig) – Kommentar entfernen:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices: [{ driver: nvidia, count: all, capabilities: [gpu] }]
+
+volumes:
+  data:
+  models:
+  ollama:
