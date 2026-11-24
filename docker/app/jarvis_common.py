@@ -76,8 +76,35 @@ def set_models_status(**kw) -> None:
     os.chmod(MODELS_STATUS, 0o644)
 
 
+def ui_cfg() -> dict:
+    return _read_json(CONF / "ui.json", {}) if (CONF / "ui.json").exists() else {}
+
+
+def brand() -> str:
+    """Produktname (ui.json brand_name vor BRAND_NAME), Standard NuOrb."""
+    b = ui_cfg().get("brand_name")
+    return (b if isinstance(b, str) and b.strip() else env("BRAND_NAME", "NuOrb") or "NuOrb").strip()[:40]
+
+
+def assistant_name() -> str:
+    """Name, mit dem man den Assistenten anspricht (ui.json assistant_name), Standard = Marke."""
+    a = ui_cfg().get("assistant_name")
+    if isinstance(a, str) and a.strip():
+        return a.strip()[:40]
+    return env("ASSISTANT_NAME")[:40] or brand()
+
+
+def user_name() -> str:
+    u = ui_cfg().get("user_name")
+    return u.strip()[:40] if isinstance(u, str) else ""
+
+
+def onboarded() -> bool:
+    return ui_cfg().get("onboarded") is True
+
+
 def server_name() -> str:
-    return env("JARVIS_NAME", "JARVIS")[:40] or "JARVIS"
+    return env("JARVIS_NAME") [:40] or assistant_name()
 
 
 def now_iso() -> str:

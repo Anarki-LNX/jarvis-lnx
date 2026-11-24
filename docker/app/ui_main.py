@@ -29,17 +29,21 @@ import server as ui  # noqa: E402  (jarvis-ui/server.py)
 app = ui.app
 COOKIE = "jarvis_device"
 PAGES = jc.APP / "pages"
-NEVER = re.compile(r"(?!x)x")
 
-# ------------------------------------------------------------------ generisch: Weichen aus, wenn Plugins aus sind
-GERAET = ui.feature("geraet") if hasattr(ui, "feature") else False
-ZUHAUSE = ui.feature("zuhause") if hasattr(ui, "feature") else False
-if not GERAET:
-    ui.DEVICE_WORDS = NEVER  # keine Geräte-/Haus-Weiche zu Claude: im Modus „Lokal“ bleibt alles lokal
-if not ZUHAUSE:
-    ui.HOME_WORDS = NEVER
-    if hasattr(ui, "room_hit"):
-        ui.room_hit = lambda _t: False
+# Generisch: Haus-, Geräte- und Cloud-Weiche sind über Feature-Flags von jarvis-ui aus (jarvis-env:
+# JARVIS_FEATURE_ZUHAUSE=0, JARVIS_FEATURE_GERAET=0, JARVIS_FEATURE_CLOUD_WEICHE=0) – im Modus „Lokal“ geht nichts an Claude.
+
+# Persona als Vorlage: {assistant_name}, {brand}, {user_name}; vor dem Kennenlernen mit Begrüßungsregel
+import personas  # noqa: E402
+
+_orig_persona = ui.cur_persona
+
+
+def _persona() -> str:
+    return personas.render(_orig_persona(), jc.lang(), jc.assistant_name(), jc.brand(), jc.user_name(), jc.onboarded())
+
+
+ui.cur_persona = _persona
 
 if jc.tls_mode() != "selfsigned":
     # Eigenes Zertifikat passt nicht auf 127.0.0.1: interne Aufrufe UI -> Admin im Container ohne CA-Prüfung
@@ -140,6 +144,7 @@ async def pairing_guard(request: Request, call_next):
 # ------------------------------------------------------------------ neue Endpunkte (vor dem Static-Mount einhängen)
 async def info(request: Request):
     return {"product": jc.PRODUCT, "api": jc.API_VERSION, "name": jc.server_name(), "lang": jc.lang(),
+            "assistant_name": jc.assistant_name(), "brand": jc.brand(),
             "pairing_required": jc.pairing_required(), "build": ui.build_id(),
             "paired": _device(request) is not None}
 
@@ -217,6 +222,8 @@ async def status_plus(request: Request):
     _sync_brain_url()
     data = dict(await _orig_status())
     data.setdefault("lang", jc.lang())
+    data.update(assistant_name=jc.assistant_name(), user_name=jc.user_name() or None, onboarded=jc.onboarded(),
+                greeting=personas.GREETING[jc.lang()].replace("{brand}", jc.brand()))
     data.setdefault("server_name", jc.server_name())
     return data
 
@@ -263,7 +270,24 @@ async def ask_guard(request: Request):
     return await _orig_ask(request)
 
 
+async def assistant(request: Request):
+    """Name/Kennenlernen für Oberfläche und App. Schreiben läuft über das Admin-Panel (Sicherung, Audit)."""
+    if request.method == "GET":
+        return {"assistant_name": jc.assistant_name(), "brand": jc.brand(), "user_name": jc.user_name() or None,
+                "onboarded": jc.onboarded(), "greeting": personas.GREETING[jc.lang()].replace("{brand}", jc.brand())}
+    try:
+        body = await request.json()
+    except Exception:
+        body = None
+    if not isinstance(body, dict) or set(body) - {"assistant_name", "user_name", "onboarded"}:
+        return JSONResponse({"detail": "Erlaubt: assistant_name, user_name, onboarded"}, status_code=400)
+    code, data = await ui._admin("POST", "/internal/assistant", {**body, "source": "ui"})
+    ui._status_cache["t"] = 0
+    return JSONResponse(data, status_code=code)
+
+
 NEW = [
+    APIRoute("/api/assistant", assistant, methods=["GET", "POST"]),
     APIRoute("/api/ask", ask_guard, methods=["POST"]),
     APIRoute("/api/wakeword/{name}", wakeword, methods=["GET"]),
     APIRoute("/api/info", info, methods=["GET"]),

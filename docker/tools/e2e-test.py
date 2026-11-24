@@ -8,7 +8,7 @@
   5. Sprache: TTS liefert WAV, das WAV zurück durch die Spracherkennung (wenn die Modelle schon geladen sind)
   6. Browser: Startseite ohne Kopplung = Kopplungsseite, falscher Code = 403
 
-Aufruf: python3 docker/tools/e2e-test.py --ui https://127.0.0.1:18443 --admin https://127.0.0.1:18444 \
+Aufruf: python3 docker/tools/e2e-test.py --ui https://127.0.0.1:19443 --admin https://127.0.0.1:19444 \
            --setup-code XXXX-XXXX-XXXX   (oder --password, wenn schon eingerichtet)
 Nichts wird außerhalb des Test-Containers verändert. Das Passwort ist ein Wegwerf-Testwert.
 """
@@ -75,8 +75,8 @@ def multipart(field: str, filename: str, data: bytes, ctype: str) -> tuple[bytes
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--ui", default="https://127.0.0.1:18443")
-    ap.add_argument("--admin", default="https://127.0.0.1:18444")
+    ap.add_argument("--ui", default="https://127.0.0.1:19443")
+    ap.add_argument("--admin", default="https://127.0.0.1:19444")
     ap.add_argument("--setup-code")
     ap.add_argument("--password", default=os.environ.get("E2E_PASSWORD", "Test-" + secrets.token_hex(8)))
     ap.add_argument("--question", default="Hallo Jarvis, wie geht es dir?")
@@ -142,6 +142,21 @@ def main() -> int:
         st, s = app.req("GET", "/api/status")
     check("Hermes läuft", bool(s.get("hermes")))
     check("Gehirn (Ollama/Mock) erreichbar", bool(s.get("brain_ok")), f"mode={s.get('brain_mode')} model={s.get('brain_model')}")
+
+    # ---------------------------------------------------------------- Name und Kennenlernen
+    st, asx = app.req("GET", "/api/assistant")
+    check("Assistent-Name (Standard = Marke)", st == 200 and asx.get("assistant_name") == asx.get("brand"),
+          f"{asx.get('assistant_name')} / onboarded={asx.get('onboarded')} / {asx.get('greeting', '')[:50]}")
+    st, d = app.req("POST", "/api/assistant", {"assistant_name": "Max", "user_name": "Testperson"})
+    st2, s2 = app.req("GET", "/api/status")
+    st3, i3 = app.req("GET", "/api/info")
+    check("Umbenennen über die Oberfläche", st == 200 and s2.get("assistant_name") == "Max" and i3.get("assistant_name") == "Max",
+          f"status={s2.get('assistant_name')} info={i3.get('assistant_name')} user={s2.get('user_name')}")
+    st, d = app.req("POST", "/api/setting", {"assistant_name": "Orbi"})
+    st2, s2 = app.req("GET", "/api/status")
+    check("Umbenennen über /api/setting (Weg der Oberfläche)", st == 200 and s2.get("assistant_name") == "Orbi", f"{st} {s2.get('assistant_name')}")
+    st, d = app.req("POST", "/api/assistant", {"assistant_name": "", "onboarded": True})
+    check("Zurück auf Standardnamen, Kennenlernen fertig", st == 200 and d.get("assistant_name") == d.get("brand") and d.get("onboarded") is True)
 
     # ---------------------------------------------------------------- Frage
     t0 = time.time()

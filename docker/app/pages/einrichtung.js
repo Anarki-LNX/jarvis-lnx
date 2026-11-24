@@ -3,7 +3,7 @@
   const $ = (id) => document.getElementById(id);
   const EN = {
     back: "← Back to admin", title: "Setup", lead: "Three steps: language, brain, pair a device. Everything can be changed later in the admin panel.",
-    h_status: "Status", h_lang: "1 · Language and voice", l_lang: "Language", l_voice: "Voice", apply: "Apply",
+    h_status: "Status", h_lang: "1 · Name, language and voice", l_aname: "Assistant name (how you address it)", l_uname: "Your name (optional)", name_hint: "The wake word stays “Hey” plus the product name. You can also rename it in conversation: “From now on you are called …”.", l_lang: "Language", l_voice: "Voice", apply: "Apply",
     h_mode: "2 · Brain", m_local: "Local (Ollama)", m_local_d: "Only your Ollama. Nothing leaves your home. Free.",
     m_auto: "Both (automatic)", m_auto_d: "Ollama, and Claude when the PC is off.", m_remote: "Claude (API)",
     m_remote_d: "No PC of your own needed, costs per question.",
@@ -56,6 +56,7 @@
   $("lang").addEventListener("change", () => voices($("lang").value));
   $("saveLang").addEventListener("click", async () => {
     try {
+      await api("/api/assistant", { assistant_name: $("aname").value.trim(), user_name: $("uname").value.trim() });
       const d = await api("/api/setup/language", { lang: $("lang").value, voice: $("voice").value });
       $("langMsg").className = "ok"; $("langMsg").textContent = d.downloading ? m.dl(d.downloading) : m.langOk;
       setTimeout(() => location.reload(), d.downloading ? 1500 : 800);
@@ -107,6 +108,8 @@
       document.querySelectorAll("[data-t]").forEach((el) => { if (EN[el.dataset.t]) el.textContent = EN[el.dataset.t]; });
     }
     $("lang").value = s.lang; voices(s.lang, s.voice);
+    $("aname").value = s.assistant_name || ""; $("aname").placeholder = s.brand || "";
+    $("uname").value = s.user_name || "";
     $("brainState").className = s.done ? "ok" : "warn";
     $("brainState").textContent = s.done ? m.brain(m.modes[s.brain] || s.brain) : m.noBrain;
     showModels(s.models || {}); pollModels();

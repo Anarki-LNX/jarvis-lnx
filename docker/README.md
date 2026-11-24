@@ -1,4 +1,4 @@
-# JARVIS LNX – Server als Docker-Container
+# NuOrb (Jarvis LNX) – Server als Docker-Container
 
 Dein eigener Sprachassistent in **einem** Container: Hermes Agent als Gehirn-Framework, die JARVIS-Oberfläche mit Orb,
 ein Admin-Panel, Spracherkennung (Parakeet, läuft auf der CPU) und Sprachausgabe (Piper). Denken lässt du entweder
@@ -135,9 +135,12 @@ Caddy): `JARVIS_TLS=off`, `JARVIS_BIND=127.0.0.1`, `JARVIS_PUBLIC_URL` auf die P
 Umschalten im Admin unter „Modell & Fallback“ oder in der Oberfläche (Abzeichen oben antippen). Eigenes Ollama im
 selben Compose-Projekt: `docker compose --profile ollama up -d`, Adresse dann `http://ollama:11434`.
 
-Sprache **Deutsch oder Englisch** wählst du in der Einrichtung; dazu passende Stimmen (Thorsten, Kerstin; Alan, Ryan,
-Amy). Stimmen-Lizenzen: <https://huggingface.co/rhasspy/piper-voices> (Thorsten: CC0). Die Orb-Oberfläche ist
-derzeit noch deutschsprachig.
+**Name:** Das Produkt heißt NuOrb, das Weckwort „Hey NuOrb“ (`BRAND_NAME`). Wie du den Assistenten ansprichst,
+legst du in der Einrichtung fest oder einfach im Gespräch: „Ab jetzt heißt du Max.“ Beim ersten Gespräch stellt er
+sich vor und fragt auch nach deinem Namen.
+
+Sprache **Deutsch oder Englisch** wählst du in der Einrichtung (Oberfläche: `UI_LANG=auto` folgt der Gerätesprache); dazu passende Stimmen (Thorsten, Kerstin; Alan, Ryan,
+Amy). Stimmen-Lizenzen: <https://huggingface.co/rhasspy/piper-voices> (Thorsten: CC0). 
 
 Optional „Hey Jarvis“ in der App: Die openWakeWord-Dateien (`melspectrogram.tflite`, `embedding_model.tflite`,
 `hey_jarvis_v0.1.tflite`) können im Volume unter `jarvis/wakeword/` liegen; die App fragt sonst selbst beim

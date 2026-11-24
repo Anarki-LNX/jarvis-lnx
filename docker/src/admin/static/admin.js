@@ -279,10 +279,20 @@ async function viewPersona(view) {
       ${p.ui_supported ? "" : `<div class="note warn">Die Handy-Oberfläche liest diese Einstellung noch nicht (Datei ui.json fehlt). Sie wird beim Speichern angelegt.</div><br>`}
       <textarea id="uiPersona" rows="12">${esc(p.ui_persona || "")}</textarea><br><br>
       <button class="btn primary" id="saveUiPersona">Speichern …</button>
-      <div class="note small">Jede Änderung an der Persönlichkeit macht die erste Antwort danach einmalig ~8 s langsamer (Prompt-Cache).</div></div>`);
+      <div class="note small">Jede Änderung an der Persönlichkeit macht die erste Antwort danach einmalig ~8 s langsamer (Prompt-Cache).</div></div>
+    <div class="panel span-7"><h3>Name des Assistenten</h3>
+      <p class="hint">So sprichst du ihn an. Das Weckwort bleibt „${esc(p.wake_phrase)}“.</p>
+      <div class="inline"><input id="asName" maxlength="24" value="${esc(p.assistant_name)}" pattern="[A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß0-9 .\-]{0,23}"><button class="btn primary" id="saveName">Speichern …</button></div>
+      <p class="hint small">1–24 Zeichen: mit einem Buchstaben beginnen, danach Buchstaben, Ziffern, Leerzeichen, Punkt oder Bindestrich. Standard: ${esc(p.brand_name)}.</p></div>
+    <div class="panel span-5"><h3>Begrüßung</h3>
+      <p class="hint">${p.onboarded ? "Die Begrüßung ist erledigt." : "Beim nächsten Öffnen der Oberfläche stellt sich der Assistent vor."}</p>
+      <button class="btn ghost" id="redoOnboard" ${p.onboarded ? "" : "disabled"}>Begrüßung beim nächsten Öffnen wiederholen …</button>
+      <p class="muted small mt">Marke ${esc(p.brand_name)} · Weckwort „${esc(p.wake_phrase)}“ · Sprache ${esc(p.ui_lang)} (fest eingestellt)</p></div>`);
   const cnt = () => { $("#soulCount").textContent = `${$("#soul").value.length} Zeichen`; };
   $("#soul").addEventListener("input", cnt); cnt();
   $("#saveSoul").onclick = () => change(() => api("/api/persona/save", { method: "POST", body: { soul: $("#soul").value } }), () => show("persona"));
+  $("#saveName").onclick = () => change(() => api("/api/persona/save", { method: "POST", body: { assistant_name: $("#asName").value } }), () => show("persona"));
+  $("#redoOnboard").onclick = () => change(() => api("/api/persona/save", { method: "POST", body: { onboarded: false } }), () => show("persona"));
   $("#saveUiPersona").onclick = () => change(() => api("/api/persona/save", { method: "POST", body: { ui_persona: $("#uiPersona").value } }), () => show("persona"));
 }
 
@@ -468,8 +478,8 @@ async function viewVoice(view) {
       <label class="field"><span>Piper-Stimme</span><select id="vVoice">${u.voices.map((v) => `<option ${v === (s.piper_voice || "de_DE-thorsten-medium") ? "selected" : ""}>${esc(v)}</option>`).join("")}</select><small>„high“ klingt natürlicher, braucht aber mehr Rechenzeit.</small></label>
       <label class="field"><span>Sprechtempo <b id="vLsOut"></b></span><input id="vLs" type="range" min="0.7" max="1.3" step="0.05" value="${esc(ls)}"><small>Kleiner = schneller (length_scale).</small></label>
       <div class="row"><div class="grow"><div class="title">Bei Sprachfragen nachdenken</div><div class="desc">Aus = schnelle Antworten (~2 s). An = gründlicher, aber deutlich langsamer.</div></div>${sw("reason", !!s.reasoning_voice, 'id="vReason"')}</div>
-      <div class="row"><div class="grow"><div class="title">Wecken mit „Hey Jarvis“</div><div class="desc">Das Mikro läuft dann ständig mit, aber nichts wird aufgezeichnet oder gesendet, bevor „Hey Jarvis“ erkannt ist (nur kurzer Puffer im Arbeitsspeicher des Handys).</div></div>${sw("wake", !!s.wake_word, 'id="vWake"')}</div>
-      <div class="row"><div class="grow"><div class="title">Nach Antwort weiter zuhören</div><div class="desc">JARVIS fragt nach jeder Antwort kurz nach und hört einige Sekunden ohne „Hey Jarvis“ zu. Beenden mit „Nein danke“, „Das war’s“ oder „Gute Nacht“.</div></div>${sw("followup", s.follow_up ?? true, 'id="vFollow"')}</div>
+      <div class="row"><div class="grow"><div class="title">Wecken mit „${esc(u.wake_phrase || "Hey Jarvis")}“</div><div class="desc">Das Mikro läuft dann ständig mit, aber nichts wird aufgezeichnet oder gesendet, bevor „${esc(u.wake_phrase || "Hey Jarvis")}“ erkannt ist (nur kurzer Puffer im Arbeitsspeicher des Handys).</div></div>${sw("wake", !!s.wake_word, 'id="vWake"')}</div>
+      <div class="row"><div class="grow"><div class="title">Nach Antwort weiter zuhören</div><div class="desc">JARVIS fragt nach jeder Antwort kurz nach und hört einige Sekunden ohne „${esc(u.wake_phrase || "Hey Jarvis")}“ zu. Beenden mit „Nein danke“, „Das war’s“ oder „Gute Nacht“.</div></div>${sw("followup", s.follow_up ?? true, 'id="vFollow"')}</div>
       <label class="field"><span>Wartezeit auf Antwort (Sekunden)</span><input id="vFollowT" type="number" min="4" max="30" step="1" value="${esc(s.follow_up_timeout_s ?? 8)}"><small>4 bis 30 Sekunden, Standard 8.</small></label>
       <label class="field"><span>Betriebsmodus</span><select id="vMode"><option value="live">Live (echtes Gehirn)</option><option value="demo">Demo (ohne Sprachmodell)</option></select></label>
       <div class="inline"><button class="btn ghost" id="vTest">▶ Probehören</button><span class="grow"></span><button class="btn primary" id="vSave">Speichern …</button></div>

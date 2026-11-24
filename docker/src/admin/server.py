@@ -53,7 +53,12 @@ UI_SETTINGS = Path(os.environ.get("JARVIS_UI_SETTINGS", str(HOME / ".config/jarv
 OLLAMA = os.environ.get("OLLAMA_URL", "http://ollama:11434")
 CTL_DIR = Path(os.environ.get("ADMIN_CTL_DIR", "/var/lib/jarvis-admin-ctl"))
 PHONE_HOST = os.environ.get("PHONE_HOST", "")  # leer = kein Handy (Kachel ausgeblendet)
-GPU_LABEL = os.environ.get("ADMIN_GPU_LABEL", "")  # z. B. „RX 7800 XT · 16 GB“, leer = keine Angabe
+GPU_LABEL = os.environ.get("ADMIN_GPU_LABEL", "")
+# Produktwerte (im Image per Env fest, hier nur Anzeige/Standard)
+BRAND_NAME = os.environ.get("BRAND_NAME", "JARVIS")
+WAKE_PHRASE = os.environ.get("WAKE_PHRASE", "Hey Jarvis")
+UI_LANG = os.environ.get("UI_LANG", "de")
+NAME_RE = r"[A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß0-9 .-]{0,23}"  # z. B. „RX 7800 XT · 16 GB“, leer = keine Angabe
 PHONE_USER = os.environ.get("PHONE_USER", "jarvis-ctl")
 PHONE_KEY = Path(os.environ.get("PHONE_KEY", str(BASE / "keys/handy_ed25519")))
 HOST = os.environ.get("ADMIN_HOST", "0.0.0.0")
@@ -1163,7 +1168,9 @@ def read_ui_settings() -> dict:
 async def persona_get():
     ui = read_ui_settings()
     return {"soul": read_text(FILES["soul"][0]), "ui_persona": ui.get("persona"),
-            "ui_supported": UI_SETTINGS.exists()}
+            "ui_supported": UI_SETTINGS.exists(), "assistant_name": ui_field_value(ui, "assistant_name"),
+            "onboarded": ui_field_value(ui, "onboarded"),
+            "brand_name": BRAND_NAME, "wake_phrase": WAKE_PHRASE, "ui_lang": UI_LANG}
 
 
 @app.post("/api/persona/save")
@@ -1187,6 +1194,21 @@ async def persona_save(request: Request):
             ui.pop("persona", None)
         return make_preview("ui", json.dumps(ui, indent=2, ensure_ascii=False) + "\n", "Sprach-Persona des Handys ändern",
                             "Gilt für die nächste Frage am Handy. Erste Antwort danach einmalig langsamer.")
+    if "assistant_name" in d:
+        ui = read_ui_settings()
+        v = ui_field_check("assistant_name", d["assistant_name"])
+        if v == BRAND_NAME:
+            ui.pop("assistant_name", None)  # Standard = Marke (haelt den Prompt-Cache)
+        else:
+            ui["assistant_name"] = v
+        return make_preview("ui", json.dumps(ui, indent=2, ensure_ascii=False) + "\n", f"Name des Assistenten: „{v}“",
+                            f"Gilt ab der nächsten Frage. Das Weckwort bleibt „{WAKE_PHRASE}“. "
+                            "Erste Antwort danach einmalig langsamer (Prompt-Cache).")
+    if d.get("onboarded") is False:
+        ui = read_ui_settings()
+        ui["onboarded"] = False
+        return make_preview("ui", json.dumps(ui, indent=2, ensure_ascii=False) + "\n", "Begrüßung beim nächsten Öffnen wiederholen",
+                            "Beim nächsten Öffnen der Oberfläche stellt sich der Assistent wieder vor.")
     raise HTTPException(400, "Nichts zu speichern.")
 
 
@@ -1221,7 +1243,7 @@ async def memory_save(request: Request):
 @app.get("/api/ui-settings")
 async def ui_settings_get():
     voices = sorted(p.stem for p in (HERMES_HOME / "cache/piper-voices").glob("*.onnx"))
-    return {"settings": read_ui_settings(), "exists": UI_SETTINGS.exists(), "voices": voices}
+    return {"settings": read_ui_settings(), "exists": UI_SETTINGS.exists(), "voices": voices, "wake_phrase": WAKE_PHRASE}
 
 
 @app.post("/api/ui-settings/save")
@@ -1254,9 +1276,12 @@ async def ui_settings_save(request: Request):
 
 # Interne Schnittstelle fuer einzelne ui.json-Schalter (Handy). Whitelist: Feld -> (Typ, Bezeichnung, Standard, Bereich)
 INTERNAL_UI_FIELDS = {
-    "wake_word": (bool, "Wecken mit „Hey Jarvis“", False, None),
+    "wake_word": (bool, f"Wecken mit „{WAKE_PHRASE}“", False, None),
     "follow_up": (bool, "Nach Antwort weiter zuhören", True, None),
     "follow_up_timeout_s": (int, "Wartezeit auf Antwort", 8, (4, 30)),
+    "assistant_name": (str, "Name des Assistenten", BRAND_NAME, NAME_RE),  # Bereich = Regex
+    # Fehlt das Feld, begruesst die Instanz nie von selbst -> Standard "erledigt"
+    "onboarded": (bool, "Begrüßung erledigt", True, None),
 }
 
 
@@ -1265,6 +1290,12 @@ def ui_field_check(k: str, v):
     t, label, _, rng = INTERNAL_UI_FIELDS[k]
     if not isinstance(v, t) or (t is not bool and isinstance(v, bool)):
         raise HTTPException(400, f"{k} hat den falschen Typ.")
+    if t is str:
+        v = v.strip()
+        if not re.fullmatch(rng, v):
+            raise HTTPException(400, f"{label}: 1–24 Zeichen, mit Buchstaben beginnen, danach Buchstaben, Ziffern, "
+                                     "Leerzeichen, Punkt oder Bindestrich.")
+        return v
     if rng and not rng[0] <= v <= rng[1]:
         raise HTTPException(400, f"{label}: erlaubt {rng[0]}–{rng[1]}.")
     return v
@@ -1276,6 +1307,10 @@ def ui_field_value(ui: dict, k: str):
 
 def ui_field_text(k: str, v) -> str:
     label = INTERNAL_UI_FIELDS[k][1]
+    if isinstance(v, str):
+        return f"{label}: „{v}“"
+    if k == "onboarded":
+        return f"{label}: {'ja' if v else 'nein (Begrüßung beim nächsten Öffnen)'}"
     return f"{label}: {'an' if v is True else 'aus' if v is False else v}" + (" s" if k.endswith("_s") else "")
 
 
