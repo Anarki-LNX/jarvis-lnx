@@ -1,0 +1,1897 @@
+"""JARVIS-Verwaltung: Einstellungs-Web-UI für Hermes/JARVIS (HTTPS :8444, nur LAN, Login).
+
+Grundsaetze
+- Jede Dateiaenderung läuft über denselben Weg: Vorschau (Diff) -> Bestätigung -> Sicherung -> atomar schreiben
+  -> Prüfung (z. B. `hermes config check`). Jede Sicherung lässt sich wieder einspielen (ebenfalls mit Vorschau).
+- Secrets (.env, Schlüssel in config.yaml) verlassen den Server nie im Klartext: nur "gesetzt …1234".
+- Login: Passwort (scrypt), das der Nutzer beim ersten Aufruf mit einem Einmal-Code selbst setzt.
+- Dienst-Neustarts nur über den root-Helfer jarvis-admin-ctl (systemd-Path-Unit, feste Whitelist).
+- Handy nur über einen eigenen SSH-Schlüssel mit command=-Restriktion auf dem Handy.
+"""
+from __future__ import annotations
+
+import asyncio
+import base64
+import contextlib
+import difflib
+import hashlib
+import hmac
+import io
+import ipaddress
+import json
+import os
+import re
+import secrets
+import shutil
+import socket
+import ssl
+import time
+import zipfile
+from datetime import datetime
+from pathlib import Path
+
+import httpx
+import uvicorn
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
+from ruamel.yaml import YAML
+from ruamel.yaml.comments import CommentedMap, CommentedSeq
+
+# ------------------------------------------------------------------ Pfade und Einstellungen
+HOME = Path(os.environ.get("JARVIS_HOME", "/home/jarvis"))
+BASE = Path(__file__).resolve().parent
+DATA = Path(os.environ.get("ADMIN_DATA", str(BASE / "data")))
+BACKUPS = DATA / "backups"
+HERMES_HOME = Path(os.environ.get("HERMES_HOME", str(HOME / ".hermes")))
+HERMES_BIN = os.environ.get("HERMES_BIN", str(HOME / ".local/bin/hermes"))
+HERMES_URL = os.environ.get("HERMES_URL", "http://127.0.0.1:8642")
+STT_URL = os.environ.get("STT_HEALTH_URL", "http://127.0.0.1:8178/health")
+UI_URL = os.environ.get("JARVIS_UI_URL", "https://127.0.0.1:8443")
+UI_STATIC = Path(os.environ.get("JARVIS_UI_STATIC", str(HOME / "jarvis-ui/static")))
+UI_CERTS = Path(os.environ.get("ADMIN_CERTS", str(HOME / "certs/jarvis-admin")))  # eigenes Zertifikat (von jarvis-ui ausgestellt)
+UI_SETTINGS = Path(os.environ.get("JARVIS_UI_SETTINGS", str(HOME / ".config/jarvis/ui.json")))
+OLLAMA = os.environ.get("OLLAMA_URL", "http://" + os.environ.get("OLLAMA_HOST", "ollama-pc.local") + ":11434")
+CTL_DIR = Path(os.environ.get("ADMIN_CTL_DIR", "/var/lib/jarvis-admin-ctl"))
+PHONE_HOST = os.environ.get("PHONE_HOST", "jarvis-phone.local")
+PHONE_USER = os.environ.get("PHONE_USER", "jarvis-ctl")
+PHONE_KEY = Path(os.environ.get("PHONE_KEY", str(BASE / "keys/handy_ed25519")))
+HOST = os.environ.get("ADMIN_HOST", "0.0.0.0")
+PORT = int(os.environ.get("ADMIN_PORT", "8444"))
+SESSION_HOURS = 12
+UNITS = {  # Anzeige-Name -> systemd-Unit (Whitelist, identisch im root-Helfer)
+    "hermes": "hermes-gateway-c51abf38.service",
+    "stt": "jarvis-stt-router.service",
+    "ui": "jarvis-ui.service",
+    "admin": "jarvis-admin.service",
+}
+UNIT_LABELS = {"hermes": "Hermes-Gateway (Gehirn-Anbindung)", "stt": "Spracherkennung (Parakeet)",
+               "ui": "JARVIS-Oberfläche (Handy)", "admin": "Verwaltung (diese Seite)"}
+ALLOWED_NETS = [ipaddress.ip_network(n) for n in os.environ.get(
+    "ADMIN_ALLOWED_NETS", "127.0.0.0/8,::1/128,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12").split(",")]
+
+SECRET_KEY_RE = re.compile(r"(key|token|secret|passw|credential|auth_header)", re.I)
+ENV_PROTECTED = {"API_SERVER_KEY", "API_SERVER_ENABLED", "API_SERVER_HOST", "API_SERVER_PORT"}
+
+FILES = {  # Schlüssel -> (Pfad, Art)
+    "config": (HERMES_HOME / "config.yaml", "yaml"),
+    "soul": (HERMES_HOME / "SOUL.md", "text"),
+    "memory": (HERMES_HOME / "memories/MEMORY.md", "text"),
+    "user": (HERMES_HOME / "memories/USER.md", "text"),
+    "env": (HERMES_HOME / ".env", "env"),
+    "ui": (UI_SETTINGS, "json"),
+}
+FILE_LABELS = {"config": "Hermes-Konfiguration", "soul": "Persönlichkeit (SOUL.md)", "memory": "Gedächtnis (MEMORY.md)",
+               "user": "Nutzerprofil (USER.md)", "env": "Schlüssel (.env)", "ui": "Handy-Oberfläche (ui.json)"}
+
+DATA.mkdir(parents=True, exist_ok=True)
+BACKUPS.mkdir(parents=True, exist_ok=True)
+os.chmod(DATA, 0o700)
+
+yaml_rt = YAML()
+yaml_rt.preserve_quotes = True
+yaml_rt.width = 4096
+yaml_rt.indent(mapping=2, sequence=4, offset=2)
+
+
+def now_iso() -> str:
+    return datetime.now().astimezone().isoformat(timespec="seconds")
+
+
+def audit(who: str, what: str) -> None:
+    with open(DATA / "audit.log", "a", encoding="utf-8") as f:
+        f.write(f"{now_iso()}\t{who}\t{what}\n")
+
+
+def atomic_write(path: Path, data: str | bytes, mode: int | None = None) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.name}.tmp-{secrets.token_hex(4)}")
+    if isinstance(data, str):
+        data = data.encode("utf-8")
+    old_mode = None
+    with contextlib.suppress(FileNotFoundError):
+        old_mode = path.stat().st_mode & 0o777
+    with open(tmp, "wb") as f:
+        f.write(data)
+        f.flush()
+        os.fsync(f.fileno())
+    os.chmod(tmp, mode if mode is not None else (old_mode if old_mode is not None else 0o644))
+    os.replace(tmp, path)
+
+
+# ------------------------------------------------------------------ Secrets maskieren
+def mask(value: str) -> str:
+    v = str(value or "")
+    if not v:
+        return ""
+    if len(v) < 12:
+        return "gesetzt"
+    return f"gesetzt …{v[-4:]}"
+
+
+TOKEN_PATTERNS = [
+    re.compile(r"sk-ant-[A-Za-z0-9_\-]{8,}"), re.compile(r"sk-[A-Za-z0-9_\-]{16,}"),
+    re.compile(r"(?i)(bearer\s+)[A-Za-z0-9._\-]{12,}"), re.compile(r"\b[a-f0-9]{32,}\b"),
+    re.compile(r"(?i)((?:api[_-]?key|token|secret|password)\s*[=:]\s*)\S+"),
+]
+
+
+def redact_text(s: str) -> str:
+    for p in TOKEN_PATTERNS:
+        s = p.sub(lambda m: (m.group(1) if m.groups() else "") + "‹verborgen›", s)
+    for v in env_secret_values():
+        if len(v) >= 8:
+            s = s.replace(v, "‹verborgen›")
+    return s
+
+
+def redact_tree(o):
+    if isinstance(o, dict):
+        return {k: (mask(v) if SECRET_KEY_RE.search(str(k)) and isinstance(v, str) and v else redact_tree(v))
+                for k, v in o.items()}
+    if isinstance(o, list):
+        return [redact_tree(x) for x in o]
+    return o
+
+
+# ------------------------------------------------------------------ .env lesen (nur serverseitig)
+def read_env() -> list[tuple[str, str | None, str]]:
+    """Liste (Name, Wert, Rohzeile); Kommentare/Leerzeilen mit Name None."""
+    path = FILES["env"][0]
+    out = []
+    try:
+        text = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return out
+    for line in text.splitlines():
+        m = re.match(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$", line)
+        if m and not line.lstrip().startswith("#"):
+            val = m.group(2).strip()
+            if len(val) >= 2 and val[0] == val[-1] and val[0] in "\"'":
+                val = val[1:-1]
+            out.append((m.group(1), val, line))
+        else:
+            out.append((None, None, line))
+    return out
+
+
+def env_value(name: str) -> str:
+    for n, v, _ in read_env():
+        if n == name:
+            return v or ""
+    return os.environ.get(name, "")
+
+
+def env_secret_values() -> list[str]:
+    return [v for n, v, _ in read_env() if n and v and SECRET_KEY_RE.search(n)]
+
+
+def env_is_secret(name: str) -> bool:
+    return bool(SECRET_KEY_RE.search(name))
+
+
+def mask_env_text(text: str) -> str:
+    """.env-Inhalt für Diffs: Werte geheimer Variablen nur maskiert."""
+    lines = []
+    for line in text.splitlines():
+        m = re.match(r"^(\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*)(.*)$", line)
+        if m and not line.lstrip().startswith("#") and env_is_secret(m.group(2)):
+            val = m.group(3).strip().strip("\"'")
+            lines.append(f"{m.group(1)}{mask(val)}")
+        else:
+            lines.append(line)
+    return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
+
+
+# ------------------------------------------------------------------ Login
+AUTH_FILE = DATA / "auth.json"
+SESS_FILE = DATA / "sessions.json"
+SETUP_FILE = DATA / "setup-code.txt"
+SESSIONS: dict[str, dict] = {}
+FAILS: dict[str, list[float]] = {}
+
+
+def load_sessions() -> None:
+    with contextlib.suppress(Exception):
+        SESSIONS.update(json.loads(SESS_FILE.read_text()))
+
+
+def save_sessions() -> None:
+    now = time.time()
+    for k in [k for k, v in SESSIONS.items() if v["exp"] < now]:
+        SESSIONS.pop(k, None)
+    atomic_write(SESS_FILE, json.dumps(SESSIONS), 0o600)
+
+
+def auth_configured() -> bool:
+    return AUTH_FILE.exists()
+
+
+def ensure_setup_code() -> None:
+    if auth_configured():
+        with contextlib.suppress(FileNotFoundError):
+            SETUP_FILE.unlink()
+        return
+    if not SETUP_FILE.exists():
+        code = "-".join(secrets.token_hex(2).upper() for _ in range(3))
+        atomic_write(SETUP_FILE, code + "\n", 0o600)
+    print(f"[jarvis-admin] Noch kein Passwort gesetzt. Einrichtungscode liegt in {SETUP_FILE} (nur für jarvis/root lesbar).",
+          flush=True)
+
+
+def hash_pw(pw: str, salt: bytes | None = None) -> dict:
+    salt = salt or secrets.token_bytes(16)
+    h = hashlib.scrypt(pw.encode(), salt=salt, n=2 ** 15, r=8, p=1, maxmem=64 * 1024 * 1024, dklen=32)
+    return {"alg": "scrypt", "n": 2 ** 15, "r": 8, "p": 1, "salt": base64.b64encode(salt).decode(),
+            "hash": base64.b64encode(h).decode(), "set": now_iso()}
+
+
+def check_pw(pw: str) -> bool:
+    try:
+        a = json.loads(AUTH_FILE.read_text())
+        salt = base64.b64decode(a["salt"])
+        h = hashlib.scrypt(pw.encode(), salt=salt, n=a["n"], r=a["r"], p=a["p"], maxmem=64 * 1024 * 1024, dklen=32)
+        return hmac.compare_digest(h, base64.b64decode(a["hash"]))
+    except Exception:
+        return False
+
+
+def pw_problem(pw: str) -> str | None:
+    if len(pw) < 10:
+        return "Das Passwort braucht mindestens 10 Zeichen."
+    if len(pw) > 256:
+        return "Das Passwort ist zu lang."
+    if len(set(pw)) < 5:
+        return "Das Passwort ist zu einfach."
+    return None
+
+
+def rate_limited(ip: str) -> int:
+    now = time.time()
+    arr = [t for t in FAILS.get(ip, []) if now - t < 900]
+    FAILS[ip] = arr
+    if len(arr) >= 5:
+        return int(min(900, 30 * 2 ** (len(arr) - 5)) - (now - arr[-1]))
+    return 0
+
+
+def new_session(ip: str) -> str:
+    tok = secrets.token_urlsafe(32)
+    SESSIONS[hashlib.sha256(tok.encode()).hexdigest()] = {"exp": time.time() + SESSION_HOURS * 3600, "ip": ip,
+                                                           "created": now_iso()}
+    save_sessions()
+    return tok
+
+
+def session_of(request: Request) -> dict | None:
+    tok = request.cookies.get("ja_sess", "")
+    if not tok:
+        return None
+    key = hashlib.sha256(tok.encode()).hexdigest()
+    s = SESSIONS.get(key)
+    if not s or s["exp"] < time.time():
+        return None
+    s["exp"] = max(s["exp"], time.time() + SESSION_HOURS * 3600 - 600)  # gleitend
+    return s
+
+
+def set_cookie(resp: Response, tok: str) -> None:
+    resp.set_cookie("ja_sess", tok, max_age=SESSION_HOURS * 3600, httponly=True, secure=True, samesite="strict", path="/")
+
+
+# ------------------------------------------------------------------ App + Middleware
+app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+PUBLIC = {"/", "/api/auth/state", "/api/auth/login", "/api/auth/setup", "/favicon.ico", "/jarvis-ca.crt"}
+
+
+@app.middleware("http")
+async def guard(request: Request, call_next):
+    ip = request.client.host if request.client else "0.0.0.0"
+    try:
+        ok = any(ipaddress.ip_address(ip.split("%")[0]) in n for n in ALLOWED_NETS)
+    except ValueError:
+        ok = False
+    if not ok:
+        return PlainTextResponse("Nur im Heimnetz erreichbar.", status_code=403)
+    path = request.url.path
+    if request.method not in ("GET", "HEAD") and not path.startswith("/internal/"):
+        # CSRF: eigener Header (nicht per Formular setzbar) + Origin muss passen
+        origin = request.headers.get("origin")
+        host = request.headers.get("host", "")
+        if request.headers.get("x-jarvis") != "1" or (origin and origin.split("://", 1)[-1] != host):
+            return JSONResponse({"detail": "Anfrage abgelehnt (CSRF-Schutz)."}, status_code=403)
+    if path.startswith("/internal/"):
+        # Server-zu-Server (jarvis-ui): nur Loopback + eigenes Token, keine Session/CSRF, nur Gehirn-Modus
+        if ip not in ("127.0.0.1", "::1") or not internal_token_ok(request.headers.get("x-jarvis-internal", "")):
+            return JSONResponse({"detail": "Nicht erlaubt."}, status_code=403)
+        return await call_next(request)
+    public = path in PUBLIC or path.startswith("/static/") or path.startswith("/ui/")
+    if not public and session_of(request) is None:
+        return JSONResponse({"detail": "Bitte anmelden."}, status_code=401)
+    resp = await call_next(request)
+    resp.headers["X-Frame-Options"] = "DENY"
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["Referrer-Policy"] = "no-referrer"
+    resp.headers["Permissions-Policy"] = "microphone=(), camera=(), geolocation=()"
+    resp.headers["Content-Security-Policy"] = ("default-src 'self'; img-src 'self' data:; style-src 'self'; "
+                                               "script-src 'self'; connect-src 'self'; frame-ancestors 'none'; "
+                                               "base-uri 'none'; form-action 'self'")
+    resp.headers["Strict-Transport-Security"] = "max-age=31536000"
+    if path.startswith("/api/"):
+        resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+def who(request: Request) -> str:
+    return request.client.host if request.client else "?"
+
+
+async def body(request: Request) -> dict:
+    try:
+        d = await request.json()
+    except Exception:
+        raise HTTPException(400, "Ungültige Anfrage.")
+    if not isinstance(d, dict):
+        raise HTTPException(400, "Ungültige Anfrage.")
+    return d
+
+
+# ------------------------------------------------------------------ Auth-Endpunkte
+@app.get("/api/auth/state")
+async def auth_state(request: Request):
+    return {"configured": auth_configured(), "loggedIn": session_of(request) is not None,
+            "setupHint": None if auth_configured() else
+            f"ssh -i ~/.ssh/id_ed25519_jarvis root@<JARVIS_HOST> cat {SETUP_FILE}"}
+
+
+@app.post("/api/auth/setup")
+async def auth_setup(request: Request):
+    d = await body(request)
+    ip = who(request)
+    if auth_configured():
+        raise HTTPException(409, "Das Passwort ist bereits gesetzt.")
+    if (w := rate_limited(ip)) > 0:
+        raise HTTPException(429, f"Zu viele Versuche. Bitte {w} s warten.")
+    try:
+        code = SETUP_FILE.read_text().strip()
+    except FileNotFoundError:
+        raise HTTPException(500, "Kein Einrichtungscode vorhanden. Dienst neu starten.")
+    given = str(d.get("code", "")).strip().upper()
+    if not hmac.compare_digest(given, code):
+        FAILS.setdefault(ip, []).append(time.time())
+        audit(ip, "setup: falscher Einrichtungscode")
+        raise HTTPException(403, "Der Einrichtungscode stimmt nicht.")
+    pw = str(d.get("password", ""))
+    if (p := pw_problem(pw)):
+        raise HTTPException(400, p)
+    atomic_write(AUTH_FILE, json.dumps(hash_pw(pw)), 0o600)
+    SETUP_FILE.unlink(missing_ok=True)
+    audit(ip, "setup: Passwort gesetzt")
+    resp = JSONResponse({"ok": True})
+    set_cookie(resp, new_session(ip))
+    return resp
+
+
+@app.post("/api/auth/login")
+async def auth_login(request: Request):
+    d = await body(request)
+    ip = who(request)
+    if (w := rate_limited(ip)) > 0:
+        raise HTTPException(429, f"Zu viele Fehlversuche. Bitte {w} s warten.")
+    if not auth_configured():
+        raise HTTPException(409, "Noch kein Passwort gesetzt.")
+    if not check_pw(str(d.get("password", ""))):
+        FAILS.setdefault(ip, []).append(time.time())
+        audit(ip, "login: falsches Passwort")
+        await asyncio.sleep(0.8)
+        raise HTTPException(403, "Passwort falsch.")
+    FAILS.pop(ip, None)
+    audit(ip, "login")
+    resp = JSONResponse({"ok": True})
+    set_cookie(resp, new_session(ip))
+    return resp
+
+
+@app.post("/api/auth/logout")
+async def auth_logout(request: Request):
+    tok = request.cookies.get("ja_sess", "")
+    SESSIONS.pop(hashlib.sha256(tok.encode()).hexdigest(), None)
+    save_sessions()
+    resp = JSONResponse({"ok": True})
+    resp.delete_cookie("ja_sess", path="/")
+    return resp
+
+
+@app.post("/api/auth/password")
+async def auth_password(request: Request):
+    d = await body(request)
+    if not check_pw(str(d.get("old", ""))):
+        raise HTTPException(403, "Das bisherige Passwort stimmt nicht.")
+    pw = str(d.get("new", ""))
+    if (p := pw_problem(pw)):
+        raise HTTPException(400, p)
+    atomic_write(AUTH_FILE, json.dumps(hash_pw(pw)), 0o600)
+    SESSIONS.clear()
+    ip = who(request)
+    audit(ip, "Passwort geändert, alle Sitzungen abgemeldet")
+    resp = JSONResponse({"ok": True})
+    set_cookie(resp, new_session(ip))
+    return resp
+
+
+@app.post("/api/auth/logout-all")
+async def auth_logout_all(request: Request):
+    SESSIONS.clear()
+    save_sessions()
+    audit(who(request), "alle Sitzungen abgemeldet")
+    resp = JSONResponse({"ok": True})
+    resp.delete_cookie("ja_sess", path="/")
+    return resp
+
+
+# ------------------------------------------------------------------ Änderungen: Vorschau -> Bestätigung -> Sicherung
+PENDING: dict[str, dict] = {}
+
+
+def file_path(key: str) -> tuple[Path, str]:
+    if key in FILES:
+        return FILES[key]
+    m = re.fullmatch(r"skill:([a-z0-9][a-z0-9_\-]*)/([a-z0-9][a-z0-9_\-]*)", key)
+    if m:
+        return HERMES_HOME / "skills" / m.group(1) / m.group(2) / "SKILL.md", "skill"
+    raise HTTPException(400, "Unbekannte Datei.")
+
+
+def label_of(key: str) -> str:
+    if key.startswith("skill:"):
+        return f"Skill {key[6:]}"
+    return FILE_LABELS.get(key, key)
+
+
+def read_text(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return ""
+
+
+def sha(s: str) -> str:
+    return hashlib.sha256(s.encode("utf-8")).hexdigest()
+
+
+def validate_content(kind: str, text: str) -> None:
+    if kind == "yaml":
+        try:
+            yaml_rt.load(text)
+        except Exception as e:
+            raise HTTPException(400, f"YAML ist ungültig: {e}")
+    elif kind == "json":
+        try:
+            json.loads(text)
+        except Exception as e:
+            raise HTTPException(400, f"JSON ist ungültig: {e}")
+    elif kind == "skill":
+        fm = parse_frontmatter(text)
+        if not fm.get("name") or not fm.get("description"):
+            raise HTTPException(400, "Ein Skill braucht im Kopf (---) mindestens name und description.")
+
+
+def make_preview(key: str, new: str | None, desc: str, effect: str = "", danger: str = "") -> dict:
+    """new=None bedeutet: Datei löschen (nur Skills)."""
+    path, kind = file_path(key)
+    old = read_text(path)
+    if new is not None:
+        if new == old:
+            raise HTTPException(409, "Keine Änderung – der Inhalt ist bereits so gespeichert.")
+        validate_content(kind, new)
+    show = mask_env_text if kind == "env" else (lambda s: s)
+    nl = lambda s: s if (not s or s.endswith("\n")) else s + "\n"
+    diff = "".join(difflib.unified_diff(nl(show(old)).splitlines(True), nl(show(new or "")).splitlines(True),
+                                        fromfile=f"{path.name} (jetzt)", tofile=f"{path.name} (neu)", n=2))
+    if kind != "env":
+        diff = redact_secret_yaml_lines(diff) if kind == "yaml" else diff
+    pid = secrets.token_urlsafe(12)
+    PENDING[pid] = {"key": key, "old_sha": sha(old), "new": new, "desc": desc, "exp": time.time() + 900,
+                    "exists": path.exists()}
+    for k in [k for k, v in PENDING.items() if v["exp"] < time.time()]:
+        PENDING.pop(k, None)
+    return {"preview": pid, "file": label_of(key), "path": str(path), "diff": diff or "(nur Leerzeichen/Format)",
+            "desc": desc, "effect": effect, "danger": danger}
+
+
+def redact_secret_yaml_lines(diff: str) -> str:
+    out = []
+    for line in diff.splitlines(True):
+        m = re.match(r"^([+\- ]\s*)([A-Za-z0-9_\-]+)(\s*:\s*)(.+?)(\s*)$", line)
+        if m and SECRET_KEY_RE.search(m.group(2)) and m.group(4).strip() not in ("", "null", "''", '""', "{}"):
+            val = m.group(4).strip().strip("\"'")
+            out.append(f"{m.group(1)}{m.group(2)}{m.group(3)}{mask(val)}\n")
+        else:
+            out.append(line)
+    return "".join(out)
+
+
+def backup(key: str, text: str, reason: str) -> str:
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+    safe = key.replace(":", "__").replace("/", "--")
+    bid = f"{safe}@{ts}-{secrets.token_hex(2)}"
+    d = BACKUPS / bid
+    d.mkdir(parents=True)
+    atomic_write(d / "content", text, 0o600)
+    atomic_write(d / "meta.json", json.dumps({"key": key, "time": now_iso(), "reason": reason,
+                                              "existed": text != ""}), 0o600)
+    return bid
+
+
+async def run_hermes(*args: str, timeout: float = 90) -> tuple[int, str]:
+    env = {"HOME": str(HOME), "PATH": f"{HOME}/.local/bin:/usr/local/bin:/usr/bin:/bin", "LANG": "de_DE.UTF-8",
+           "NO_COLOR": "1", "TERM": "dumb", "HERMES_HOME": str(HERMES_HOME)}
+    try:
+        p = await asyncio.create_subprocess_exec(HERMES_BIN, *args, stdout=asyncio.subprocess.PIPE,
+                                                 stderr=asyncio.subprocess.STDOUT, stdin=asyncio.subprocess.DEVNULL,
+                                                 env=env, cwd=str(HOME))
+        out, _ = await asyncio.wait_for(p.communicate(), timeout)
+        text = re.sub(r"\x1b\[[0-9;?]*[A-Za-z]", "", out.decode("utf-8", "replace"))
+        return p.returncode or 0, redact_text(text)[-6000:]
+    except asyncio.TimeoutError:
+        with contextlib.suppress(Exception):
+            p.kill()
+        return 124, f"Zeitüberschreitung nach {timeout:.0f} s"
+    except FileNotFoundError:
+        return 127, "hermes nicht gefunden"
+
+
+def restart_hint(key: str) -> str:
+    if key in ("config", "soul", "memory", "user", "env") or key.startswith("skill:"):
+        return "hermes"
+    if key == "ui":
+        return ""  # jarvis-ui liest ui.json bei jeder Anfrage neu
+    return ""
+
+
+@app.post("/api/change/{pid}/apply")
+async def change_apply(pid: str, request: Request):
+    p = PENDING.pop(pid, None)
+    if not p or p["exp"] < time.time():
+        raise HTTPException(410, "Die Vorschau ist abgelaufen. Bitte erneut speichern.")
+    key = p["key"]
+    path, kind = file_path(key)
+    old = read_text(path)
+    if sha(old) != p["old_sha"]:
+        raise HTTPException(409, "Die Datei wurde inzwischen geändert (z. B. von Hermes selbst). Bitte neu laden.")
+    bid = backup(key, old, p["desc"])
+    if p["new"] is None:
+        if path.exists():
+            path.unlink()
+        with contextlib.suppress(OSError):
+            path.parent.rmdir()
+    else:
+        mode = 0o600 if kind == "env" else None
+        atomic_write(path, p["new"], mode)
+        if p.get("mark_own"):
+            with contextlib.suppress(Exception):
+                (path.parent / ".jarvis-admin").write_text(now_iso() + "\n")
+    if p.get("after_ui"):
+        with contextlib.suppress(Exception):
+            write_ui_fields(p["after_ui"], "Gehirn-Modus (automatisch mitgeschrieben)")
+    if p.get("after_brain"):
+        with contextlib.suppress(Exception):
+            save_brain_saved(p["after_brain"])
+    if (p.get("after_ui") or {}).get("brain_mode") == "remote":
+        await unload_local_model()
+    audit(who(request), f"geändert: {label_of(key)} – {p['desc']} (Sicherung {bid})")
+    check = None
+    if kind == "yaml" and key == "config":
+        code, out = await run_hermes("config", "check", timeout=60)
+        check = {"ok": code == 0, "output": out}
+    restart = "" if p.get("after_ui") else restart_hint(key)  # Gehirn-Wechsel: Hermes liest config.yaml pro Runde neu (getestet)
+    return {"ok": True, "backup": bid, "check": check, "restart": restart}
+
+
+@app.delete("/api/change/{pid}")
+async def change_discard(pid: str):
+    PENDING.pop(pid, None)
+    return {"ok": True}
+
+
+@app.get("/api/backups")
+async def backups_list():
+    items = []
+    for d in sorted(BACKUPS.iterdir(), reverse=True):
+        with contextlib.suppress(Exception):
+            m = json.loads((d / "meta.json").read_text())
+            items.append({"id": d.name, "key": m["key"], "file": label_of(m["key"]), "time": m["time"],
+                          "reason": m.get("reason", ""), "size": (d / "content").stat().st_size})
+    return {"items": items[:300]}
+
+
+@app.post("/api/backups/{bid}/restore")
+async def backups_restore(bid: str):
+    d = BACKUPS / bid
+    if "/" in bid or ".." in bid or not d.is_dir():
+        raise HTTPException(404, "Sicherung nicht gefunden.")
+    m = json.loads((d / "meta.json").read_text())
+    content = (d / "content").read_text(encoding="utf-8")
+    new = content if m.get("existed", True) else None
+    if new is None and not m["key"].startswith("skill:"):
+        new = "{}\n" if m["key"] == "ui" else ""
+    return make_preview(m["key"], new, f"Rückgängig: Stand vom {m['time'][:16].replace('T', ' ')} wiederherstellen")
+
+
+# ------------------------------------------------------------------ Hermes-Konfiguration (YAML, kommentarerhaltend)
+def load_config_rt() -> CommentedMap:
+    text = read_text(FILES["config"][0])
+    data = yaml_rt.load(text) if text.strip() else CommentedMap()
+    return data if data is not None else CommentedMap()
+
+
+def dump_rt(data) -> str:
+    buf = io.StringIO()
+    yaml_rt.dump(data, buf)
+    return buf.getvalue()
+
+
+def to_plain(o):
+    if isinstance(o, dict):
+        return {str(k): to_plain(v) for k, v in o.items()}
+    if isinstance(o, list):
+        return [to_plain(x) for x in o]
+    return o
+
+
+def cfg_get(data, path: str, default=None):
+    cur = data
+    for part in path.split("."):
+        if not isinstance(cur, dict) or part not in cur:
+            return default
+        cur = cur[part]
+    return cur
+
+
+def to_rt(v):
+    if isinstance(v, dict):
+        m = CommentedMap()
+        for k, x in v.items():
+            m[k] = to_rt(x)
+        return m
+    if isinstance(v, list):
+        s = CommentedSeq([to_rt(x) for x in v])
+        if all(not isinstance(x, (dict, list)) for x in v) and len(v) <= 8:
+            s.fa.set_flow_style()
+        return s
+    return v
+
+
+def cfg_set(data, path: str, value) -> None:
+    parts = path.split(".")
+    cur = data
+    for part in parts[:-1]:
+        if part not in cur or not isinstance(cur[part], dict):
+            cur[part] = CommentedMap()
+        cur = cur[part]
+    if value is None:
+        cur.pop(parts[-1], None)
+    else:
+        new_key = parts[-1] not in cur
+        last = list(cur.keys())[-1] if (new_key and isinstance(cur, CommentedMap) and len(cur)) else None
+        cur[parts[-1]] = to_rt(value)
+        if last is not None:
+            move_trailing_comment(cur, last, parts[-1])
+
+
+def move_trailing_comment(m: CommentedMap, old_key, new_key) -> None:
+    """Kommentarblock hinter dem bisher letzten Schlüssel (z. B. Ueberschrift des nächsten Abschnitts)
+    an den neuen letzten Schlüssel haengen, damit der neue Eintrag nicht hinter der Ueberschrift landet."""
+    with contextlib.suppress(Exception):
+        item = m.ca.items.get(old_key)
+        tok = item[2] if item and len(item) > 2 else None
+        if tok is None or not tok.value:
+            return
+        val = tok.value
+        if val.startswith("#"):  # Zeilenende-Kommentar bleibt beim alten Schlüssel
+            nl = val.find("\n")
+            if nl < 0:
+                return
+            keep, rest = val[:nl + 1], val[nl + 1:]
+            if not rest.strip():
+                return
+            tok.value = keep
+        else:
+            rest = val
+            item[2] = None
+        from ruamel.yaml.tokens import CommentToken
+        from ruamel.yaml.error import CommentMark
+        m.ca.items[new_key] = [None, None, CommentToken(rest if rest.startswith("\n") else "\n" + rest, CommentMark(0), None), None]
+
+
+def config_preview(changes: dict, desc: str, effect: str = "Wirkt nach Neustart des Hermes-Gateways.", danger: str = ""):
+    data = load_config_rt()
+    for path, value in changes.items():
+        if SECRET_KEY_RE.search(path.split(".")[-1]) and path.split(".")[-1] not in ("unattended_mode",):
+            raise HTTPException(400, "Schlüssel/Passwörter bitte unter ‚Schlüssel‘ setzen, nicht in der Konfiguration.")
+        cfg_set(data, path, value)
+    return make_preview("config", dump_rt(data), desc, effect, danger)
+
+
+@app.get("/api/config")
+async def config_get():
+    data = to_plain(load_config_rt())
+    return {"config": redact_tree(data)}
+
+
+@app.post("/api/config/set")
+async def config_set_ep(request: Request):
+    """Expertenmodus: einzelner Pfad mit YAML-Wert."""
+    d = await body(request)
+    path = str(d.get("path", "")).strip()
+    if not re.fullmatch(r"[A-Za-z0-9_\-]+(\.[A-Za-z0-9_\-]+)*", path) or path.startswith("_"):
+        raise HTTPException(400, "Ungültiger Pfad (Beispiel: agent.max_turns).")
+    raw = str(d.get("value", ""))
+    if d.get("remove"):
+        value = None
+    else:
+        try:
+            value = YAML(typ="safe").load(raw) if raw.strip() else ""
+        except Exception as e:
+            raise HTTPException(400, f"Wert ist kein gültiges YAML: {e}")
+    return config_preview({path: value}, f"{path} {'entfernen' if value is None else 'setzen'}")
+
+
+@app.post("/api/config/multi")
+async def config_multi(request: Request):
+    """Mehrere Pfade auf einmal (eine Vorschau). Werte kommen als JSON, nicht als YAML."""
+    d = await body(request)
+    ch = d.get("changes")
+    if not isinstance(ch, dict) or not ch:
+        raise HTTPException(400, "Nichts zu speichern.")
+    for path in ch:
+        if not re.fullmatch(r"[A-Za-z0-9_\-]+(\.[A-Za-z0-9_\-]+)*", path) or path.startswith("_"):
+            raise HTTPException(400, f"Ungültiger Pfad: {path}")
+    return config_preview(ch, str(d.get("desc") or "Einstellungen ändern")[:120])
+
+
+# ------------------------------------------------------------------ Status / Uebersicht
+CA_CTX = None
+
+
+def ui_ssl_ctx():
+    global CA_CTX
+    if CA_CTX is None:
+        CA_CTX = ssl.create_default_context(cafile=str(UI_CERTS / "jarvis-ca.crt"))
+    return CA_CTX
+
+
+async def probe(url: str, timeout: float = 1.5, headers: dict | None = None, verify=True):
+    try:
+        async with httpx.AsyncClient(timeout=timeout, verify=verify) as c:
+            r = await c.get(url, headers=headers)
+            try:
+                return r.status_code < 400, r.json()
+            except Exception:
+                return r.status_code < 400, None
+    except Exception:
+        return False, None
+
+
+async def unit_state(name: str) -> dict:
+    unit = UNITS[name]
+    p = await asyncio.create_subprocess_exec(
+        "systemctl", "show", unit, "-p", "ActiveState,SubState,ActiveEnterTimestamp,MemoryCurrent,NRestarts,MainPID",
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
+    out, _ = await p.communicate()
+    kv = dict(l.split("=", 1) for l in out.decode().splitlines() if "=" in l)
+    mem = kv.get("MemoryCurrent", "")
+    return {"id": name, "unit": unit, "label": UNIT_LABELS[name], "active": kv.get("ActiveState"),
+            "sub": kv.get("SubState"), "since": kv.get("ActiveEnterTimestamp"),
+            "memory": int(mem) if mem.isdigit() else None, "restarts": kv.get("NRestarts")}
+
+
+def sysinfo() -> dict:
+    with open("/proc/meminfo") as f:
+        mi = {l.split(":")[0]: int(l.split()[1]) for l in f}
+    du = shutil.disk_usage(str(HOME))
+    with open("/proc/loadavg") as f:
+        load = f.read().split()[:3]
+    with open("/proc/uptime") as f:
+        up = float(f.read().split()[0])
+    return {"mem_total": mi["MemTotal"] * 1024, "mem_avail": mi["MemAvailable"] * 1024, "disk_total": du.total,
+            "disk_free": du.free, "load": load, "uptime": up, "cpus": os.cpu_count()}
+
+
+@app.get("/api/status")
+async def status():
+    cfg = to_plain(load_config_rt())
+    model = cfg.get("model", {}) or {}
+    base = (model.get("base_url") or "").rstrip("/")
+    ollama = base[:-3] if base.endswith("/v1") else OLLAMA
+    (brain, ver), (ps_ok, ps), (hermes, _), (stt, sttj), (ui, uij) = await asyncio.gather(
+        probe(f"{ollama}/api/version", 3), probe(f"{ollama}/api/ps", 3), probe(f"{HERMES_URL}/health"),
+        probe(STT_URL), probe(f"{UI_URL}/api/status", verify=ui_ssl_ctx()))
+    units = await asyncio.gather(*(unit_state(n) for n in UNITS))
+    loaded = []
+    if ps_ok and ps:
+        for m in ps.get("models", []):
+            loaded.append({"name": m.get("name"), "size": m.get("size"), "vram": m.get("size_vram"),
+                           "until": m.get("expires_at"), "ctx": m.get("context_length")})
+    fb = cfg.get("fallback_providers") or []
+    return {
+        "time": now_iso(), "brain": {"online": brain, "version": (ver or {}).get("version"), "url": ollama,
+                                     "loaded": loaded},
+        "hermes": {"online": hermes}, "stt": {"online": stt, "info": sttj}, "ui": {"online": ui, "info": uij},
+        "model": {"default": model.get("default"), "provider": model.get("provider"),
+                  "context": model.get("context_length")},
+        "fallback": [{"provider": f.get("provider"), "model": f.get("model")} for f in fb if isinstance(f, dict)],
+        "approvals": (cfg.get("approvals") or {}).get("mode"),
+        "mode": brain_state()["mode"],
+        "units": units, "system": sysinfo(), "phone": await phone_status(cached=True),
+        "restart": ctl_result(),
+    }
+
+
+# ------------------------------------------------------------------ Modell & Fallback
+@app.get("/api/models")
+async def models():
+    cfg = to_plain(load_config_rt())
+    model = cfg.get("model", {}) or {}
+    base = (model.get("base_url") or "").rstrip("/")
+    ollama = base[:-3] if base.endswith("/v1") else OLLAMA
+    ok, tags = await probe(f"{ollama}/api/tags", timeout=3)
+    names = sorted(m.get("name") for m in (tags or {}).get("models", [])) if ok else []
+    sizes = {m.get("name"): m.get("size") for m in (tags or {}).get("models", [])} if ok else {}
+    providers = cfg.get("providers") or {}
+    return {"ollama": names, "sizes": sizes, "online": ok, "model": model,
+            "reasoning": (cfg.get("agent") or {}).get("reasoning_effort"),
+            "fallback": cfg.get("fallback_providers") or [],
+            "providers": list(providers.keys()),
+            "anthropic_key": mask(env_value("ANTHROPIC_API_KEY")),
+            "custom_models": {k: list(((v or {}).get("models") or {}).keys()) for k, v in providers.items()}}
+
+
+@app.post("/api/models/save")
+async def models_save(request: Request):
+    d = await body(request)
+    ch = {}
+    if "default" in d:
+        name = str(d["default"]).strip()
+        if not re.fullmatch(r"[A-Za-z0-9._:/\-]{1,120}", name):
+            raise HTTPException(400, "Ungültiger Modellname.")
+        ch["model.default"] = name
+    if "context_length" in d:
+        n = int(d["context_length"]) if d["context_length"] else None
+        if n is not None and not 2048 <= n <= 1048576:
+            raise HTTPException(400, "Kontext zwischen 2048 und 1048576.")
+        ch["model.context_length"] = n
+        ch["model.ollama_num_ctx"] = n
+    if "reasoning" in d:
+        r = str(d["reasoning"])
+        if r not in ("none", "minimal", "low", "medium", "high", "xhigh"):
+            raise HTTPException(400, "Ungültige Denktiefe.")
+        ch["agent.reasoning_effort"] = r
+    if "fallback" in d:
+        fb = []
+        for f in d["fallback"] or []:
+            prov, mod = str(f.get("provider", "")).strip(), str(f.get("model", "")).strip()
+            if not prov or not mod or not re.fullmatch(r"[A-Za-z0-9._:/\-]{1,120}", prov + mod):
+                raise HTTPException(400, "Jeder Fallback braucht Anbieter und Modell.")
+            fb.append({"provider": prov, "model": mod})
+        ch["fallback_providers"] = fb
+    if not ch:
+        raise HTTPException(400, "Nichts zu speichern.")
+    danger = ""
+    if "model.default" in ch:
+        danger = "Ein anderes Modell kann mehr Grafikspeicher (VRAM) auf dem PC belegen. Vorher prüfen, ob es mit 64k Kontext passt."
+    return config_preview(ch, "Modell/Fallback ändern", danger=danger)
+
+
+@app.post("/api/models/check")
+async def models_check(request: Request):
+    d = await body(request)
+    live = bool(d.get("live"))
+    if live:
+        audit(who(request), "Live-Prüfung Claude (< 0,1 Cent)")
+    code, out = await run_hermes("fallback", "check", *(["--live"] if live else []), timeout=120)
+    return {"ok": code == 0, "output": out}
+
+
+@app.post("/api/models/unload")
+async def models_unload(request: Request):
+    d = await body(request)
+    name = str(d.get("name", ""))
+    cfg = to_plain(load_config_rt())
+    base = ((cfg.get("model") or {}).get("base_url") or "").rstrip("/")
+    ollama = base[:-3] if base.endswith("/v1") else OLLAMA
+    async with httpx.AsyncClient(timeout=10) as c:
+        r = await c.post(f"{ollama}/api/generate", json={"model": name, "keep_alive": 0})
+    audit(who(request), f"Modell entladen: {name}")
+    return {"ok": r.status_code < 400}
+
+
+# ------------------------------------------------------------------ Gehirn-Modus (Lokal / Automatisch / Remote)
+# Fallback und Projekt-Claude stehen als markierte Bloecke in config.yaml (Format der Sitzung sprachsteuerung,
+# scripts/steuerung-fallback-setzen.py). Wir schreiben exakt dasselbe Format, aber ueber Vorschau/Sicherung/Rueckgaengig.
+CLAUDE_MODELS = {
+    "claude-haiku-5-5": {"name": "Claude Haiku 5.5", "in": 0.10, "out": 0.50, "hint": "schnell, sehr günstig"},
+    "claude-sonnet-5-5": {"name": "Claude Sonnet 5.5", "in": 2.0, "out": 10.0, "hint": "ausgewogen"},
+    "claude-opus-5-5": {"name": "Claude Opus 5.5", "in": 4.0, "out": 20.0, "hint": "am stärksten, denkt immer"},
+}
+LOCAL_DEFAULT = {"provider": "custom:pc-ollama", "base_url": OLLAMA.rstrip("/") + "/v1", "default": "gemma4-26b-64k-g24"}
+FB_BLOCK = re.compile(r"# >>> jarvis-claude-fallback.*?# <<< jarvis-claude-fallback\n", re.S)
+PC_BLOCK = re.compile(r"^(?:  )?# >>> jarvis-projekt-claude[^\n]*\n.*?^(?:  )?# <<< jarvis-projekt-claude[^\n]*\n", re.S | re.M)  # neues Format: eingerueckt in mcp_servers
+BRAIN_FILE = DATA / "brain.json"
+MODE_LABEL = {"local": "Lokal", "auto": "Automatisch", "remote": "Remote"}
+
+
+def fb_block_model(text: str) -> str | None:
+    m = FB_BLOCK.search(text)
+    mm = re.search(r"model:\s*(\S+)", m.group(0)) if m else None
+    return mm.group(1) if mm else None
+
+
+def fb_block_set(text: str, model: str | None) -> str:
+    ohne = FB_BLOCK.sub("", text)
+    if re.search(r"^fallback_providers:", ohne, re.M):
+        raise HTTPException(409, "fallback_providers steht ausserhalb des markierten Blocks – bitte im Expertenmodus bereinigen.")
+    neu = ohne.rstrip("\n") + "\n"
+    if model:
+        neu += ("# >>> jarvis-claude-fallback (scripts/steuerung-claude-fallback.sh)\n"
+                f"fallback_providers:\n  - provider: anthropic\n    model: {model}\n# <<< jarvis-claude-fallback\n")
+    return neu
+
+
+def load_brain_saved() -> dict:
+    with contextlib.suppress(Exception):
+        return json.loads(BRAIN_FILE.read_text())
+    return {}
+
+
+def save_brain_saved(d: dict) -> None:
+    atomic_write(BRAIN_FILE, json.dumps(d), 0o600)
+
+
+def brain_state() -> dict:
+    """Ist-Zustand. Remote- und Fallback-Modell werden getrennt gefuehrt (data/brain.json merkt das jeweils
+    nicht aktive), damit z. B. Remote = Sonnet und Fallback = Haiku unabhaengig waehlbar sind."""
+    text = read_text(FILES["config"][0])
+    cfg = to_plain(yaml_rt.load(text) or {})
+    model = cfg.get("model") or {}
+    fb = fb_block_model(text)
+    remote = str(model.get("provider", "")).startswith("anthropic")
+    mode = "remote" if remote else ("auto" if (fb or cfg.get("fallback_providers")) else "local")
+    pc = PC_BLOCK.search(text)
+    pm = re.search(r"CLAUDE_MODELL:\s*(\S+)", pc.group(0)) if pc else None
+    saved = load_brain_saved()
+    local = {**LOCAL_DEFAULT, **{k: v for k, v in (saved.get("local") or {}).items() if v}}
+    remote_model = model.get("default") if remote else saved.get("remote_model", "claude-sonnet-5-5")
+    fallback_model = fb or saved.get("fallback_model", "claude-haiku-5-5")
+    active = remote_model if remote else (model.get("default") or local["default"])
+    return {"mode": mode, "label": MODE_LABEL[mode], "active_model": active,
+            "remote_model": remote_model, "fallback_model": fallback_model, "fallback": fb,
+            "claude": remote_model if remote else fb,  # Kompatibilitaet
+            "local_model": local["default"] if remote else model.get("default"),
+            "projekt": pm.group(1) if pm else None, "models": CLAUDE_MODELS,
+            "anthropic_key": mask(env_value("ANTHROPIC_API_KEY"))}
+
+
+def build_brain_change(mode: str, remote_model: str | None, fallback_model: str | None) -> dict:
+    """Gemeinsame Logik fuer Admin-UI und Handy: liefert neuen config.yaml-Text + Texte + ui.json-Felder."""
+    if mode not in MODE_LABEL:
+        raise HTTPException(400, "Ungültiger Modus (local, auto oder remote).")
+    st = brain_state()
+    remote_model = remote_model or st["remote_model"]
+    fallback_model = fallback_model or st["fallback_model"]
+    if remote_model not in CLAUDE_MODELS or fallback_model not in CLAUDE_MODELS:
+        raise HTTPException(400, "Unbekanntes Claude-Modell (Haiku, Sonnet oder Opus 5.5).")
+    if mode != "local" and not env_value("ANTHROPIC_API_KEY"):
+        raise HTTPException(400, "Für Claude fehlt der ANTHROPIC_API_KEY (in der Verwaltung unter Schlüssel eintragen).")
+    text = read_text(FILES["config"][0])
+    cur = to_plain(yaml_rt.load(text) or {}).get("model") or {}
+    saved = load_brain_saved()
+    if not str(cur.get("provider", "")).startswith("anthropic"):  # lokale Einstellung merken
+        saved["local"] = {k: cur.get(k) for k in ("provider", "base_url", "default")}
+    saved["remote_model"], saved["fallback_model"] = remote_model, fallback_model
+    local = {**LOCAL_DEFAULT, **{k: v for k, v in (saved.get("local") or {}).items() if v}}
+    text = fb_block_set(text, fallback_model if mode == "auto" else None)
+    data = yaml_rt.load(text)
+    if mode == "remote":
+        cfg_set(data, "model.provider", "anthropic")
+        cfg_set(data, "model.default", remote_model)
+        data["model"]["base_url"] = None  # nicht entfernen: daran haengen ~300 Kommentarzeilen
+    else:
+        for k in ("provider", "base_url", "default"):
+            cfg_set(data, f"model.{k}", local[k])
+    rn, fn = CLAUDE_MODELS[remote_model]["name"], CLAUDE_MODELS[fallback_model]["name"]
+    desc = {"local": "Gehirn: Lokal (nur PC-Gemma, keine Cloud)",
+            "auto": f"Gehirn: Automatisch (PC-Gemma, sonst {fn})",
+            "remote": f"Gehirn: Remote ({rn}, PC wird geschont)"}[mode]
+    privacy = "" if mode == "local" else "Datenschutz: Gesprächstexte gehen an Anthropic (USA). Audio bleibt lokal."
+    return {"text": dump_rt(data), "desc": desc, "privacy": privacy, "saved": saved,
+            "effect": ("Gilt ab der nächsten Frage – kein Neustart nötig. Das lokale Modell wird aus dem PC-Grafikspeicher entladen."
+                       if mode == "remote" else "Gilt ab der nächsten Frage – kein Neustart nötig."),
+            "ui": {"brain_mode": mode, "brain_model": remote_model if mode == "remote" else local["default"],
+                   "brain_model_remote": remote_model if mode == "remote" else (fallback_model if mode == "auto" else None)}}
+
+
+async def unload_local_model() -> bool:
+    """Bei Remote: lokales Modell sofort aus dem PC-VRAM werfen (sonst haelt Ollama es noch keep_alive-Minuten)."""
+    saved = load_brain_saved()
+    local = {**LOCAL_DEFAULT, **{k: v for k, v in (saved.get("local") or {}).items() if v}}
+    base = (local.get("base_url") or "").rstrip("/")
+    ollama = base[:-3] if base.endswith("/v1") else OLLAMA
+    try:
+        async with httpx.AsyncClient(timeout=5) as c:
+            r = await c.post(f"{ollama}/api/generate", json={"model": local["default"], "keep_alive": 0})
+        return r.status_code < 400
+    except httpx.HTTPError:
+        return False  # PC aus: nichts zu entladen
+
+
+def write_ui_fields(fields: dict, reason: str) -> None:
+    ui = read_ui_settings()
+    backup("ui", read_text(UI_SETTINGS), reason)
+    for k, v in fields.items():
+        if v is None:
+            ui.pop(k, None)
+        else:
+            ui[k] = v
+    atomic_write(UI_SETTINGS, json.dumps(ui, indent=2, ensure_ascii=False) + "\n")
+
+
+@app.get("/api/brain")
+async def brain_get():
+    return brain_state()
+
+
+@app.post("/api/brain/save")
+async def brain_save(request: Request):
+    d = await body(request)
+    ch = build_brain_change(d.get("mode"), d.get("remote_model") or (d.get("claude") if d.get("mode") == "remote" else None),
+                            d.get("fallback_model") or (d.get("claude") if d.get("mode") == "auto" else None))
+    pv = make_preview("config", ch["text"], ch["desc"], ch["effect"], ch["privacy"])
+    PENDING[pv["preview"]]["after_ui"] = ch["ui"]
+    PENDING[pv["preview"]]["after_brain"] = ch["saved"]
+    return pv
+
+
+# ------------------------------------------------------------------ Interne Schnittstelle fuer jarvis-ui (Handy-Schalter)
+INTERNAL_TOKEN_FILE = UI_SETTINGS.parent / "internal.token"
+
+
+def ensure_internal_token() -> None:
+    if not INTERNAL_TOKEN_FILE.exists():
+        INTERNAL_TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write(INTERNAL_TOKEN_FILE, secrets.token_hex(32) + "\n", 0o600)
+
+
+def internal_token_ok(given: str) -> bool:
+    try:
+        tok = INTERNAL_TOKEN_FILE.read_text().strip()
+    except FileNotFoundError:
+        return False
+    return bool(tok) and bool(given) and hmac.compare_digest(given.strip(), tok)
+
+
+BRAIN_LOCK = asyncio.Lock()
+
+
+@app.get("/internal/brain")
+async def internal_brain_get():
+    st = brain_state()
+    st["anthropic_key"] = bool(env_value("ANTHROPIC_API_KEY"))
+    return st
+
+
+@app.post("/internal/brain")
+async def internal_brain_set(request: Request):
+    """Nur Gehirn-Modus und Claude-Modell. Gleiche Logik wie im Admin-UI, aber ohne Vorschau (der Nutzer hat am
+    Handy bestaetigt): Sicherung, atomar schreiben, `hermes config check`, bei Fehler automatisch zurueck."""
+    d = await body(request)
+    mode = d.get("mode")
+    model = d.get("claude") or d.get("model")
+    src = re.sub(r"[^a-z0-9\-]", "", str(d.get("source") or "handy"))[:20] or "handy"
+    async with BRAIN_LOCK:
+        ch = build_brain_change(mode, model if mode == "remote" else None, model if mode == "auto" else None)
+        path = FILES["config"][0]
+        old = read_text(path)
+        if ch["text"] == old:
+            st = brain_state()
+            return {"ok": True, "unchanged": True, "mode": st["mode"], "claude": st["claude"],
+                    "effect": "Ist bereits so eingestellt.", "privacy": ch["privacy"]}
+        bid = backup("config", old, f"{ch['desc']} (via {src})")
+        atomic_write(path, ch["text"])
+        code, out = await run_hermes("config", "check", timeout=60)
+        if code != 0:
+            atomic_write(path, old)
+            audit(f"internal:{src}", f"Gehirn-Wechsel zurückgenommen (config check fehlgeschlagen) – {ch['desc']}")
+            raise HTTPException(500, "Umschalten fehlgeschlagen, alte Einstellung wiederhergestellt.")
+        save_brain_saved(ch["saved"])
+        write_ui_fields(ch["ui"], f"Gehirn-Modus via {src}")
+        audit(f"internal:{src}", f"{ch['desc']} (Sicherung {bid})")
+        if mode == "remote":
+            await unload_local_model()
+    st = brain_state()
+    return {"ok": True, "mode": st["mode"], "claude": st["claude"], "active_model": st["active_model"],
+            "effect": ch["effect"], "privacy": ch["privacy"], "backup": bid}
+
+
+@app.post("/api/brain/projekt")
+async def brain_projekt(request: Request):
+    d = await body(request)
+    model = d.get("model")
+    if model not in CLAUDE_MODELS:
+        raise HTTPException(400, "Ungültiges Modell.")
+    text = read_text(FILES["config"][0])
+    m = PC_BLOCK.search(text)
+    if not m:
+        raise HTTPException(404, "Projekt-Claude ist nicht eingerichtet.")
+    block = re.sub(r"(CLAUDE_MODELL:\s*)\S+", lambda x: x.group(1) + model, m.group(0))
+    block = re.sub(r"Claude (Haiku|Sonnet|Opus) 5\.5", CLAUDE_MODELS[model]["name"], block)
+    return make_preview("config", text[:m.start()] + block + text[m.end():], f"Projekt-Claude: {CLAUDE_MODELS[model]['name']}",
+                        "Wirkt nach Neustart des Hermes-Gateways.")
+
+
+# ------------------------------------------------------------------ Persönlichkeit, Gedächtnis, UI-Einstellungen
+def read_ui_settings() -> dict:
+    try:
+        return json.loads(UI_SETTINGS.read_text())
+    except Exception:
+        return {}
+
+
+@app.get("/api/persona")
+async def persona_get():
+    ui = read_ui_settings()
+    return {"soul": read_text(FILES["soul"][0]), "ui_persona": ui.get("persona"),
+            "ui_supported": UI_SETTINGS.exists()}
+
+
+@app.post("/api/persona/save")
+async def persona_save(request: Request):
+    d = await body(request)
+    if "soul" in d:
+        text = str(d["soul"])
+        if len(text) > 20000:
+            raise HTTPException(400, "SOUL.md ist zu lang (max. 20.000 Zeichen).")
+        return make_preview("soul", text if text.endswith("\n") or not text else text + "\n",
+                            "Persönlichkeit (SOUL.md) ändern",
+                            "Gilt ab der nächsten Hermes-Sitzung. Die erste Antwort danach ist einmalig ~8 s langsamer (Prompt-Cache).")
+    if "ui_persona" in d:
+        ui = read_ui_settings()
+        val = str(d["ui_persona"]).strip()
+        if len(val) > 4000:
+            raise HTTPException(400, "Die Sprach-Persona darf höchstens 4000 Zeichen haben.")
+        if val:
+            ui["persona"] = val
+        else:
+            ui.pop("persona", None)
+        return make_preview("ui", json.dumps(ui, indent=2, ensure_ascii=False) + "\n", "Sprach-Persona des Handys ändern",
+                            "Gilt für die nächste Frage am Handy. Erste Antwort danach einmalig langsamer.")
+    raise HTTPException(400, "Nichts zu speichern.")
+
+
+MEM_SEP = "\n§\n"
+
+
+@app.get("/api/memory")
+async def memory_get():
+    cfg = to_plain(load_config_rt()).get("memory") or {}
+
+    def entries(key):
+        t = read_text(FILES[key][0]).strip()
+        return [e.strip() for e in re.split(r"\n?^§\s*$\n?", t, flags=re.M) if e.strip()] if t else []
+
+    return {"memory": entries("memory"), "user": entries("user"),
+            "limits": {"memory": cfg.get("memory_char_limit", 2200), "user": cfg.get("user_char_limit", 1375)},
+            "enabled": {"memory": cfg.get("memory_enabled", True), "user": cfg.get("user_profile_enabled", True)}}
+
+
+@app.post("/api/memory/save")
+async def memory_save(request: Request):
+    d = await body(request)
+    key = d.get("which")
+    if key not in ("memory", "user"):
+        raise HTTPException(400, "Unbekannt.")
+    items = [str(x).strip().replace("\n§\n", "\n") for x in d.get("entries", []) if str(x).strip()]
+    text = MEM_SEP.join(items) + ("\n" if items else "")
+    return make_preview(key, text, f"{label_of(key)} bearbeiten",
+                        "Gilt ab der nächsten Hermes-Sitzung (Hermes liest das Gedächtnis beim Sitzungsstart).")
+
+
+@app.get("/api/ui-settings")
+async def ui_settings_get():
+    voices = sorted(p.stem for p in (HERMES_HOME / "cache/piper-voices").glob("*.onnx"))
+    return {"settings": read_ui_settings(), "exists": UI_SETTINGS.exists(), "voices": voices}
+
+
+@app.post("/api/ui-settings/save")
+async def ui_settings_save(request: Request):
+    d = await body(request)
+    ui = read_ui_settings()
+    allowed = {"piper_voice": str, "length_scale": float, "reasoning_voice": bool, "mode": str}
+    for k, t in allowed.items():
+        if k in d:
+            v = d[k]
+            if v is None or v == "":
+                ui.pop(k, None)
+                continue
+            v = t(v)
+            if k == "length_scale" and not 0.6 <= v <= 1.6:
+                raise HTTPException(400, "Sprechtempo zwischen 0,6 und 1,6.")
+            if k == "mode" and v not in ("live", "demo"):
+                raise HTTPException(400, "Modus live oder demo.")
+            if k == "piper_voice" and not re.fullmatch(r"[A-Za-z0-9_\-]+", v):
+                raise HTTPException(400, "Ungültige Stimme.")
+            ui[k] = v
+    return make_preview("ui", json.dumps(ui, indent=2, ensure_ascii=False) + "\n", "Spracheinstellungen des Handys",
+                        "Gilt für die nächste Antwort am Handy.")
+
+
+@app.post("/api/tts-test")
+async def tts_test(request: Request):
+    d = await body(request)
+    text = str(d.get("text", "Guten Tag. Alle Systeme sind bereit."))[:300]
+    try:
+        async with httpx.AsyncClient(timeout=20, verify=ui_ssl_ctx()) as c:
+            r = await c.post(f"{UI_URL}/api/tts", json={"text": text})
+        if r.status_code >= 400:
+            raise HTTPException(502, "Sprachausgabe nicht erreichbar.")
+        return Response(r.content, media_type=r.headers.get("content-type", "audio/wav"))
+    except httpx.HTTPError:
+        raise HTTPException(502, "Sprachausgabe nicht erreichbar.")
+
+
+# ------------------------------------------------------------------ Skills
+def parse_frontmatter(text: str) -> dict:
+    m = re.match(r"^---\s*\n(.*?)\n---\s*(\n|$)", text, re.S)
+    if not m:
+        return {}
+    try:
+        d = YAML(typ="safe").load(m.group(1))
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
+def scan_skills() -> list[dict]:
+    root = HERMES_HOME / "skills"
+    disabled = set((to_plain(load_config_rt()).get("skills") or {}).get("disabled") or [])
+    out = []
+    for f in sorted(root.glob("**/SKILL.md")):
+        rel = f.parent.relative_to(root)
+        if any(p.startswith(".") for p in rel.parts):
+            continue
+        fm = parse_frontmatter(read_text(f))
+        name = str(fm.get("name") or f.parent.name)
+        cat = rel.parts[0] if len(rel.parts) > 1 else ""
+        meta = (fm.get("metadata") or {}).get("hermes") or {} if isinstance(fm.get("metadata"), dict) else {}
+        out.append({"name": name, "dir": str(rel), "category": cat, "description": str(fm.get("description") or ""),
+                    "author": fm.get("author"), "version": fm.get("version"),
+                    "tags": meta.get("tags") or [], "enabled": name not in disabled and f.parent.name not in disabled,
+                    "own": (f.parent / ".jarvis-admin").exists(),
+                    "editable": len(rel.parts) == 2, "size": f.stat().st_size})
+    return out
+
+
+@app.get("/api/skills")
+async def skills_list():
+    items = scan_skills()
+    cats = sorted({s["category"] for s in items if s["category"]})
+    return {"items": items, "categories": cats}
+
+
+@app.get("/api/skills/content")
+async def skill_content(dir: str):
+    root = HERMES_HOME / "skills"
+    p = (root / dir / "SKILL.md").resolve()
+    if root.resolve() not in p.parents or not p.exists():
+        raise HTTPException(404, "Skill nicht gefunden.")
+    return {"text": read_text(p), "dir": dir}
+
+
+@app.post("/api/skills/toggle")
+async def skills_toggle(request: Request):
+    d = await body(request)
+    name = str(d.get("name", ""))
+    enable = bool(d.get("enabled"))
+    if name not in {s["name"] for s in scan_skills()}:
+        raise HTTPException(404, "Skill nicht gefunden.")
+    data = to_plain(load_config_rt())
+    dis = set((data.get("skills") or {}).get("disabled") or [])
+    dis.discard(name) if enable else dis.add(name)
+    return config_preview({"skills.disabled": sorted(dis)}, f"Skill {name} {'aktivieren' if enable else 'deaktivieren'}",
+                          "Gilt ab der nächsten Hermes-Sitzung.")
+
+
+def slug(s: str) -> str:
+    s = s.strip().lower()
+    for a, b in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
+        s = s.replace(a, b)
+    return re.sub(r"[^a-z0-9]+", "-", s).strip("-")[:60]
+
+
+@app.post("/api/skills/save")
+async def skills_save(request: Request):
+    """Neuen Skill anlegen oder bestehenden SKILL.md-Text ersetzen."""
+    d = await body(request)
+    if d.get("dir"):
+        parts = str(d["dir"]).split("/")
+        if len(parts) != 2:
+            raise HTTPException(400, "Nur Skills der Form Kategorie/Name sind hier bearbeitbar.")
+        key = f"skill:{parts[0]}/{parts[1]}"
+        text = str(d.get("text", ""))
+        return make_preview(key, text, f"Skill {parts[1]} bearbeiten", "Gilt ab der nächsten Hermes-Sitzung.")
+    name = slug(str(d.get("name", "")))
+    cat = slug(str(d.get("category", "") or "jarvis"))
+    desc = " ".join(str(d.get("description", "")).split())
+    body_text = str(d.get("body", "")).strip()
+    if not name or not desc or not body_text:
+        raise HTTPException(400, "Name, Beschreibung und Anleitung sind Pflicht.")
+    if len(desc) > 300:
+        raise HTTPException(400, "Die Beschreibung ist zu lang (max. 300 Zeichen).")
+    if any(s["name"] == name for s in scan_skills()):
+        raise HTTPException(409, f"Es gibt schon einen Skill namens {name}.")
+    fm = dict(name=name, description=desc, version="1.0.0", author="JARVIS-Verwaltung")
+    buf = io.StringIO()
+    YAML().dump(fm, buf)
+    text = f"---\n{buf.getvalue()}---\n\n# {d.get('title') or name}\n\n{body_text}\n"
+    pv = make_preview(f"skill:{cat}/{name}", text, f"Neuen Skill {name} anlegen",
+                      "Gilt ab der nächsten Hermes-Sitzung.")
+    PENDING[pv["preview"]]["mark_own"] = True
+    return pv
+
+
+@app.post("/api/skills/delete")
+async def skills_delete(request: Request):
+    d = await body(request)
+    parts = str(d.get("dir", "")).split("/")
+    if len(parts) != 2:
+        raise HTTPException(400, "Unbekannter Skill.")
+    p = HERMES_HOME / "skills" / parts[0] / parts[1]
+    if not (p / "SKILL.md").exists():
+        raise HTTPException(404, "Skill nicht gefunden.")
+    extra = [x for x in p.iterdir() if x.name not in ("SKILL.md", ".jarvis-admin")]
+    if extra:
+        raise HTTPException(409, "Der Skill hat weitere Dateien. Bitte stattdessen deaktivieren.")
+    return make_preview(f"skill:{parts[0]}/{parts[1]}", None, f"Skill {parts[1]} löschen",
+                        "Die Sicherung bleibt erhalten und lässt sich wiederherstellen.")
+
+
+# ------------------------------------------------------------------ Bestätigungsregeln
+@app.get("/api/approvals")
+async def approvals_get():
+    a = to_plain(load_config_rt()).get("approvals") or {}
+    return {"mode": a.get("mode", "smart"), "timeout": a.get("timeout", 300), "cron_mode": a.get("cron_mode", "deny"),
+            "unattended_mode": a.get("unattended_mode", "deny"), "deny": a.get("deny") or []}
+
+
+@app.post("/api/approvals/save")
+async def approvals_save(request: Request):
+    d = await body(request)
+    ch = {}
+    if d.get("mode") in ("manual", "smart", "off"):
+        ch["approvals.mode"] = d["mode"]
+    if "timeout" in d:
+        t = int(d["timeout"])
+        if not 15 <= t <= 3600:
+            raise HTTPException(400, "Wartezeit zwischen 15 und 3600 s.")
+        ch["approvals.timeout"] = t
+    for k in ("cron_mode", "unattended_mode"):
+        if d.get(k) in ("deny", "approve"):
+            ch[f"approvals.{k}"] = d[k]
+    if "deny" in d:
+        pats = [str(x).strip() for x in d["deny"] if str(x).strip()]
+        ch["approvals.deny"] = pats or None
+    danger = ""
+    if ch.get("approvals.mode") == "off" or "approve" in (ch.get("approvals.cron_mode"), ch.get("approvals.unattended_mode")):
+        danger = "Achtung: Damit führt JARVIS gefährliche Befehle (z. B. Löschen) ohne Rückfrage aus."
+    return config_preview(ch, "Bestätigungsregeln ändern", danger=danger)
+
+
+# ------------------------------------------------------------------ MCP-Server
+@app.get("/api/mcp")
+async def mcp_get():
+    servers = to_plain(load_config_rt()).get("mcp_servers") or {}
+    out = []
+    for name, s in servers.items():
+        s = s or {}
+        out.append({"name": name, "enabled": s.get("enabled", True), "command": s.get("command"),
+                    "args": s.get("args") or [], "url": s.get("url"),
+                    "env": {k: (mask(v) if env_is_secret(k) else v) for k, v in (s.get("env") or {}).items()},
+                    "tools": s.get("tools")})
+    return {"items": out}
+
+
+def _indent(line: str) -> int:
+    return len(line) - len(line.lstrip(" "))
+
+
+def mcp_section(lines: list[str]) -> tuple[int, int]:
+    """Zeilenbereich von `mcp_servers:` (Kopfzeile, Ende exkl.). Zeilenweise statt ruamel, weil Marker-Kommentare
+    (Projekt-Claude, Claude-Fallback) sonst an falsche Schluessel wandern. Ende = erste Zeile auf Spalte 0."""
+    starts = [i for i, l in enumerate(lines) if re.match(r"^mcp_servers:", l)]
+    if not starts:
+        return -1, -1
+    if len(starts) > 1:
+        raise HTTPException(409, "mcp_servers kommt mehrfach vor.")
+    s = starts[0]
+    e = s + 1
+    while e < len(lines) and (not lines[e].strip() or _indent(lines[e]) > 0):
+        e += 1
+    while e - 1 > s and not lines[e - 1].strip():  # Leerzeilen am Ende gehoeren nicht dazu
+        e -= 1
+    return s, e
+
+
+def mcp_entry_span(lines: list[str], name: str) -> tuple[int, int]:
+    s, e = mcp_section(lines)
+    if s < 0:
+        raise HTTPException(404, "Keine MCP-Server eingetragen.")
+    for i in range(s + 1, e):
+        if re.match(rf"^  {re.escape(name)}:\s*(#.*)?$", lines[i]):
+            j = i + 1
+            while j < e and (not lines[j].strip() or _indent(lines[j]) > 2):
+                j += 1
+            while j - 1 > i and not lines[j - 1].strip():
+                j -= 1
+            return i, j
+    raise HTTPException(404, f"MCP-Server {name} nicht gefunden.")
+
+
+def mcp_insert(lines: list[str], block: str) -> str:
+    s, e = mcp_section(lines)
+    if s < 0:
+        return "".join(lines).rstrip("\n") + "\nmcp_servers:\n" + block
+    head = lines[s]
+    if re.match(r"^mcp_servers:\s*\{\s*\}\s*$", head):
+        lines[s] = "mcp_servers:\n"
+    elif re.match(r"^mcp_servers:\s*\{", head):
+        raise HTTPException(409, "mcp_servers steht als Inline-Mapping – bitte im Expertenmodus umstellen.")
+    return "".join(lines[:e]) + block + "".join(lines[e:])
+
+
+@app.post("/api/mcp/save")
+async def mcp_save(request: Request):
+    d = await body(request)
+    name = str(d.get("name", "")).strip()
+    if not re.fullmatch(r"[a-z0-9][a-z0-9_\-]{0,40}", name):
+        raise HTTPException(400, "Name: nur Kleinbuchstaben, Ziffern, - und _.")
+    action = d.get("action")
+    text = read_text(FILES["config"][0])
+    lines = text.splitlines(True)
+    if action == "remove":
+        s, e = mcp_entry_span(lines, name)
+        if name == "claude":
+            raise HTTPException(409, "Projekt-Claude wird über ‚Modell & Fallback‘ bzw. das Skript der Sprachsteuerung verwaltet.")
+        return make_preview("config", "".join(lines[:s] + lines[e:]), f"MCP-Server {name} entfernen",
+                            "Hermes trennt die Verbindung innerhalb ~1 Minute.")
+    if action == "toggle":
+        s, e = mcp_entry_span(lines, name)
+        val = "true" if d.get("enabled") else "false"
+        for i in range(s + 1, e):
+            if re.match(r"^    enabled:\s", lines[i]):
+                lines[i] = f"    enabled: {val}\n"
+                break
+        else:
+            lines.insert(s + 1, f"    enabled: {val}\n")
+        return make_preview("config", "".join(lines), f"MCP-Server {name} {'aktivieren' if d.get('enabled') else 'deaktivieren'}",
+                            "Hermes übernimmt das innerhalb ~1 Minute.")
+    if name in (to_plain(load_config_rt()).get("mcp_servers") or {}):
+        raise HTTPException(409, f"Es gibt schon einen MCP-Server namens {name}.")
+    entry = {}
+    if d.get("url"):
+        url = str(d["url"]).strip()
+        if not re.match(r"^https?://", url):
+            raise HTTPException(400, "URL muss mit http:// oder https:// beginnen.")
+        entry["url"] = url
+    elif d.get("command"):
+        entry["command"] = str(d["command"]).strip()
+        entry["args"] = [str(a) for a in (d.get("args") or [])]
+    else:
+        raise HTTPException(400, "Befehl oder URL angeben.")
+    entry["enabled"] = bool(d.get("enabled", True))
+    buf = io.StringIO()
+    YAML().dump({name: entry}, buf)
+    block = "".join("  " + l if l.strip() else l for l in buf.getvalue().splitlines(True))
+    return make_preview("config", mcp_insert(lines, block), f"MCP-Server {name} eintragen",
+                          "Hermes verbindet sich innerhalb ~1 Minute.",
+                          danger="MCP-Server laufen mit den Rechten von Hermes. Nur vertrauenswürdige Server eintragen.")
+
+
+# ------------------------------------------------------------------ Schlüssel (.env)
+@app.get("/api/env")
+async def env_get():
+    out = []
+    for n, v, _ in read_env():
+        if n:
+            secret = env_is_secret(n)
+            out.append({"name": n, "secret": secret, "value": mask(v) if secret else v,
+                        "protected": n in ENV_PROTECTED})
+    return {"items": out}
+
+
+@app.post("/api/env/save")
+async def env_save(request: Request):
+    d = await body(request)
+    name = str(d.get("name", "")).strip().upper()
+    if not re.fullmatch(r"[A-Z_][A-Z0-9_]{1,60}", name):
+        raise HTTPException(400, "Ungültiger Variablenname.")
+    if name in ENV_PROTECTED:
+        raise HTTPException(403, "Diese Variable verbindet Hermes mit der Handy-Oberfläche und ist hier gesperrt.")
+    remove = bool(d.get("remove"))
+    value = str(d.get("value", ""))
+    if not remove and (not value or "\n" in value or len(value) > 4096):
+        raise HTTPException(400, "Wert fehlt oder ist ungültig.")
+    lines, found = [], False
+    for n, v, raw in read_env():
+        if n == name:
+            found = True
+            if not remove:
+                lines.append(f"{name}={value}")
+        else:
+            lines.append(raw)
+    if not found and not remove:
+        lines.append(f"{name}={value}")
+    if not found and remove:
+        raise HTTPException(404, "Variable nicht vorhanden.")
+    return make_preview("env", "\n".join(lines) + "\n", f"{name} {'entfernen' if remove else 'setzen'}",
+                        "Wirkt nach Neustart des Hermes-Gateways.")
+
+
+# ------------------------------------------------------------------ Zeitplaene (Hermes /api/jobs)
+def hermes_auth() -> dict:
+    k = env_value("API_SERVER_KEY")
+    return {"Authorization": f"Bearer {k}"} if k else {}
+
+
+async def hermes_api(method: str, path: str, js: dict | None = None):
+    try:
+        async with httpx.AsyncClient(timeout=15) as c:
+            r = await c.request(method, f"{HERMES_URL}{path}", json=js, headers=hermes_auth())
+    except httpx.HTTPError:
+        raise HTTPException(502, "Hermes ist nicht erreichbar.")
+    try:
+        data = r.json()
+    except Exception:
+        data = {"text": r.text[:500]}
+    if r.status_code >= 400:
+        msg = data.get("error") if isinstance(data, dict) else None
+        if isinstance(msg, dict):
+            msg = msg.get("message")
+        raise HTTPException(r.status_code, f"Hermes: {msg or data}")
+    return data
+
+
+@app.get("/api/jobs")
+async def jobs_list():
+    return await hermes_api("GET", "/api/jobs")
+
+
+@app.post("/api/jobs")
+async def jobs_create(request: Request):
+    d = await body(request)
+    js = {k: d[k] for k in ("name", "prompt", "schedule", "skills", "deliver") if d.get(k)}
+    if not js.get("prompt") or not js.get("schedule"):
+        raise HTTPException(400, "Auftrag und Zeitplan sind Pflicht.")
+    audit(who(request), f"Zeitplan angelegt: {js.get('name') or js['schedule']}")
+    return await hermes_api("POST", "/api/jobs", js)
+
+
+@app.post("/api/jobs/{job_id}/{action}")
+async def jobs_action(job_id: str, action: str, request: Request):
+    if not re.fullmatch(r"[A-Za-z0-9_\-]{1,80}", job_id) or action not in ("pause", "resume", "run", "delete", "update"):
+        raise HTTPException(400, "Ungültig.")
+    audit(who(request), f"Zeitplan {job_id}: {action}")
+    if action == "delete":
+        return await hermes_api("DELETE", f"/api/jobs/{job_id}")
+    if action == "update":
+        d = await body(request)
+        js = {k: d[k] for k in ("name", "prompt", "schedule", "skills", "deliver") if k in d}
+        return await hermes_api("PATCH", f"/api/jobs/{job_id}", js)
+    return await hermes_api("POST", f"/api/jobs/{job_id}/{action}")
+
+
+# ------------------------------------------------------------------ Sitzungen (Verlauf, nur lesend)
+@app.get("/api/sessions")
+async def sessions_list():
+    try:
+        return await hermes_api("GET", "/api/sessions?limit=40")
+    except HTTPException as e:
+        return {"error": e.detail, "sessions": []}
+
+
+# ------------------------------------------------------------------ Dienste (root-Helfer über Path-Unit)
+def ctl_result() -> dict | None:
+    with contextlib.suppress(Exception):
+        return json.loads((CTL_DIR / "result.json").read_text())
+    return None
+
+
+@app.post("/api/services/{name}/restart")
+async def service_restart(name: str, request: Request):
+    if name not in UNITS:
+        raise HTTPException(404, "Unbekannter Dienst.")
+    if not CTL_DIR.is_dir():
+        raise HTTPException(503, "Der Neustart-Helfer (jarvis-admin-ctl) ist nicht eingerichtet.")
+    req = {"action": "restart", "unit": name, "id": secrets.token_hex(6), "time": now_iso()}
+    audit(who(request), f"Neustart angefordert: {UNITS[name]}")
+    atomic_write(CTL_DIR / "request", f"restart {name} {req['id']}\n", 0o640)
+    if name == "admin":
+        return {"ok": True, "id": req["id"], "self": True}
+    for _ in range(60):
+        await asyncio.sleep(0.5)
+        r = ctl_result()
+        if r and r.get("id") == req["id"]:
+            return {"ok": r.get("ok", False), "id": req["id"], "result": r}
+    return {"ok": False, "id": req["id"], "pending": True}
+
+
+@app.get("/api/services")
+async def services():
+    return {"units": await asyncio.gather(*(unit_state(n) for n in UNITS)), "ctl": CTL_DIR.is_dir(),
+            "last": ctl_result()}
+
+
+# ------------------------------------------------------------------ Protokolle
+LOG_SOURCES = {
+    "agent": ("file", HERMES_HOME / "logs/agent.log", "Hermes: Agent"),
+    "errors": ("file", HERMES_HOME / "logs/errors.log", "Hermes: Fehler"),
+    "gateway": ("file", HERMES_HOME / "logs/gateway.log", "Hermes: Gateway"),
+    "j-hermes": ("journal", UNITS["hermes"], "Dienst: Hermes-Gateway"),
+    "j-stt": ("journal", UNITS["stt"], "Dienst: Spracherkennung"),
+    "j-ui": ("journal", UNITS["ui"], "Dienst: Handy-Oberfläche"),
+    "j-admin": ("journal", UNITS["admin"], "Dienst: Verwaltung"),
+    "audit": ("file", DATA / "audit.log", "Verwaltung: Änderungsprotokoll"),
+}
+
+
+def tail(path: Path, lines: int) -> list[str]:
+    try:
+        with open(path, "rb") as f:
+            f.seek(0, 2)
+            size = f.tell()
+            chunk = min(size, max(65536, lines * 400))
+            f.seek(size - chunk)
+            data = f.read().decode("utf-8", "replace")
+    except FileNotFoundError:
+        return []
+    return data.splitlines()[-lines:]
+
+
+@app.get("/api/logs")
+async def logs(source: str = "agent", lines: int = 300, level: str = "", q: str = ""):
+    if source not in LOG_SOURCES:
+        raise HTTPException(404, "Unbekannte Quelle.")
+    kind, target, _ = LOG_SOURCES[source]
+    lines = max(20, min(lines, 3000))
+    if kind == "file":
+        out = tail(target, lines * (4 if (level or q) else 1))
+    else:
+        p = await asyncio.create_subprocess_exec("journalctl", "-u", target, "-n", str(lines * (4 if (level or q) else 1)),
+                                                 "--no-pager", "-o", "short-iso", stdout=asyncio.subprocess.PIPE,
+                                                 stderr=asyncio.subprocess.STDOUT)
+        o, _ = await p.communicate()
+        out = o.decode("utf-8", "replace").splitlines()
+    if level:
+        lv = {"error": ("ERROR", "CRITICAL", "Traceback", "Fehler"), "warning": ("ERROR", "CRITICAL", "WARNING", "Traceback")}
+        keys = lv.get(level, ())
+        out = [l for l in out if any(k in l for k in keys)]
+    if q:
+        ql = q.lower()
+        out = [l for l in out if ql in l.lower()]
+    return {"lines": [redact_text(l)[:2000] for l in out[-lines:]],
+            "sources": {k: v[2] for k, v in LOG_SOURCES.items()}}
+
+
+# ------------------------------------------------------------------ Handy (eingeschraenkter SSH-Schlüssel)
+PHONE_CACHE: dict = {"t": 0, "data": None}
+PHONE_CMDS = {"status", "reboot", "kiosk-reload", "bildschirm"}
+
+
+async def phone_cmd(*args: str, timeout: float = 8) -> tuple[int, str]:
+    if not PHONE_KEY.exists():
+        return 255, "Kein Handy-Schlüssel eingerichtet."
+    kh = BASE / "keys/known_hosts"
+    cmd = ["ssh", "-i", str(PHONE_KEY), "-o", "BatchMode=yes", "-o", "ConnectTimeout=4",
+           "-o", "StrictHostKeyChecking=yes", "-o", f"UserKnownHostsFile={kh}", "-o", "IdentitiesOnly=yes",
+           "-o", "LogLevel=ERROR", f"{PHONE_USER}@{PHONE_HOST}", " ".join(args)]
+    try:
+        p = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+                                                 stdin=asyncio.subprocess.DEVNULL)
+        o, e = await asyncio.wait_for(p.communicate(), timeout)
+        return p.returncode or 0, (o.decode("utf-8", "replace") or e.decode("utf-8", "replace")).strip()[:4000]
+    except asyncio.TimeoutError:
+        with contextlib.suppress(Exception):
+            p.kill()
+        return 124, "Zeitüberschreitung"
+
+
+def tcp_open(host: str, port: int, timeout: float = 1.0) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout):
+            return True
+    except OSError:
+        return False
+
+
+def phone_error_text(out: str, code: int) -> str:
+    o = out.lower()
+    if "host key" in o:
+        return "Hostschlüssel des Handys ist noch nicht bestätigt (Einrichtung läuft)."
+    if "permission denied" in o:
+        return "Die Steuerung ist auf dem Handy noch nicht eingerichtet (Schlüssel nicht hinterlegt)."
+    if code == 2 or "nicht erlaubt" in o:
+        return "Das Handy kennt diesen Befehl nicht."
+    if code == 124:
+        return "Das Handy antwortet nicht (Zeitüberschreitung)."
+    return (out or f"Fehler {code}")[:300]
+
+
+async def phone_status(cached: bool = False) -> dict:
+    if cached and time.time() - PHONE_CACHE["t"] < 20 and PHONE_CACHE["data"]:
+        return PHONE_CACHE["data"]
+    reach = await asyncio.to_thread(tcp_open, PHONE_HOST, 22)
+    data = {"reachable": reach, "host": PHONE_HOST, "configured": PHONE_KEY.exists(), "status": None, "error": None}
+    if reach and PHONE_KEY.exists():
+        code, out = await phone_cmd("status")
+        if code == 0:
+            try:
+                data["status"] = json.loads(out)
+            except Exception:
+                data["error"] = "Antwort des Handys unlesbar."
+        else:
+            data["error"] = phone_error_text(out, code)
+    PHONE_CACHE.update(t=time.time(), data=data)
+    return data
+
+
+@app.get("/api/phone")
+async def phone_get():
+    pub = BASE / "keys/handy_ed25519.pub"
+    d = await phone_status()
+    d["pubkey"] = read_text(pub).strip() if pub.exists() else None
+    return d
+
+
+@app.post("/api/phone/{action}")
+async def phone_action(action: str, request: Request):
+    d = await body(request)
+    if action == "reboot":
+        if d.get("confirm") != "NEUSTART":
+            raise HTTPException(400, "Bitte den Neustart bestätigen.")
+        args = ["reboot"]
+    elif action == "kiosk-reload":
+        args = ["kiosk-reload"]
+    elif action in ("helligkeit", "lautstaerke"):
+        v = int(d.get("value", -1))
+        if not 0 <= v <= 100:
+            raise HTTPException(400, "Wert 0–100.")
+        args = [action, str(v)]
+    elif action == "bildschirm":
+        if d.get("value") not in ("an", "aus"):
+            raise HTTPException(400, "an oder aus.")
+        args = ["bildschirm", d["value"]]
+    else:
+        raise HTTPException(404, "Unbekannte Aktion.")
+    audit(who(request), f"Handy: {' '.join(args)}")
+    code, out = await phone_cmd(*args, timeout=12)
+    PHONE_CACHE["t"] = 0
+    if code != 0:
+        raise HTTPException(502, f"Handy: {phone_error_text(out, code)}")
+    return {"ok": True, "output": out}
+
+
+# ------------------------------------------------------------------ Prüfungen, Export
+@app.post("/api/doctor")
+async def doctor(request: Request):
+    d = await body(request)
+    which = d.get("which", "config")
+    args = {"config": ("config", "check"), "doctor": ("doctor",), "status": ("status",),
+            "skills": ("skills", "list"), "cron": ("cron", "status")}.get(which)
+    if not args:
+        raise HTTPException(400, "Unbekannte Prüfung.")
+    code, out = await run_hermes(*args, timeout=150)
+    return {"ok": code == 0, "output": out}
+
+
+@app.get("/api/export")
+async def export(request: Request):
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for key in ("config", "soul", "memory", "user", "ui"):
+            p, kind = FILES[key]
+            if p.exists():
+                text = read_text(p)
+                if kind == "yaml":
+                    text = "\n".join(redact_secret_yaml_lines(l + "\n").rstrip("\n") for l in text.splitlines()) + "\n"
+                z.writestr(f"jarvis-export/{p.name}", text)
+        envs = [f"{n}={'<geheim, nicht exportiert>' if env_is_secret(n) else v}" for n, v, _ in read_env() if n]
+        z.writestr("jarvis-export/env-namen.txt", "\n".join(envs) + "\n")
+        jobs = HERMES_HOME / "cron/jobs.json"
+        if jobs.exists():
+            z.writestr("jarvis-export/cron-jobs.json", read_text(jobs))
+        for s in scan_skills():
+            if s["own"]:
+                z.writestr(f"jarvis-export/skills/{s['dir']}/SKILL.md",
+                           read_text(HERMES_HOME / "skills" / s["dir"] / "SKILL.md"))
+        z.writestr("jarvis-export/LIESMICH.txt",
+                   "Export der JARVIS-Verwaltung vom " + now_iso() + ".\nSchlüssel/Passwörter sind NICHT enthalten.\n")
+    audit(who(request), "Export heruntergeladen")
+    fn = f"jarvis-export-{datetime.now():%Y%m%d-%H%M}.zip"
+    return Response(buf.getvalue(), media_type="application/zip",
+                    headers={"Content-Disposition": f'attachment; filename="{fn}"'})
+
+
+@app.get("/api/audit")
+async def audit_log():
+    return {"lines": tail(DATA / "audit.log", 200)}
+
+
+# ------------------------------------------------------------------ Statische Dateien
+STATIC = BASE / "static"
+
+
+@app.get("/")
+async def index():
+    return FileResponse(STATIC / "index.html", headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/static/{name:path}")
+async def static_file(name: str):
+    p = (STATIC / name).resolve()
+    if STATIC.resolve() not in p.parents or not p.is_file():
+        raise HTTPException(404)
+    return FileResponse(p, headers={"Cache-Control": "no-cache"})
+
+
+UI_SHARED = {"tokens.css", "orb.js", "orb.css", "icon.svg"}
+
+
+@app.get("/ui/{name:path}")
+async def ui_shared(name: str):
+    """Gemeinsame Design-Dateien direkt aus jarvis-ui (read-only, nichts kopiert)."""
+    if name in UI_SHARED:
+        p = UI_STATIC / name
+    elif re.fullmatch(r"fonts/[a-z0-9\-]+\.woff2", name):
+        p = UI_STATIC / name
+    else:
+        raise HTTPException(404)
+    if not p.is_file():
+        raise HTTPException(404)
+    return FileResponse(p, headers={"Cache-Control": "max-age=3600"})
+
+
+@app.get("/favicon.ico")
+async def favicon():
+    return FileResponse(UI_STATIC / "icon.svg", media_type="image/svg+xml")
+
+
+@app.get("/jarvis-ca.crt")
+async def ca():
+    return FileResponse(UI_CERTS / "jarvis-ca.crt", media_type="application/x-x509-ca-cert")
+
+
+if __name__ == "__main__":
+    load_sessions()
+    ensure_setup_code()
+    ensure_internal_token()
+    uvicorn.run(app, host=HOST, port=PORT, ssl_certfile=str(UI_CERTS / "server.crt"),
+                ssl_keyfile=str(UI_CERTS / "server.key"), log_level="warning", proxy_headers=False,
+                server_header=False)

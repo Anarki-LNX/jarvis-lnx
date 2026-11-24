@@ -1,0 +1,9 @@
+[Unit]
+Description=JARVIS-Verwaltung: Neustart-Anfragen beobachten
+
+[Path]
+PathModified=/var/lib/jarvis-admin-ctl/request
+Unit=jarvis-admin-ctl.service
+
+[Install]
+WantedBy=multi-user.target

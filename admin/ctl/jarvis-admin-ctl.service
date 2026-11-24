@@ -1,0 +1,6 @@
+[Unit]
+Description=JARVIS-Verwaltung: freigegebene Dienste neu starten (Whitelist)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/jarvis-admin-ctl

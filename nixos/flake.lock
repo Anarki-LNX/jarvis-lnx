@@ -1,0 +1,63 @@
+{
+  "nodes": {
+    "courbet": {
+      "inputs": {
+        "linux": "linux",
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1795402935,
+        "narHash": "sha256-hVylrTJuzF6/SQN0zx6KJNayc/PPReBgB70h974cX0w=",
+        "ref": "refs/heads/main",
+        "rev": "d2f437ea15ddfff51e8a91997ceb46c932112d99",
+        "revCount": 45,
+        "type": "git",
+        "url": "file:///work/nixos-courbet"
+      },
+      "original": {
+        "type": "git",
+        "url": "file:///work/nixos-courbet"
+      }
+    },
+    "linux": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1795512574,
+        "narHash": "sha256-OJEiOeaYyrEmRKyXD0irubt43XzLunBEdyLAwfaeGrk=",
+        "path": "/work/linux-c0f2fd4",
+        "type": "path"
+      },
+      "original": {
+        "path": "/work/linux-c0f2fd4",
+        "type": "path"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1792773339,
+        "narHash": "sha256-rZLrzrC6i+jnTAlvPZHogKDulY7WWDEv9hJeHieO7Zw=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "3ec636362e1816bc2f0888fa0fa2c69f1bc9e504",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "courbet": "courbet",
+        "nixpkgs": [
+          "courbet",
+          "nixpkgs"
+        ]
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

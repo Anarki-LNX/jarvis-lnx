@@ -1,0 +1,91 @@
+# Eigene Saetze im Stil von Jarvis-Antworten (fuer dieses Projekt geschrieben, frei nutzbar, CC0).
+# Zahlen, Uhrzeiten und Einheiten sind ausgeschrieben, so wie sie gesprochen werden.
+Guten Morgen! Es ist sieben Uhr fünfzehn, draußen sind es drei Grad und es bleibt trocken.
+Guten Abend. Soll ich das Licht im Wohnzimmer etwas dunkler machen?
+Alles klar, ich habe das Licht in der Küche eingeschaltet.
+Das Licht im Flur ist jetzt aus.
+Die Heizung im Schlafzimmer steht jetzt auf einundzwanzig Grad.
+Erledigt. Ich erinnere dich morgen um halb neun an den Termin.
+Ich habe dir eine Erinnerung für Donnerstag um vierzehn Uhr dreißig eingetragen.
+Dein nächster Termin ist heute Nachmittag um vier beim Zahnarzt.
+Heute hast du keine weiteren Termine mehr.
+Morgen wird es sonnig bei bis zu achtzehn Grad, am Abend zieht leichter Regen auf.
+In Berlin regnet es gerade, und der Wind kommt mit dreißig Kilometern pro Stunde aus Westen.
+Am Wochenende soll es kalt werden, nachts bis zu minus fünf Grad.
+Die Luftfeuchtigkeit im Bad liegt bei achtundsechzig Prozent. Lüften wäre eine gute Idee.
+Das habe ich leider nicht verstanden. Kannst du das bitte noch einmal sagen?
+Entschuldige, dazu habe ich gerade keine Verbindung.
+Einen Moment bitte, ich schaue kurz nach.
+Ich bin mir nicht ganz sicher. Meinst du die Lampe im Wohnzimmer oder im Arbeitszimmer?
+Okay, ich höre zu.
+Gerne doch!
+Kein Problem, das mache ich sofort.
+Bist du sicher, dass ich alle Lichter ausschalten soll?
+Die Haustür ist abgeschlossen, und alle Fenster sind zu.
+Achtung, das Fenster im Kinderzimmer ist noch offen.
+Die Waschmaschine ist fertig.
+Der Akku deines Handys ist nur noch zu zwölf Prozent geladen.
+Der Timer für die Nudeln läuft. Noch neun Minuten.
+Dein Timer ist abgelaufen!
+Ich habe Milch, Eier und Butter auf die Einkaufsliste gesetzt.
+Auf deiner Einkaufsliste stehen noch Brot, Äpfel und Kaffee.
+Die nächste Bahn nach Hamburg fährt um zehn Uhr zweiundvierzig von Gleis sieben.
+Bis München sind es ungefähr sechshundert Kilometer, mit dem Auto etwa sechs Stunden.
+Auf der Autobahn gibt es gerade einen Stau von vier Kilometern.
+Ich spiele jetzt ruhige Musik im Wohnzimmer.
+Die Musik ist pausiert.
+Ich habe die Lautstärke etwas erhöht.
+Neue Nachricht von Anna: Ich komme heute etwas später.
+Soll ich Anna antworten, dass das kein Problem ist?
+Die Nachricht wurde gesendet.
+Es ist genau Mitternacht.
+Heute ist Dienstag, der vierundzwanzigste November.
+Hallo, ich bin Jarvis. Wie kann ich dir helfen?
+Jarvis ist bereit.
+Ich habe gerade ein Update installiert und bin wieder einsatzbereit.
+Der Stromverbrauch lag heute bei elf Komma vier Kilowattstunden.
+Die Solaranlage hat heute neunzehn Kilowattstunden erzeugt.
+Hm, das ist eine gute Frage. Lass mich kurz überlegen.
+Wusstest du, dass ein Oktopus drei Herzen hat?
+Ich wünsche dir eine gute Nacht und angenehme Träume.
+Bis später, und pass auf dich auf!
+Herzlichen Glückwunsch zum Geburtstag!
+Na klar, warum nicht?
+Oh nein, das tut mir leid.
+Super, das freut mich!
+Wirklich? Das hätte ich nicht gedacht.
+Ich schalte jetzt den Fernseher aus und dimme das Licht auf zwanzig Prozent.
+Möchtest du, dass ich den Wecker auf sechs Uhr dreißig stelle?
+Der Wecker ist für morgen früh um sechs Uhr dreißig gestellt.
+Die Paketlieferung kommt voraussichtlich zwischen zwölf und vierzehn Uhr.
+Jemand steht vor der Haustür.
+Die Kaffeemaschine ist eingeschaltet und in zwei Minuten bereit.
+Der Staubsauger hat das Wohnzimmer fertig gereinigt.
+Ich konnte die Lampe im Garten nicht erreichen. Ist sie vielleicht ausgeschaltet?
+Das Rezept braucht zweihundert Gramm Mehl, drei Eier und einen halben Liter Milch.
+Zuerst den Ofen auf hundertachtzig Grad vorheizen.
+Eins, zwei, drei, vier, fünf, sechs, sieben, acht, neun, zehn.
+Elf, zwölf, dreizehn, zwanzig, dreißig, hundert, tausend, eine Million.
+Der erste, der zweite, der dritte und der zehnte Platz.
+Ein Viertel nach acht, halb neun, Viertel vor neun.
+Der Termin ist am ersten Januar zweitausendsiebenundzwanzig.
+Wie spät ist es? Es ist kurz nach drei.
+Warum ist der Himmel blau? Weil das Sonnenlicht in der Luft gestreut wird.
+Was steht heute an? Um zehn hast du ein Telefonat und um zwei einen Arzttermin.
+Soll ich das wirklich löschen? Das kann ich danach nicht rückgängig machen.
+Ich habe drei neue E-Mails gefunden, eine davon ist wichtig.
+Die Verbindung zum Server ist wiederhergestellt.
+Achtung! Im Keller wurde Wasser erkannt.
+Der Rauchmelder im Flur meldet eine schwache Batterie.
+Die Temperatur im Gefrierschrank liegt bei minus achtzehn Grad, alles in Ordnung.
+Ich habe dir den Weg zur Apotheke aufs Handy geschickt.
+Die Apotheke am Markt hat heute bis zwanzig Uhr geöffnet.
+Sag einfach Bescheid, wenn du noch etwas brauchst.
+Ich bin gleich wieder da.
+Na, wie war dein Tag?
+Das klingt anstrengend. Soll ich dir etwas Entspannendes vorspielen?
+Ich stelle die Rollläden im Wohnzimmer auf halb.
+Die Rollläden sind jetzt ganz unten.
+Draußen wird es dunkel, ich schalte die Außenbeleuchtung ein.
+Der Ofen ist seit zwei Stunden an. Soll ich ihn ausschalten?
+Gute Fahrt und komm gut an!

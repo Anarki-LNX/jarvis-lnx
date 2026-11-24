@@ -1,0 +1,36 @@
+[Unit]
+Description=JARVIS-Verwaltung (Einstellungs-Web-UI, HTTPS :8444, nur LAN)
+After=network-online.target jarvis-ui.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=jarvis
+Group=jarvis
+WorkingDirectory=/home/jarvis/jarvis-admin
+ExecStart=/home/jarvis/jarvis-admin/venv/bin/python -I /home/jarvis/jarvis-admin/server.py
+Restart=on-failure
+RestartSec=3
+Environment=ADMIN_PORT=8444
+Environment=PYTHONUNBUFFERED=1
+# Replace the placeholders with your addresses (see config.env.example)
+Environment=PHONE_HOST=PHONE_HOST
+Environment=OLLAMA_HOST=OLLAMA_HOST
+Environment=PHONE_USER=jarvis-ctl
+UMask=0077
+# Haertung: schreibt nur Hermes-Konfiguration, eigene Daten, ui.json und die Neustart-Anfrage
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=no
+ReadWritePaths=/home/jarvis /var/lib/jarvis-admin-ctl
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=768M
+
+[Install]
+WantedBy=multi-user.target

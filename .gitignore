@@ -1,0 +1,48 @@
+# secrets / site config
+.env
+*.env
+config.env
+keys/
+certs/
+*.key
+*.crt
+*.pem
+*.srl
+*.csr
+*.hash
+PIN.txt
+nixos/ssh-jarvis.pub
+nixos/admin-handy.pub
+nixos/jarvis-ca.crt
+
+# proprietary firmware blobs (extract from your own device)
+nixos/firmware/
+
+# audio / voice recordings
+*.wav
+*.flac
+voice/aufnahmen/
+voice/frei/
+voice/frei-clips/
+voice/export-22050/
+
+# build output
+result
+result-*
+build/
+out/
+*.img
+*.log
+super-dump*
+
+# python / node
+__pycache__/
+*.pyc
+venv/
+.venv/
+node_modules/
+
+# local screenshots / diagnostics
+diagnose/
+ui/screenshots/
+admin/screenshots/

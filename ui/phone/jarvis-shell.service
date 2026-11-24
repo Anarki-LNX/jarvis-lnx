@@ -1,0 +1,21 @@
+# systemd-User-Dienst auf dem Handy (Benutzer jarvis). Kiosk oeffnet danach http://127.0.0.1:8770/
+[Unit]
+Description=JARVIS-Shell (lokale UI + Proxy zu jarvis und Geraetedienst)
+After=network.target
+
+[Service]
+ExecStart=/run/current-system/sw/bin/python3 -I %h/.local/lib/jarvis-shell/jarvis-shell.py
+# Replace JARVIS_HOST with the address of the backend LXC (see config.env.example)
+Environment=JARVIS_URL=https://JARVIS_HOST:8443
+# Geraetedienst von handy-linux (Port 8765, Pfade /api/*, prueft den Origin bei POST):
+Environment=DEVICE_URL=http://127.0.0.1:8765
+Environment=DEVICE_PREFIX=/api/
+Environment=DEVICE_ORIGIN=https://JARVIS_HOST:8443
+Environment=SHELL_PORT=8770
+# Heim-CA: entweder systemweit vertraut (security.pki.certificateFiles) oder hier explizit:
+# Environment=JARVIS_CA=/etc/jarvis/jarvis-ca.crt
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target
