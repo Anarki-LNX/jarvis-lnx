@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NuOrb – offline</title>
+<style>
+  :root { --bg:#05090d; --fg:#d8f6ff; --dim:#6f8b96; --acc:#22d3ee; --warn:#f59e0b; --bad:#f87171; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg);
+    font:16px/1.4 system-ui, "Noto Sans", sans-serif; }
+  main { min-height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:22px; padding:max(24px, env(safe-area-inset-top)) 24px 32px; text-align:center; }
+  .orb { width:150px; height:150px; border-radius:50%; border:3px solid var(--acc);
+    box-shadow:0 0 40px rgba(34,211,238,.35), inset 0 0 40px rgba(34,211,238,.15); animation:puls 3s ease-in-out infinite; }
+  @keyframes puls { 50% { transform:scale(1.05); box-shadow:0 0 60px rgba(34,211,238,.5), inset 0 0 50px rgba(34,211,238,.25);} }
+  h1 { margin:0; font-weight:600; letter-spacing:.35em; font-size:20px; }
+  #meldung { color:var(--dim); min-height:3em; max-width:22em; }
+  .reihe { display:flex; gap:14px; width:100%; max-width:380px; }
+  button { flex:1; min-height:76px; border-radius:22px; border:1px solid #1d3a44; background:#0b1820; color:var(--fg);
+    font:600 18px system-ui, sans-serif; }
+  button:active { background:#12303b; }
+  button.haupt { border-color:var(--acc); color:var(--acc); }
+  button.warn { border-color:#5b3a12; color:var(--warn); }
+  #status { color:var(--dim); font-size:14px; }
+  .bestaetigen { display:none; }
+  .bestaetigen.sichtbar { display:flex; }
+</style>
+</head>
+<body>
+<main>
+  <div class="orb"></div>
+  <h1>NuOrb</h1>
+  <div id="meldung">Verbindung zu NuOrb wird gesucht …</div>
+  <div class="reihe"><button class="haupt" id="wlan">WLAN einschalten</button></div>
+  <div class="reihe"><button class="warn" id="neustart">Neu starten</button></div>
+  <div class="reihe bestaetigen" id="frage">
+    <button class="warn" id="ja">Ja, neu starten</button><button id="nein">Abbrechen</button>
+  </div>
+  <div id="status"></div>
+</main>
+<script>
+const NuOrb = "https://NUORB_SERVER_IP:8443/";
+const $ = (s) => document.querySelector(s);
+const post = (p, d) => fetch(p, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(d || {}) }).then((r) => r.json());
+
+async function lageAktualisieren() {
+  let s;
+  try { s = await (await fetch("/api/status", { cache: "no-store" })).json(); } catch { return; }
+  const akku = s.akku_prozent != null ? `Akku ${s.akku_prozent} %${s.laedt ? " ⚡" : ""}` : "";
+  const wlan = s.wlan_an ? (s.wlan_ssid ? `WLAN ${s.wlan_ssid}` : "WLAN an, nicht verbunden") : "WLAN aus";
+  $("#status").textContent = [new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }), wlan, akku].filter(Boolean).join(" · ");
+  $("#wlan").textContent = s.wlan_an ? "WLAN ist an" : "WLAN einschalten";
+  $("#wlan").disabled = !!s.wlan_an;
+  $("#meldung").textContent = s.wlan_an
+    ? (s.wlan_ssid ? "WLAN verbunden – warte auf NuOrb …" : "WLAN an – verbinde …")
+    : "Das WLAN ist ausgeschaltet. Tippe auf „WLAN einschalten“.";
+}
+
+async function nuorbErreichbar() {
+  try { await fetch(NuOrb + "api/status", { mode: "no-cors", cache: "no-store" }); return true; } catch { return false; }
+}
+
+async function schleife() {
+  await lageAktualisieren();
+  if (await nuorbErreichbar()) { $("#meldung").textContent = "NuOrb ist erreichbar – lade …"; post("/api/kiosk-neu").catch(() => {}); return; }
+  setTimeout(schleife, 4000);
+}
+
+$("#wlan").onclick = async () => { $("#meldung").textContent = "Schalte WLAN ein …"; await post("/api/wlan", { an: true }).catch(() => {}); lageAktualisieren(); };
+$("#neustart").onclick = () => { $("#frage").classList.add("sichtbar"); };
+$("#nein").onclick = () => { $("#frage").classList.remove("sichtbar"); };
+$("#ja").onclick = async () => { $("#meldung").textContent = "Starte neu …"; await post("/api/neustart").catch(() => {}); };
+// Vollbild ohne Browserleiste: F13 vom Kiosk-Skript oder erster Tipp zählt als Nutzergeste
+const vollbild = (e) => {
+  if (e.type === "keydown" && e.key === "F13") e.preventDefault();
+  if (document.fullscreenElement || document.webkitFullscreenElement) return;
+  const el = document.documentElement;
+  (el.requestFullscreen ? el.requestFullscreen({ navigationUI: "hide" }) : el.webkitRequestFullscreen && el.webkitRequestFullscreen())?.catch?.(() => {});
+};
+addEventListener("keydown", vollbild, true);
+addEventListener("pointerdown", vollbild, true);
+schleife();
+</script>
+</body>
+</html>

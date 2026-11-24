@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#050608">
+<meta name="color-scheme" content="dark">
+<meta name="mobile-web-app-capable" content="yes">
+<title>NuOrb</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/space-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="orb.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app" data-state="idle" data-view="home" data-orb="css">
+  <div class="bg" aria-hidden="true"></div>
+
+  <!-- Statusleiste: links Platz fuer das Kameraloch -->
+  <header class="statusbar">
+    <button class="sb-time mono" id="clockMini" aria-label="Gerät und Einstellungen">--:--</button>
+    <div class="chips">
+      <span class="chip chip-temp" id="chipTemp" hidden>
+        <svg viewBox="0 0 24 24" class="ico"><path d="M10 13.5V5a2 2 0 0 1 4 0v8.5a4 4 0 1 1-4 0z"/></svg><span id="tempVal"></span>
+      </span>
+      <button class="chip" id="chipBrain" data-ok="unknown" aria-label="Gehirn wählen">
+        <i class="dot"></i><span class="chip-label">Gehirn</span>
+      </button>
+      <button class="sb-dev" id="sbDev" aria-label="Gerät">
+        <span class="sb-wifi" id="chipLink" data-ok="unknown" data-sig="3" title="Verbindung">
+          <svg viewBox="0 0 24 24" class="ico"><path class="w3" d="M2 9.5a15 15 0 0 1 20 0"/><path class="w2" d="M5.5 13a10 10 0 0 1 13 0"/><path class="w1" d="M9 16.5a5 5 0 0 1 6 0"/><circle cx="12" cy="20" r="1.2"/><path class="wx" d="M4 4l16 16"/></svg>
+        </span>
+        <span class="sb-bat" id="sbBat" hidden data-low="false" data-charging="false">
+          <span class="bat"><i id="batFill"></i><svg class="bolt" viewBox="0 0 12 12"><path d="M6.8 1 3 6.6h2.6L5 11l4-5.8H6.4z"/></svg></span><span class="bat-pct mono" id="batPct"></span>
+        </span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Dashboard (nur im Ruhezustand sichtbar) -->
+  <section class="dash" id="dash">
+    <div class="hero">
+      <div class="hero-time" id="heroTime">--:--</div>
+      <div class="hero-meta">
+        <div class="hero-date" id="heroDate"></div>
+        <div class="hero-greet" id="heroGreet"></div>
+      </div>
+    </div>
+    <div class="widgets">
+      <article class="panel" id="wJobs">
+        <h3><svg viewBox="0 0 24 24" class="ico"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Als Nächstes</h3>
+        <ul class="wlist" id="jobsList"><li class="muted">Lade …</li></ul>
+      </article>
+      <article class="panel" id="wNotes">
+        <h3><svg viewBox="0 0 24 24" class="ico"><path d="M6 3.5h9l3.5 3.5v13.5H6z"/><path d="M9 11h6M9 15h6"/></svg>Notizen</h3>
+        <ul class="wlist" id="notesList"><li class="muted">Lade …</li></ul>
+      </article>
+    </div>
+  </section>
+
+  <!-- Zentraler Orb -->
+  <section class="core" id="core">
+    <div class="orb-wrap">
+      <div class="orb-css" aria-hidden="true"><i class="oc-ring r1"></i><i class="oc-ring r2"></i><i class="oc-glow"></i><b class="oc-core"></b></div>
+      <canvas id="orb" aria-hidden="true"></canvas>
+    </div>
+    <div class="offline-box" id="offlineBox" hidden>
+      <p id="offlineText">nuorb ist nicht erreichbar.</p>
+      <button class="btn btn-yes big" id="offlineWifi">WLAN einschalten</button>
+    </div>
+    <div class="state-line" aria-live="polite">
+      <span class="state-label" id="stateLabel">Bereit</span>
+      <span class="state-sub" id="stateSub"></span>
+    </div>
+  </section>
+
+  <!-- Gespraech -->
+  <section class="convo" id="convo" aria-live="polite"></section>
+
+  <!-- Bedienleiste -->
+  <footer class="controls">
+    <button class="side-btn" id="kbdBtn" aria-label="Text eingeben">
+      <svg viewBox="0 0 24 24" class="ico"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6 10h.01M9.5 10h.01M13 10h.01M16.5 10h.01M7 14h10"/></svg>
+    </button>
+    <div class="ptt-wrap">
+      <svg class="ptt-ring" viewBox="0 0 120 120" aria-hidden="true">
+        <circle cx="60" cy="60" r="56" class="ring-bg"/>
+        <circle cx="60" cy="60" r="56" class="ring-lvl" id="pttLevel"/>
+      </svg>
+      <button class="ptt" id="ptt" aria-label="Tippen zum Sprechen (oder gedrückt halten)">
+        <svg viewBox="0 0 24 24" class="ico mic"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>
+        <svg viewBox="0 0 24 24" class="ico stop"><rect x="6.5" y="6.5" width="11" height="11" rx="2"/></svg>
+      </button>
+      <div class="ptt-hint" id="pttHint">Halten zum Sprechen</div>
+    </div>
+    <button class="side-btn" id="newBtn" aria-label="Neues Gespräch">
+      <svg viewBox="0 0 24 24" class="ico"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg>
+    </button>
+  </footer>
+
+  <div class="mic-live" id="micLive" aria-live="assertive"><i></i>Mikrofon aktiv</div>
+
+  <!-- Bestaetigungskarte -->
+  <div class="sheet-backdrop" id="approvalBackdrop" hidden>
+    <div class="sheet approval" role="alertdialog" aria-labelledby="apTitle" aria-describedby="apDesc">
+      <div class="ap-badge"><svg viewBox="0 0 24 24" class="ico"><path d="M12 3 2.5 20h19z"/><path d="M12 9.5v5M12 17.5h.01"/></svg>Bestätigung erforderlich</div>
+      <h2 id="apTitle">NuOrb möchte etwas ausführen</h2>
+      <dl id="apFacts" class="ap-facts" hidden></dl>
+      <p id="apDesc" class="ap-desc"></p>
+      <pre id="apCmd" class="ap-cmd mono"></pre>
+      <div class="ap-actions">
+        <button class="btn btn-deny" id="apNo">Nein</button>
+        <button class="btn btn-yes" id="apYes">Ja, ausführen</button>
+      </div>
+      <div class="ap-foot muted" id="apFoot">Nur diese eine Aktion wird freigegeben.</div>
+    </div>
+  </div>
+
+  <!-- Gehirn-Schalter -->
+  <div class="sheet-backdrop" id="brainBackdrop" hidden>
+    <div class="sheet brain" role="dialog" aria-labelledby="brTitle">
+      <h2 id="brTitle">Gehirn</h2>
+      <div class="br-modes" role="radiogroup">
+        <button class="br-opt" data-mode="local" role="radio"><b>Lokal</b><span>Gemma auf dem PC · alles bleibt im Haus</span></button>
+        <button class="br-opt" data-mode="auto" role="radio"><b>Automatisch</b><span>Gemma, wenn der PC läuft – sonst Claude</span></button>
+        <button class="br-opt" data-mode="remote" role="radio"><b>Remote</b><span>nur Claude · PC wird geschont</span></button>
+      </div>
+      <div class="br-models" id="brModels" role="radiogroup" aria-label="Claude-Modell"></div>
+      <p class="br-privacy" id="brPrivacy" hidden>Datenschutz: Die Gesprächstexte gehen an Anthropic (USA). Audio bleibt lokal auf nuorb.</p>
+      <p class="br-note muted" id="brNote"></p>
+      <div class="ap-actions">
+        <button class="btn btn-deny" id="brCancel">Abbrechen</button>
+        <button class="btn btn-yes" id="brApply">Umschalten</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Texteingabe -->
+  <div class="sheet-backdrop" id="kbdBackdrop" hidden>
+    <form class="sheet kbd" id="kbdForm" autocomplete="off">
+      <input id="kbdInput" type="text" placeholder="Frag NuOrb …" enterkeyhint="send" maxlength="2000">
+      <button class="btn btn-yes" type="submit">Senden</button>
+    </form>
+  </div>
+
+  <!-- Gerät & Einstellungen -->
+  <div class="sheet-backdrop" id="setBackdrop" hidden>
+    <div class="sheet settings">
+      <h2>Gerät</h2>
+      <div class="dev" id="devBox" hidden>
+        <div class="dev-line" id="devLine">–</div>
+        <div class="dev-tiles">
+          <button class="tile" id="tWifi" data-on="false"><svg viewBox="0 0 24 24" class="ico"><path d="M2 9.5a15 15 0 0 1 20 0M5.5 13a10 10 0 0 1 13 0M9 16.5a5 5 0 0 1 6 0"/><circle cx="12" cy="20" r="1.2"/></svg><b>WLAN</b><span id="tWifiSub">–</span></button>
+          <button class="tile" id="tScreen"><svg viewBox="0 0 24 24" class="ico"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10 18.5h4"/></svg><b>Bildschirm aus</b><span>Tippen weckt</span></button>
+          <button class="tile danger" id="tReboot"><svg viewBox="0 0 24 24" class="ico"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg><b>Neu starten</b><span>mit Bestätigung</span></button>
+          <button class="tile danger" id="tOff"><svg viewBox="0 0 24 24" class="ico"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg><b>Ausschalten</b><span>mit Bestätigung</span></button>
+        </div>
+        <label class="slider"><svg viewBox="0 0 24 24" class="ico"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <input type="range" id="sBright" min="1" max="100" step="1" aria-label="Helligkeit"><span class="mono" id="sBrightV"></span></label>
+        <label class="slider"><button class="mute" id="bMute" aria-label="Stumm"><svg viewBox="0 0 24 24" class="ico"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path class="snd" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/><path class="x" d="M16 9.5l5 5M21 9.5l-5 5"/></svg></button>
+          <input type="range" id="sVol" min="0" max="100" step="1" aria-label="Lautstärke"><span class="mono" id="sVolV"></span></label>
+      </div>
+      <h3 class="set-h">Einstellungen</h3>
+      <label class="row"><span>Sprachausgabe</span><input type="checkbox" id="optVoice" checked></label>
+      <label class="row"><span>Reduzierte Bewegung</span><input type="checkbox" id="optCalm"></label>
+      <label class="row"><span>Signaltöne</span><input type="checkbox" id="optEarcons" checked></label>
+      <label class="row"><span>Mikrofon-Pegelanzeige</span><input type="checkbox" id="optMicviz" checked></label>
+      <div class="row info"><span>Systeme</span><span class="mono" id="sysInfo">–</span></div>
+      <div class="row info" id="privacyRow" hidden><span>Datenschutz</span><span>Remote-Modus: Text geht an Anthropic (Claude), Audio bleibt lokal.</span></div>
+      <button class="btn btn-ghost" id="setClose">Schließen</button>
+    </div>
+  </div>
+
+  <!-- Vollbild-Hinweis bei Neustart/Aus -->
+  <div class="powerveil" id="powerVeil" hidden><div class="pv-orb"></div><p id="powerText"></p></div>
+
+  <div class="toast" id="toast" role="status"></div>
+</div>
+<script src="orb.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

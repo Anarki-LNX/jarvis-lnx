@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NuOrb Mikrofontest</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; padding: 20px 18px 40px 18px; background: #050608; color: #e8f1f5; font: 15px/1.45 system-ui, sans-serif; }
+  h1 { font-size: 20px; margin: 30px 0 6px; } p { color: #9aa8b2; margin: 0 0 14px; }
+  button { display: block; width: 100%; min-height: 58px; margin: 10px 0; border-radius: 14px; border: 1px solid rgba(130,220,255,.3);
+    background: #0f1a20; color: #e8f1f5; font: 600 15px system-ui; text-align: left; padding: 10px 14px; }
+  button:disabled { opacity: .4; } button small { display: block; font-weight: 400; color: #9aa8b2; }
+  #log { margin-top: 16px; padding: 12px; border-radius: 12px; background: #0b0f13; font: 12.5px ui-monospace, monospace; white-space: pre-wrap; min-height: 120px; }
+  .lvl { height: 8px; border-radius: 4px; background: #38d9ff; width: 0; transition: width .08s; }
+</style>
+</head>
+<body>
+<h1>Mikrofontest (Rückkopplung)</h1>
+<p>Taste tippen, 4 Sekunden lang „eins, zwei, drei“ sagen, auf den Lautsprecher achten. Notieren, bei welcher Taste die eigene Stimme zu hören ist. Taste E muss hörbar sein (Gegenprobe).</p>
+<button data-t="A">A · nur Mikrofon öffnen<small>getUserMedia, Echo-Unterdrückung an</small></button>
+<button data-t="B">B · nur Mikrofon öffnen, ohne Filter<small>getUserMedia, echoCancellation/noiseSuppression aus</small></button>
+<button data-t="C">C · Mikrofon + MediaRecorder<small>wie die App beim Aufnehmen, ohne Pegelanzeige</small></button>
+<button data-t="D">D · Mikrofon + AudioContext-Pegel<small>MediaStreamSource → Analyser, NICHT an den Lautsprecher angeschlossen</small></button>
+<button data-t="E">E · Gegenprobe: Aufnahme abspielen<small>nimmt 3 s auf und spielt sie danach absichtlich ab</small></button>
+<div class="lvl" id="lvl"></div>
+<div id="log"></div>
+<script>
+"use strict";
+const log = (m) => { const l = document.getElementById("log"); l.textContent = `${new Date().toLocaleTimeString("de-DE")} ${m}\n` + l.textContent; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const lvlEl = document.getElementById("lvl");
+log("Browser: " + navigator.userAgent);
+async function run(t) {
+  document.querySelectorAll("button").forEach((b) => (b.disabled = true));
+  let stream, ac, mr, raf;
+  try {
+    const filt = t !== "B";
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: filt, noiseSuppression: filt, autoGainControl: filt, channelCount: 1 } });
+    const tr = stream.getAudioTracks()[0];
+    log(`${t}: Mikrofon offen – ${tr.label || "?"} ${JSON.stringify(tr.getSettings())}`);
+    const chunks = [];
+    if (t === "C" || t === "E") { mr = new MediaRecorder(stream); mr.ondataavailable = (e) => e.data.size && chunks.push(e.data); mr.start(250); log(`${t}: MediaRecorder läuft (${mr.mimeType})`); }
+    if (t === "D") {
+      ac = new AudioContext(); const an = ac.createAnalyser(); ac.createMediaStreamSource(stream).connect(an);
+      const buf = new Uint8Array(512);
+      const loop = () => { an.getByteTimeDomainData(buf); let s = 0; for (const v of buf) s += ((v - 128) / 128) ** 2; lvlEl.style.width = Math.min(100, Math.sqrt(s / buf.length) * 450) + "%"; raf = requestAnimationFrame(loop); };
+      loop(); log("D: Analyser läuft (kein destination-Anschluss)");
+    }
+    await sleep(t === "E" ? 3000 : 4000);
+    if (mr) { await new Promise((r) => { mr.onstop = r; mr.stop(); }); }
+    stream.getTracks().forEach((x) => x.stop()); stream = null;
+    if (t === "E") {
+      const url = URL.createObjectURL(new Blob(chunks, { type: mr.mimeType })); const a = new Audio(url);
+      log("E: spiele Aufnahme ab …"); await a.play(); await new Promise((r) => (a.onended = r));
+    }
+    log(`${t}: fertig – eigene Stimme gehört? (bei E: ja erwartet)`);
+  } catch (e) { log(`${t}: FEHLER ${e.name}: ${e.message}`); }
+  finally {
+    if (raf) cancelAnimationFrame(raf); lvlEl.style.width = "0";
+    if (stream) stream.getTracks().forEach((x) => x.stop());
+    if (ac) ac.close();
+    document.querySelectorAll("button").forEach((b) => (b.disabled = false));
+  }
+}
+document.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => run(b.dataset.t)));
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+/* NuOrb-Orb: CSS-Fallback + Zustandsfarben. Braucht tokens.css. Markup:
+   <div data-orb="css" data-state="idle"> … <div class="orb-wrap"><div class="orb-css">…</div><canvas id="orb"></canvas></div> */
+/* Letzter Fallback ohne WebGL/Canvas: CSS-Orb. Sichtbar, bis der Canvas-Selbsttest bestanden ist. */
+.orb-css { position: absolute; inset: 0; --c: 56, 217, 255; --lvl: 0; }
+[data-orb="canvas"] .orb-css { display: none; }
+[data-orb="css"] #orb { visibility: hidden; }
+[data-state="thinking"] .orb-css, [data-state="transcribing"] .orb-css { --c: 120, 160, 255; }
+[data-state="offline"] .orb-css { --c: 110, 120, 130; }
+[data-state="error"] .orb-css { --c: 255, 181, 71; }
+.oc-core {
+  position: absolute; inset: 25%; border-radius: 50%;
+  background: radial-gradient(circle at 50% 38%, rgba(var(--c), .35), rgba(2, 14, 20, .96) 62%, rgba(var(--c), .55) 92%, rgba(var(--c), .95) 100%);
+  box-shadow: 0 0 0 1.5px rgba(var(--c), .9), 0 0 28px rgba(var(--c), .45), inset 0 0 30px rgba(var(--c), .25);
+  transform: scale(calc(1 + var(--lvl) * .12)); transition: transform .08s linear, box-shadow .4s;
+  animation: oc-breathe 4.5s ease-in-out infinite;
+}
+.oc-glow { position: absolute; inset: 12%; border-radius: 50%; background: radial-gradient(circle, rgba(var(--c), .22), transparent 68%); opacity: calc(.6 + var(--lvl)); }
+.oc-ring { position: absolute; border-radius: 50%; border: 1px solid rgba(var(--c), .22); }
+.oc-ring.r1 { inset: 11%; border-style: dashed; animation: oc-spin 40s linear infinite; }
+.oc-ring.r2 { inset: 6%; border-color: transparent; border-top-color: rgba(var(--c), .75); animation: oc-spin 9s linear infinite; }
+[data-state="thinking"] .oc-ring.r2, [data-state="transcribing"] .oc-ring.r2 { animation-duration: 1.4s; }
+[data-state="listening"] .oc-ring.r2 { animation-duration: 3s; border-right-color: rgba(var(--c), .5); }
+[data-state="offline"] .oc-core { animation: none; box-shadow: 0 0 0 1px rgba(var(--c), .6); }
+@keyframes oc-breathe { 50% { filter: brightness(1.18); } }
+@keyframes oc-spin { to { transform: rotate(360deg); } }

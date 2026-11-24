@@ -1,0 +1,37 @@
+[Unit]
+Description=NuOrb Web-Oberflaeche (HTTPS :8443, nur LAN)
+After=network-online.target nuorb-stt-router.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nuorb
+Group=nuorb
+WorkingDirectory=/home/nuorb/nuorb-ui
+ExecStart=/home/nuorb/nuorb-ui/venv/bin/python -I /home/nuorb/nuorb-ui/server.py
+Restart=on-failure
+RestartSec=3
+Environment=UI_PORT=8443
+# demo = simulierte Antworten ohne LLM (Standard, solange Hermes-Runs pausiert sind); live = echte Hermes-Runs
+Environment=NUORB_MODE=live
+# Replace with the address of the PC running Ollama (see config.env.example)
+Environment=OLLAMA_HOST=OLLAMA_HOST
+Environment=PYTHONUNBUFFERED=1
+# onnxruntime (Piper) soll nichts nach Hause senden
+Environment=ORT_DISABLE_TELEMETRY=1
+# Haertung
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/nuorb/nuorb-ui
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=1G
+
+[Install]
+WantedBy=multi-user.target

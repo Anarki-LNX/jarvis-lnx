@@ -1,0 +1,35 @@
+# XIAOMI REBIRTH / NuOrb: STT-Router (Parakeet CPU, optional PC-Weiterleitung)
+# Installation (als root in LXC 100):
+#   install -m 644 sprache-stt-router.service /etc/systemd/system/nuorb-stt-router.service
+#   systemctl daemon-reload && systemctl enable --now nuorb-stt-router
+# PC-GPU spaeter: Environment=PC_STT_URL=http://<PC-IP>:8177/v1/audio/transcriptions eintragen.
+[Unit]
+Description=NuOrb STT-Router (Parakeet-TDT-0.6B-v3 int8, OpenAI-kompatibel)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nuorb
+Group=nuorb
+WorkingDirectory=/home/nuorb/sprache
+ExecStart=/home/nuorb/sprache/venv/bin/python -I /home/nuorb/sprache/sprache-stt-router.py
+Environment=STT_ROUTER_HOST=127.0.0.1
+Environment=STT_ROUTER_PORT=8178
+#Environment=PC_STT_URL=
+Restart=on-failure
+RestartSec=3
+Nice=-2
+# Haertung
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/nuorb/sprache
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=2G
+
+[Install]
+WantedBy=multi-user.target

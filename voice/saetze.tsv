@@ -1,0 +1,1001 @@
+id	text	quelle	sek	kum_min
+0001	Im Bett ging ihr alles noch mal durch den Kopf.	cv-sentence-collector	4.0	0.1
+0002	Eure Ansprüche sind zu hoch.	cv-sentence-collector	2.6	0.1
+0003	Keine Ahnung, warum ich jetzt über Körperpflege schreibe.	cv-sentence-collector	4.7	0.2
+0004	Behörden sollten sich unabhängig machen von ausländischen Software-Herstellern.	cv-sentence-collector	6.2	0.3
+0005	Nur die Volksrepublik China hat ein noch größeres Parlament als Deutschland.	cv-sentence-collector	6.0	0.4
+0006	Gottlob regnet es seit Tagen immer wieder.	cv-sentence-collector	3.6	0.5
+0007	Mein Drucker braucht ein Firmware Update.	cv-sentence-collector	3.5	0.5
+0008	Guten Morgen! Es ist sieben Uhr fünfzehn, draußen sind es drei Grad und es bleibt trocken.	eigen	7.0	0.6
+0009	Der Airbag habe nicht funktioniert.	cv-sentence-collector	3.1	0.7
+0010	Ihre Atmosphäre besteht hauptsächlich aus Kohlenstoffdioxid.	cv-sentence-collector	4.9	0.8
+0011	Zum Glück war das Testergebnis negativ.	cv-sentence-collector	3.4	0.8
+0012	In Warschau fand Marianne das perfekte Restaurant.	cv-sentence-collector	4.2	0.9
+0013	In Holzminden oder Wilhelmshaven müsste man leben.	cv-sentence-collector	4.2	1.0
+0014	Welcher Feuerlöscher ist der richtige für diesen Brand?	cv-sentence-collector	4.5	1.0
+0015	Durch die häufigen Unterbrechungen seiner Jobs kam er nie auf einen grünen Zweig.	cv-sentence-collector	6.4	1.1
+0016	Guten Abend. Soll ich das Licht im Wohnzimmer etwas dunkler machen?	eigen	5.4	1.2
+0017	Viele stehen einer Organspende skeptisch gegenüber.	cv-sentence-collector	4.2	1.3
+0018	Wer kommt bei Frau Sturm und Herrn Neumann persönlich vorbei?	cv-sentence-collector	5.0	1.4
+0019	Austragung des Pokalwettbewerbs der Männer im württembergischen Amateurfußball.	cv-wiki	6.2	1.5
+0020	Die Saalkirche wurde aus Quadermauerwerk gebaut.	cv-wiki	4.0	1.6
+0021	Hilfst du mir bitte beim Kartoffeln schälen?	cv-sentence-collector	3.7	1.6
+0022	Der Airbus A-Drei-Achtzig ist das größte Passagierflugzeug der Welt.	cv-sentence-collector	5.5	1.7
+0023	Die Gesundheitsämter sind komplett überfordert.	cv-sentence-collector	4.0	1.8
+0024	Alles klar, ich habe das Licht in der Küche eingeschaltet.	eigen	4.7	1.9
+0025	Künstler bekommen in unserer Gesellschaft übertrieben viel Aufmerksamkeit.	cv-sentence-collector	5.9	1.9
+0026	Der erfolgreiche Blogger öffnet seine Fanpost.	cv-sentence-collector	3.9	2.0
+0027	Gestern ist unsere Waschmaschine kaputt gegangen.	cv-sentence-collector	4.1	2.1
+0028	Es sei denn natürlich, sie gehören zur Fallschirmspringer-Division.	cv-sentence-collector	5.4	2.2
+0029	Welche Add-ons nutzt du für Firefox?	cv-sentence-collector	3.2	2.2
+0030	Oldenburg gibt es sowohl in Holstein, als auch in Niedersachsen.	cv-sentence-collector	5.2	2.3
+0031	Schließlich zog er endgültig nach Spanien.	cv-wiki	3.6	2.4
+0032	Das Licht im Flur ist jetzt aus.	eigen	2.9	2.4
+0033	Moment, ich muss Kirsten noch kurz verabschieden.	cv-sentence-collector	4.1	2.5
+0034	Ursprünglich schrieb nur Dave Grohl die Songs.	cv-wiki	3.9	2.6
+0035	Woher kennt man das Ensemble?	cv-sentence-collector	2.7	2.6
+0036	Nachbar Benz rollt mit dem Rasenmäher übers Kabel.	cv-sentence-collector	4.2	2.7
+0037	Puh, das Quiz ist schwer!	cv-sentence-collector	2.4	2.7
+0038	Jetzt neu in Köln: Olga und Fatima.	cv-sentence-collector	3.1	2.8
+0039	Wann begann der erste Lockdown in Frühjahr?	cv-sentence-collector	3.7	2.8
+0040	Die Heizung im Schlafzimmer steht jetzt auf einundzwanzig Grad.	eigen	5.1	2.9
+0041	Joseph Schwartz studierte Bauingenieurwesen an der Eidgenössischen Technischen Hochschule Zürich.	cv-wiki	7.5	3.0
+0042	Künftig möchte sie nur noch T-Shirts aus einhundert Prozent Baumwolle kaufen.	cv-sentence-collector	6.1	3.1
+0043	Für Online-Banking ist der Tor-Browser eine schlechte Wahl.	cv-sentence-collector	4.8	3.2
+0044	Also ich bin schon erschöpft.	cv-sentence-collector	2.7	3.3
+0045	Ihre Kinder sind bilingual aufgewachsen.	cv-sentence-collector	3.5	3.3
+0046	Lorenzo mag J-Pop, so nennt man Popmusik aus Japan.	cv-sentence-collector	4.2	3.4
+0047	Daraufhin wurde es Melanie Büttner zu bunt.	cv-sentence-collector	3.7	3.4
+0048	Erledigt. Ich erinnere dich morgen um halb neun an den Termin.	eigen	5.0	3.5
+0049	Suche mir die schnellste Verbindung von Ludwigslust nach Saarbrücken heraus.	cv-sentence-collector	6.0	3.6
+0050	Es bestehen jedoch am Obergeschoss umfangreiche Elemente in Fachwerkbauweise.	cv-wiki	6.1	3.7
+0051	Nö, das können die ruhig mitbekommen.	cv-sentence-collector	3.2	3.8
+0052	Manche Songs lassen sich unmöglich einem Genre zuordnen.	cv-sentence-collector	4.6	3.9
+0053	Ist die Geldbörse wieder verrutscht?	cv-sentence-collector	3.2	3.9
+0054	Seine Karriere musste er verletzungsbedingt beenden.	cv-wiki	4.3	4.0
+0055	Ich gehe nachher noch zum Döner.	cv-sentence-collector	2.9	4.0
+0056	Ich habe dir eine Erinnerung für Donnerstag um vierzehn Uhr dreißig eingetragen.	eigen	6.3	4.1
+0057	Abgeschlossen wird das Pfarrhaus durch ein Krüppelwalmdach.	cv-wiki	4.8	4.2
+0058	Neulich ist mein Staubsauger explodiert.	cv-sentence-collector	3.5	4.3
+0059	Es war völlig unklar, wer dieses Chaos verursacht haben könnte.	cv-sentence-collector	5.1	4.4
+0060	Felix Kummer ist ein deutscher Sänger und Rapper aus Chemnitz.	cv-sentence-collector	5.0	4.4
+0061	Ich habe Sarah mit einem Rätsel beschäftigt.	cv-sentence-collector	3.7	4.5
+0062	Die vielen Schulbücher sind total unnötig.	cv-sentence-collector	3.6	4.6
+0063	Nach zwei Jahren wollte George wieder in die Vereinigten Staaten zurückkehren.	cv-sentence-collector	6.2	4.7
+0064	Dein nächster Termin ist heute Nachmittag um vier beim Zahnarzt.	eigen	5.2	4.8
+0065	Seit zwei Stunden schon dümpelt der Download vor sich hin.	cv-sentence-collector	4.7	4.8
+0066	Das bin ich euch schuldig.	cv-sentence-collector	2.5	4.9
+0067	Dieser hier ist dir persönlich gewidmet.	cv-sentence-collector	3.5	4.9
+0068	Trotzdem macht Björn gern in Schweden Urlaub.	cv-sentence-collector	3.8	5.0
+0069	Margot Berger wuchs im Osnabrücker Land auf.	cv-wiki	3.7	5.1
+0070	Das mittlere zweigeschossige Hauptgebäude ist das ehemalige Wohngebäude der Mühle.	cv-wiki	6.5	5.2
+0071	Nur gute Schauspieler können mit der Körpersprache lügen.	cv-sentence-collector	4.7	5.2
+0072	Heute hast du keine weiteren Termine mehr.	eigen	3.6	5.3
+0073	Es wurde der heiligen Jungfrau Maria geweiht.	cv-wiki	3.8	5.4
+0074	Pegasus ist die lateinische Schreibweise, Pegasos die griechische.	cv-sentence-collector	5.3	5.5
+0075	All die Vorwürfe sind konstruiert.	cv-sentence-collector	3.0	5.5
+0076	Der in Liverpool geborene Edwards begann seine Karriere bei den Blackburn Rovers.	cv-wiki	6.4	5.6
+0077	Die Ausstattung ist diesmal üppig.	cv-sentence-collector	3.0	5.7
+0078	Brauchen Zugvögel das Magnetfeld der Erde zur Orientierung?	cv-sentence-collector	4.8	5.7
+0079	Die Donau fließt durch Österreich.	cv-sentence-collector	3.0	5.8
+0080	Morgen wird es sonnig bei bis zu achtzehn Grad, am Abend zieht leichter Regen auf.	eigen	6.5	5.9
+0081	Er unterrichtet in Workshops für Amateure Gruppen und Einzelpersonen.	cv-wiki	5.5	6.0
+0082	Der Trip nach Paris war toll.	cv-sentence-collector	2.7	6.0
+0083	Spionage gibt es heute wie damals.	cv-sentence-collector	3.0	6.1
+0084	Duke of Leeds verheiratet war.	cv-wiki	2.7	6.1
+0085	Möchtest du Toast oder Brötchen zum Frühstück?	cv-sentence-collector	3.9	6.2
+0086	Nachdenklich zog er an seiner Pfeife.	cv-sentence-collector	3.2	6.3
+0087	Roger Freeman wurde ihr Nachfolger.	cv-wiki	3.1	6.3
+0088	In Berlin regnet es gerade, und der Wind kommt mit dreißig Kilometern pro Stunde aus Westen.	eigen	7.2	6.4
+0089	Leo Meier wuchs in Duisburg auf.	cv-wiki	2.9	6.5
+0090	Rödlmühle kam zum Steuerdistrikt Wolfsbach.	cv-wiki	3.7	6.5
+0091	Es gab Haferflocken mit Blaubeeren.	cv-sentence-collector	3.1	6.6
+0092	Es wurden absichtlich unauffällig aussehende Personen ausgesucht.	cv-sentence-collector	5.2	6.7
+0093	Einer ihrer Schüler war Juri Slotja.	cv-wiki	3.2	6.7
+0094	Das Portal befindet sich an der Südseite des Langhauses.	cv-wiki	4.6	6.8
+0095	Der Frosch sitzt im Wasser.	cv-sentence-collector	2.5	6.8
+0096	Am Wochenende soll es kalt werden, nachts bis zu minus fünf Grad.	eigen	5.2	6.9
+0097	Möglicherweise stand hier eine zerstörte Grabkammer.	cv-wiki	4.3	7.0
+0098	Nicken und Kopfschütteln werden auch als Antwort akzeptiert.	cv-sentence-collector	4.9	7.1
+0099	Erika verschaffte Markus einige Entlastung im Job.	cv-sentence-collector	4.2	7.2
+0100	Ein bisschen Recherche kann dabei manchmal helfen.	cv-sentence-collector	4.2	7.2
+0101	In der Metropolregion leben gut vier Millionen Menschen.	cv-sentence-collector	4.6	7.3
+0102	Die Sammlung ist kostenlos auf seiner Website verfügbar.	cv-wiki	4.6	7.4
+0103	Der Zorn der Götter soll dich treffen!	cv-sentence-collector	3.3	7.4
+0104	Die Luftfeuchtigkeit im Bad liegt bei achtundsechzig Prozent. Lüften wäre eine gute Idee.	eigen	7.0	7.6
+0105	Dazu müsste man allerdings Korruption und Armut wirksam bekämpfen.	cv-sentence-collector	5.3	7.6
+0106	Der Flughafen Berlin-Brandenburg wird morgen eröffnet!	cv-sentence-collector	4.5	7.7
+0107	Die Schule bildet Ingenieure in Chemie aus.	cv-wiki	3.7	7.8
+0108	Dafür kann Joachim es umso besser.	cv-sentence-collector	3.0	7.8
+0109	Windischgarsten ist eine Marktgemeinde in Oberösterreich im Süden des Bezirks Kirchdorf.	cv-sentence-collector	6.9	7.9
+0110	Die amerikanische Regierung versucht die Verwendung von Hardware von Huawei zu verhindern.	cv-sentence-collector	7.0	8.1
+0111	Woher kennst du all diese bösen Wörter?	cv-sentence-collector	3.4	8.1
+0112	Das habe ich leider nicht verstanden. Kannst du das bitte noch einmal sagen?	eigen	6.0	8.2
+0113	Rieche ich noch nach Knoblauch?	cv-sentence-collector	2.8	8.3
+0114	Möchtest du auch einen Schluck Kakao?	cv-sentence-collector	3.2	8.3
+0115	Wie lange läuft König der Löwen jetzt schon in Hamburg?	cv-sentence-collector	4.5	8.4
+0116	Ich glaube, ihr redet aneinander vorbei.	cv-sentence-collector	3.5	8.4
+0117	Deshalb nützt der eigene Scheinwerfer leider gar nichts.	cv-sentence-collector	4.6	8.5
+0118	Es besteht überhaupt kein Zeitdruck.	cv-sentence-collector	3.2	8.6
+0119	Hast du meine Sprachnachricht angehört?	cv-sentence-collector	3.4	8.6
+0120	Entschuldige, dazu habe ich gerade keine Verbindung.	eigen	4.3	8.7
+0121	Pro Wurf bringt ein Weibchen fünf bis zehn Junge zur Welt.	cv-sentence-collector	4.7	8.8
+0122	Kannst du den Geschirrspüler ausräumen?	cv-sentence-collector	3.4	8.8
+0123	Wollen Sie das Müsli mit Milch oder mit Joghurt?	cv-sentence-collector	4.0	8.9
+0124	Vor dem Spiegel kann man sein Charisma-Level erhöhen.	cv-sentence-collector	4.4	9.0
+0125	Beide Fabrikgebäude stehen heute unter Denkmalschutz.	cv-wiki	4.4	9.1
+0126	Lokführer war früher ein Traumberuf.	cv-sentence-collector	3.2	9.1
+0127	Das Straßennetz wurde teils neu geordnet.	cv-wiki	3.5	9.2
+0128	Einen Moment bitte, ich schaue kurz nach.	eigen	3.5	9.2
+0129	Es ist zu Fuß erreichbar.	cv-wiki	2.4	9.3
+0130	Angebot schafft Nachfrage und umgekehrt.	cv-sentence-collector	3.5	9.3
+0131	Er gehörte fortan mit dem nördlichen Ostpreußen zur Sowjetunion.	cv-wiki	5.2	9.4
+0132	Am Flugplatz findet ausschließlich Flugbetrieb mit Segelflugzeugen statt.	cv-wiki	5.8	9.5
+0133	Mir geht es gut. Kümmere dich um Alexa!	cv-sentence-collector	3.4	9.6
+0134	Ja, ich mag auch die Hochhäuser.	cv-sentence-collector	2.9	9.6
+0135	Archäologisch nachweisbar sind zwei Löcher in der Mitte des Hügels.	cv-wiki	5.4	9.7
+0136	Ich bin mir nicht ganz sicher. Meinst du die Lampe im Wohnzimmer oder im Arbeitszimmer?	eigen	6.8	9.8
+0137	Im besten Fall noch jünger.	cv-sentence-collector	2.5	9.9
+0138	Er hinterließ keine Ehefrau oder Nachkommen.	cv-wiki	3.7	9.9
+0139	Mit Inter stieg er zu Saisonende aus der höchsten Spielklasse ab.	cv-wiki	5.2	10.0
+0140	Die Turbine generiert Strom aus der Wasserkraft.	cv-sentence-collector	4.0	10.1
+0141	Das Schlimmste an allem ist die Gleichgültigkeit.	cv-sentence-collector	4.1	10.1
+0142	Wo kommt denn der Joint her?	cv-sentence-collector	2.6	10.2
+0143	Mein Favorit wurde nicht einmal nominiert.	cv-sentence-collector	3.6	10.2
+0144	Okay, ich höre zu.	eigen	1.9	10.3
+0145	Obwohl ich sie attraktiv finde, bekomme ich keine Erektion.	cv-sentence-collector	4.8	10.4
+0146	Solche Erlebnisse gehen ganz schön an die Substanz.	cv-sentence-collector	4.2	10.4
+0147	Ali Baba und seine Räuber.	cv-sentence-collector	2.5	10.5
+0148	Der leicht eingezogene dreijochige spätgotische Chor mit einem Dreiachtelschluss hat ein Sternrippengewölbe.	cv-wiki	8.3	10.6
+0149	Halten Akkus im Kühlschrank länger?	cv-sentence-collector	3.1	10.7
+0150	Das Dachgeschoss ist als Mansardwalmdach ausgeführt.	cv-wiki	4.3	10.7
+0151	Ich bedaure diesen armen Wurm.	cv-sentence-collector	2.7	10.8
+0152	Gerne doch!	eigen	1.4	10.8
+0153	Die Fenster und die Eingangstür sind segmentbogig abgeschlossen.	cv-wiki	5.2	10.9
+0154	Zwischen den Strophen kommt der Refrain.	cv-sentence-collector	3.5	10.9
+0155	Deinen Stoffwechsel finde ich immer wieder beeindruckend.	cv-sentence-collector	4.7	11.0
+0156	Klar, die Enttäuschung ist groß.	cv-sentence-collector	2.9	11.1
+0157	Geburtstag an Tuberkulose in Verona.	cv-wiki	3.2	11.1
+0158	Es existiert ein Parkplatz an der Hütte.	cv-wiki	3.5	11.2
+0159	Ein Taucher muss nachsehen, wo es klemmt.	cv-sentence-collector	3.5	11.2
+0160	Kein Problem, das mache ich sofort.	eigen	3.1	11.3
+0161	Tatsächlich dürfte seine Einführung jedoch schon im Magdeburger Dom stattgefunden haben.	cv-wiki	6.9	11.4
+0162	Nachdem Sie das Spiel gestartet haben, gelangen Sie in den Login-Bildschirm.	cv-sentence-collector	6.0	11.5
+0163	Wird mit dem nächsten Update alles besser?	cv-sentence-collector	3.6	11.6
+0164	Hier sehen Sie den Querschnitt einer herkömmlichen Batterie.	cv-sentence-collector	4.9	11.6
+0165	Die Güter der Familie lagen in und um Bocholt.	cv-wiki	3.9	11.7
+0166	Die Band erreichte zum neunten Mal die österreichischen Albumcharts.	cv-wiki	5.5	11.8
+0167	Williams ist mütterlicherseits französischer Abstammung.	cv-wiki	4.6	11.9
+0168	Bist du sicher, dass ich alle Lichter ausschalten soll?	eigen	4.5	12.0
+0169	Der Düsseldorfer Oberbürgermeister Bruno Recht nahm an ihrer Beerdigung teil.	cv-wiki	6.1	12.1
+0170	Tja, ich habe dich durchschaut!	cv-sentence-collector	2.8	12.1
+0171	Zum Glück nur ein kleiner Blechschaden.	cv-sentence-collector	3.4	12.2
+0172	Er handelt von häuslicher Gewalt im bürgerlichen Milieu.	cv-wiki	4.6	12.2
+0173	Am Golfplatz wird der Wanderweg zum Pfad.	cv-sentence-collector	3.5	12.3
+0174	Aber die Landschaft ist schön.	cv-sentence-collector	2.7	12.3
+0175	Ein Wiederaufbau wurde einstimmig beschlossen.	cv-wiki	3.9	12.4
+0176	Die Haustür ist abgeschlossen, und alle Fenster sind zu.	eigen	4.6	12.5
+0177	Die Bedingungen haben sich geändert.	cv-sentence-collector	3.2	12.5
+0178	Heute befinden sich die Objekte im British Museum in London.	cv-wiki	4.9	12.6
+0179	Oh, die Waschmaschine ist kaputt.	cv-sentence-collector	3.0	12.7
+0180	Kreta ist ein beliebtes Ausflugsziel.	cv-sentence-collector	3.2	12.7
+0181	Sergej wartet heute noch auf die Rückerstattung.	cv-sentence-collector	4.0	12.8
+0182	Weißt du überhaupt, warum wir jedes Jahr Weihnachten feiern?	cv-sentence-collector	4.9	12.9
+0183	Beine und Zehen sind matt olivgrün bis gelbgrün.	cv-wiki	4.0	12.9
+0184	Achtung, das Fenster im Kinderzimmer ist noch offen.	eigen	4.3	13.0
+0185	Bis wann ist die Post geöffnet?	cv-sentence-collector	2.8	13.1
+0186	Es ist eine Abkürzung aus vier Buchstaben.	cv-sentence-collector	3.6	13.1
+0187	Seid ihr alle im Fitnessstudio angemeldet?	cv-sentence-collector	3.6	13.2
+0188	Freie Hardware und freie Software für alle!	cv-sentence-collector	3.7	13.2
+0189	Das Sekretariat ist derzeit nur sporadisch besetzt.	cv-sentence-collector	4.2	13.3
+0190	Wissen schützt vor Dummheit nicht.	cv-sentence-collector	3.0	13.4
+0191	Gestern stand in diesem Hangar noch ein Flugzeug.	cv-sentence-collector	4.1	13.4
+0192	Die Waschmaschine ist fertig.	eigen	2.7	13.5
+0193	Pünktlich um vier wird Feierabend gemacht.	cv-sentence-collector	3.6	13.5
+0194	Nee, die Schere ist im Kopf.	cv-sentence-collector	2.6	13.6
+0195	Wer fuchtelt da beim Vorlesen schon wieder mit einem Stöckchen herum?	cv-sentence-collector	5.5	13.7
+0196	Sie engagierte sich im Freundeskreis Ravensbrück.	cv-wiki	4.1	13.7
+0197	Die Leute mit Knopf im Ohr werden alle ferngesteuert.	cv-sentence-collector	4.4	13.8
+0198	Ich will Bratwurst vom Grill.	cv-sentence-collector	2.7	13.9
+0199	Von Videospielen haben öffentlich-rechtliche Medien noch immer wenig Ahnung.	cv-sentence-collector	6.0	14.0
+0200	Der Akku deines Handys ist nur noch zu zwölf Prozent geladen.	eigen	5.0	14.0
+0201	Der Wagen rollt unaufhaltsam aufs Gebüsch zu.	cv-sentence-collector	3.8	14.1
+0202	Allein schon wegen der Aufmachung.	cv-sentence-collector	3.0	14.1
+0203	Mädchen, was machst du da?	cv-sentence-collector	2.5	14.2
+0204	Das folgende Stadion wurden als Austragungsort ausgewählt.	cv-wiki	4.7	14.3
+0205	Wollen Sie meine fachliche Empfehlung hören?	cv-sentence-collector	3.7	14.3
+0206	Ich zahle doch keine fünf Euro für einen Espresso!	cv-sentence-collector	4.2	14.4
+0207	Gleichwohl blieb die preußische Garnison in Luxemburg vorerst weiter bestehen.	cv-wiki	6.2	14.5
+0208	Der Timer für die Nudeln läuft. Noch neun Minuten.	eigen	4.2	14.6
+0209	An welche Neuerungen denken Sie?	cv-sentence-collector	2.9	14.6
+0210	Wright ging nach der Saison in die Vereinigten Staaten zurück.	cv-wiki	5.0	14.7
+0211	Im Damendoppel startete sie wie bei der Weltmeisterschaft zuvor mit ihrer Landsfrau Daria Bujnicka.	cv-wiki	7.7	14.8
+0212	Gibt es etwa gute Neuigkeiten?	cv-sentence-collector	2.7	14.9
+0213	Außerdem ist er als Produzent und Songwriter tätig.	cv-wiki	4.2	14.9
+0214	Auch tagsüber sollte man sich Zeit zum Träumen nehmen.	cv-sentence-collector	4.5	15.0
+0215	Er verjüngt sich im hinteren Bereich.	cv-wiki	3.2	15.1
+0216	Dein Timer ist abgelaufen!	eigen	2.5	15.1
+0217	Sie musste sogar auf die Intensivstation.	cv-sentence-collector	3.5	15.2
+0218	Er bekleidete die Positionen des Line Judge und Side Judge.	cv-wiki	4.8	15.3
+0219	Windows konnte noch nie richtig mit Festplatten umgehen.	cv-sentence-collector	4.6	15.3
+0220	Die geohrten Fenster sind segmentbogig verdacht.	cv-wiki	4.0	15.4
+0221	Ingolf hatte das Bild auf Instagram gepostet.	cv-sentence-collector	3.8	15.5
+0222	Für die Menschheit besteht wieder Hoffnung!	cv-sentence-collector	3.7	15.5
+0223	Er nahm am Senior Bowl teil.	cv-wiki	2.6	15.6
+0224	Ich habe Milch, Eier und Butter auf die Einkaufsliste gesetzt.	eigen	5.0	15.7
+0225	Vordere und hintere Nasenöffnungen sind extrem klein und unterschiedlich.	cv-wiki	5.8	15.8
+0226	Wie es scheint, hat Mozilla sein Highspeed-Datenvolumen aufgebraucht.	cv-sentence-collector	5.5	15.8
+0227	Dort löste der den bisherigen Stammtorhüter Hartmut Neuhaus ab.	cv-wiki	5.1	15.9
+0228	Die Stiftung finanziert technisches Equipment für die medizinische Fakultät der Universität Sarajevo.	cv-wiki	7.8	16.1
+0229	Nun ist sie fort, spurlos verschwunden.	cv-sentence-collector	3.4	16.1
+0230	Wer ist eigentlich dieser Ingo?	cv-sentence-collector	2.8	16.2
+0231	Ach Malte, gestern ging es noch.	cv-sentence-collector	2.9	16.2
+0232	Auf deiner Einkaufsliste stehen noch Brot, Äpfel und Kaffee.	eigen	4.9	16.3
+0233	Wie vielfach üblich hatte die Dorfkirche ursprünglich keinen Turm.	cv-wiki	5.3	16.4
+0234	Schon die Annahme einer Powerbank ist Korruption.	cv-sentence-collector	4.1	16.4
+0235	Sie stehen in der Garage.	cv-sentence-collector	2.4	16.5
+0236	Julia, nun pöbel doch nicht gleich wieder!	cv-sentence-collector	3.6	16.5
+0237	Lehrers Kinder, Pfarrers Vieh, gedeihen selten oder nie.	cv-sentence-collector	4.6	16.6
+0238	Jüdische Friedhöfe werden für die Ewigkeit gebaut.	cv-sentence-collector	4.2	16.7
+0239	Dort hättest du nicht links abbiegen dürfen.	cv-sentence-collector	3.7	16.8
+0240	Die nächste Bahn nach Hamburg fährt um zehn Uhr zweiundvierzig von Gleis sieben.	eigen	6.3	16.9
+0241	Sogar die Polizei ist genervt von ihm.	cv-sentence-collector	3.3	16.9
+0242	Mein Laptop von Dell hat mehr als zweitausend Euro gekostet.	cv-sentence-collector	4.9	17.0
+0243	Noch ist die Software im Beta-Stadium.	cv-sentence-collector	3.3	17.1
+0244	Ein seriöser Verkäufer drängt seinen Kunden nicht.	cv-sentence-collector	4.2	17.1
+0245	Wie tief mag das Wasser bei der Boje sein?	cv-sentence-collector	3.6	17.2
+0246	Mit seinem Statement hat er ungewollt Aufsehen erregt.	cv-sentence-collector	4.5	17.3
+0247	Der erste Trailer wurde kurz zuvor vorgestellt.	cv-wiki	4.0	17.3
+0248	Bis München sind es ungefähr sechshundert Kilometer, mit dem Auto etwa sechs Stunden.	eigen	6.7	17.4
+0249	Aber im Gegensatz zu Herrn Wegener hat er Charisma.	cv-sentence-collector	4.2	17.5
+0250	Pinguine sind voll die guten Vögel.	cv-sentence-collector	3.1	17.6
+0251	Setzen Sie mehrere Feuerlöscher gleichzeitig ein, statt nacheinander!	cv-sentence-collector	5.5	17.6
+0252	Kurz darauf begann Russland die Invasion in der Ukraine.	cv-wiki	4.6	17.7
+0253	Die Augen wiederum erscheinen klein.	cv-wiki	3.2	17.8
+0254	Mehrere Songs dieses Albums können von seiner offiziellen Website heruntergeladen werden.	cv-wiki	7.0	17.9
+0255	Geübte Nutzer verwenden die Tastaturkürzel.	cv-sentence-collector	3.7	18.0
+0256	Auf der Autobahn gibt es gerade einen Stau von vier Kilometern.	eigen	5.1	18.0
+0257	Das Schiffchen oft fast weiß.	cv-wiki	2.7	18.1
+0258	Was genau tut Kaja da eigentlich?	cv-sentence-collector	3.0	18.1
+0259	Östlich befindet sich der Friedhof der Aldeia.	cv-wiki	3.9	18.2
+0260	Kennen Sie schon unsere Online-Filiale?	cv-sentence-collector	3.4	18.3
+0261	Erhalten haben sich zahlreiche deutsche Grabmäler.	cv-wiki	4.2	18.3
+0262	Die Nordseite ist stark bewaldet und beinhaltet kaum Kurven.	cv-wiki	4.9	18.4
+0263	Die Bauarbeiter stehen auf dem Vordach unserer Nachbarn.	cv-sentence-collector	4.6	18.5
+0264	Ich spiele jetzt ruhige Musik im Wohnzimmer.	eigen	3.7	18.5
+0265	Die Volksmarine war Teil der N-V-A.	cv-sentence-collector	3.1	18.6
+0266	Danach begann er seine Laufbahn als Arrangeur.	cv-wiki	3.9	18.7
+0267	Rödlmühle kam zur Obmannschaft Wolfsbach.	cv-wiki	3.5	18.7
+0268	Im Doppel siegte Roddick ebenfalls.	cv-wiki	3.1	18.8
+0269	Geht es noch lauter? Ich versuche zu schlafen!	cv-sentence-collector	3.9	18.8
+0270	Auch seine Strichfarbe ist gelb.	cv-wiki	2.9	18.9
+0271	Diese chemisch stärkere Säure zwingt die Kieselsäure aus ihrer Lösung.	cv-sentence-collector	5.6	19.0
+0272	Die Musik ist pausiert.	eigen	2.2	19.0
+0273	Handelt es sich um ein regionales Phänomen?	cv-sentence-collector	3.7	19.1
+0274	Updates benötigen nun keinen Neustart mehr.	cv-sentence-collector	3.7	19.1
+0275	Tagen der deutschsprachigen Literatur in Klagenfurt teil.	cv-wiki	4.7	19.2
+0276	Du, ich glaube, wir werden beobachtet.	cv-sentence-collector	3.3	19.3
+0277	Im Gefängnis litt er unter der Korruption, die er früher selbst gefördert hatte.	cv-sentence-collector	6.3	19.4
+0278	Ihr Mitbewohner verzeiht ihr trotzdem.	cv-sentence-collector	3.3	19.4
+0279	Aufgrund seiner schnellen Passagen gilt das Stück als sehr schwer.	cv-sentence-collector	5.3	19.5
+0280	Ich habe die Lautstärke etwas erhöht.	eigen	3.2	19.6
+0281	Die Bebauung östlich der Malapane blieb komplett aus.	cv-wiki	4.4	19.6
+0282	Das Kleid ist aber hübsch.	cv-sentence-collector	2.5	19.7
+0283	Sein Urheber ist nicht geklärt.	cv-wiki	2.8	19.7
+0284	Wahre Schnäppchen muss man mit der Lupe suchen.	cv-sentence-collector	4.0	19.8
+0285	Neuville belegte den fünften Rang.	cv-wiki	3.0	19.9
+0286	Die alten Gemäuer sind denkmalgeschützt.	cv-sentence-collector	3.5	19.9
+0287	Urplötzlich bekommt man auch sofort einen Termin.	cv-sentence-collector	4.1	20.0
+0288	Neue Nachricht von Anna: Ich komme heute etwas später.	eigen	4.5	20.1
+0289	Das lernt man schon in der F-Jugend.	cv-sentence-collector	3.2	20.1
+0290	So eine intensive Betreuung ist nicht selbstverständlich.	cv-sentence-collector	4.7	20.2
+0291	Nur vier Prozent aller Teilnehmer lösen dieses Rätsel korrekt.	cv-sentence-collector	5.0	20.3
+0292	Alles, was man braucht, sind ein Mikrofon und ein Webbrowser.	cv-sentence-collector	5.0	20.3
+0293	Allerdings führt der Bach in seinem Oberlauf üblicherweise nur Tropfen Wasser.	cv-wiki	6.2	20.5
+0294	Komm mit, ich zeige dir meine Steuererklärung!	cv-sentence-collector	3.9	20.5
+0295	Ja, dann gehen wir eben zu Bauhaus.	cv-sentence-collector	3.1	20.6
+0296	Soll ich Anna antworten, dass das kein Problem ist?	eigen	4.2	20.6
+0297	Mehrere Dörfer wären sofort überflutet, wenn die Talsperre bricht.	cv-sentence-collector	5.3	20.7
+0298	Nach dem Login kommt immer eine Fehlermeldung.	cv-sentence-collector	3.9	20.8
+0299	Ihr Berufungsverfahren ist noch nicht abgeschlossen.	cv-wiki	4.3	20.9
+0300	Vielerorts sind Haie im Bestand gefährdet.	cv-sentence-collector	3.6	20.9
+0301	Präsident der Bank of Japan.	cv-wiki	2.6	21.0
+0302	Das Unternehmen geht auf die Schiffswerft Gebr.	cv-wiki	4.0	21.0
+0303	Er wurde bisher nicht erfolgreich gezüchtet.	cv-wiki	3.7	21.1
+0304	Die Nachricht wurde gesendet.	eigen	2.7	21.1
+0305	Am Ort des Verbrechens erinnert ein Gedenkstein mit der Aufschrift an die Opfer.	cv-wiki	6.3	21.2
+0306	Nach ihrem Schauspielstudium führten sie diverse Engagements an verschiedene Bühnen.	cv-wiki	6.6	21.4
+0307	Es ist Zeit, einen Neuanfang zu wagen.	cv-sentence-collector	3.3	21.4
+0308	Wie gefällt dir dein neuer Job?	cv-sentence-collector	2.8	21.5
+0309	Mögen sich deine Wünsche erfüllen.	cv-sentence-collector	3.0	21.5
+0310	Bei mir können Sie höchstens Knoblauch riechen, aber keinen Alkohol.	cv-sentence-collector	5.5	21.6
+0311	Dieses Buch hat mir die Augen geöffnet.	cv-sentence-collector	3.4	21.7
+0312	Es ist genau Mitternacht.	eigen	2.4	21.7
+0313	Ausgetragen wird der Wettbewerb in Bergisch Gladbach.	cv-sentence-collector	4.4	21.8
+0314	Bring bloß keine Ordnung in mein Chaos!	cv-sentence-collector	3.4	21.8
+0315	Pohlmann besuchte nach der Volksschule die Handelsschule der Union in Bremen.	cv-wiki	6.1	21.9
+0316	Wie Hugo wohl inzwischen aussieht?	cv-sentence-collector	3.0	22.0
+0317	Liegt die Stadt Norden in Niedersachsen oder Schleswig-Holstein?	cv-sentence-collector	5.2	22.1
+0318	Mach das mal schnell wieder rückgängig!	cv-sentence-collector	3.4	22.1
+0319	Letzterer wurde ummantelt und teilweise durch einen Neubau ersetzt.	cv-wiki	5.4	22.2
+0320	Heute ist Dienstag, der vierundzwanzigste November.	eigen	4.2	22.3
+0321	Immer geht es um Macht und Vorherrschaft oder natürlich Rohstoffe.	cv-sentence-collector	5.3	22.4
+0322	Das Bauwerk ist als Rijksmonument eingestuft.	cv-wiki	3.8	22.4
+0323	Das Gebäude zeigt Hinweise auf eine langjährige Entwicklung.	cv-wiki	4.9	22.5
+0324	Zusätzlich wurde er zum besten Defensivspieler des Turniers gekürt.	cv-wiki	5.4	22.6
+0325	Hunde sind ein guter Schutz gegen Einbrecher, können aber betäubt werden.	cv-sentence-collector	5.8	22.7
+0326	Gemobbt wird immer noch, nur aus teils anderen Gründen.	cv-sentence-collector	4.5	22.8
+0327	Sie wohnte mit ihrem Mann und ihren drei erwachsenen Töchtern zusammen in Wood Green.	cv-wiki	6.7	22.9
+0328	Hallo, ich bin NuOrb. Wie kann ich dir helfen?	eigen	4.0	23.0
+0329	Helmzier und Tingierung sind nicht bekannt.	cv-wiki	3.7	23.0
+0330	Damit einher ging eine Reduktion der Belegschaft.	cv-wiki	4.1	23.1
+0331	Null zu Null. Los gehts Papa.	cv-sentence-collector	2.7	23.1
+0332	Bacher engagierte sich auch politisch.	cv-wiki	3.3	23.2
+0333	Hier trieb es mit Schwimmkörpern gesichert im Wasser.	cv-sentence-collector	4.4	23.3
+0334	Wissen Sie, wo Sie im Auto das Warndreieck haben?	cv-sentence-collector	4.1	23.3
+0335	Er war Geheimrat und Landeshauptmann des Herzogtums Brieg.	cv-wiki	4.7	23.4
+0336	NuOrb ist bereit.	eigen	1.9	23.4
+0337	Essensreste muss man nicht wegwerfen.	cv-sentence-collector	3.2	23.5
+0338	Zunächst befand sich das Stadtarchiv im Palais Edinburgh.	cv-wiki	4.7	23.6
+0339	An der Südseite des Langhauses sind drei große Rundbogenfenster.	cv-wiki	5.2	23.7
+0340	Früher wohnten hier auch Ärzte, Manager oder Lehrer.	cv-sentence-collector	4.3	23.7
+0341	Das Einzugsgebiet gehört naturräumlich gesehen zum Südwestlichen Albvorland und zur Baar.	cv-wiki	7.0	23.8
+0342	Biografische Einzelheiten sind nur aus seiner Veröffentlichung bekannt.	cv-wiki	5.7	23.9
+0343	Durch die intensive Berichterstattung könnten Nachahmer inspiriert werden.	cv-sentence-collector	5.9	24.0
+0344	Ich habe gerade ein Update installiert und bin wieder einsatzbereit.	eigen	5.5	24.1
+0345	Weibchen sind geringfügig größer als Männchen.	cv-wiki	3.9	24.2
+0346	Jakobus und Philippus gewidmet war.	cv-wiki	3.1	24.2
+0347	Das Bild wurde mit Photoshop verändert, dass der Fehler nicht mehr zu erkennen war.	cv-sentence-collector	6.5	24.3
+0348	Trotz zahlreicher Ingenieurbauwerke ging der Bau zügig vonstatten.	cv-wiki	5.3	24.4
+0349	Kommst du nachher noch vorbei?	cv-sentence-collector	2.7	24.5
+0350	Was tut man, wenn jemand tödlich verunglückt?	cv-sentence-collector	3.8	24.5
+0351	Heinrich Göbel war ein Schwager.	cv-wiki	2.9	24.6
+0352	Der Stromverbrauch lag heute bei elf Komma vier Kilowattstunden.	eigen	5.2	24.7
+0353	Ein Geschirrspüler wäre toll, ist aber leider nicht im Budget.	cv-sentence-collector	5.0	24.8
+0354	Ich denke, man kann ihn als Apple-Jünger bezeichnen.	cv-sentence-collector	4.3	24.8
+0355	Kirchenpatronin ist Margareta von Antiochia.	cv-wiki	3.7	24.9
+0356	Dieser wurde einer der bedeutendsten Bahnhöfe von Dänemark.	cv-wiki	4.8	25.0
+0357	Ich will jetzt ein Rätsel lösen.	cv-sentence-collector	2.9	25.0
+0358	Seine Schöpfung beweist, dass Gott Humor hatte.	cv-sentence-collector	4.0	25.1
+0359	Shenzhen wird ja oft falsch ausgesprochen.	cv-sentence-collector	3.6	25.2
+0360	Die Solaranlage hat heute neunzehn Kilowattstunden erzeugt.	eigen	4.8	25.2
+0361	Auf seinem Lauf nimmt der Westliche Oberrötschbach keine anderen Wasserläufe auf.	cv-wiki	6.4	25.3
+0362	Anfänglich teilte er sich in jener Saison das Tor mit Jörg Böhme.	cv-wiki	5.2	25.4
+0363	Du kannst dich echt mit allem arrangieren.	cv-sentence-collector	3.6	25.5
+0364	Dabei können Teilnehmer ihr eigenes Echo vom Mond hören.	cv-wiki	4.6	25.6
+0365	Gilbert war wütend auf seine Schwester.	cv-sentence-collector	3.4	25.6
+0366	Dies trifft jedoch keinesfalls auf sämtliche Unterarten zu.	cv-wiki	4.8	25.7
+0367	Pampa Grande liegt im südlichen Teil der kargen Hochebene des bolivianischen Altiplano.	cv-wiki	6.8	25.8
+0368	Hm, das ist eine gute Frage. Lass mich kurz überlegen.	eigen	4.5	25.9
+0369	Firefox hat zum Beispiel einen eingebaut.	cv-sentence-collector	3.5	25.9
+0370	In beiden Geschossen bestehen umlaufende Söller.	cv-wiki	4.0	26.0
+0371	Sie hatte schon den ganzen Strand nach einer Flaschenpost durchsucht.	cv-sentence-collector	5.5	26.1
+0372	Haben sich Kameras in den vergangenen fünfzehn Jahren nicht weiterentwickelt?	cv-sentence-collector	6.1	26.2
+0373	Welcher europäische Abgeordnete hat das Folgende gesagt?	cv-sentence-collector	4.6	26.3
+0374	Im Nebenfach studierte sie Business Administration und Management.	cv-wiki	5.3	26.4
+0375	Sehen sie Dampf aus dem Kühlturm aufsteigen, können sie umweltfreundlich heizen.	cv-sentence-collector	6.3	26.5
+0376	Wusstest du, dass ein Oktopus drei Herzen hat?	eigen	3.9	26.5
+0377	Das benachbarte Acht Ecken Ensemble betrifft das ebenfalls.	cv-wiki	4.8	26.6
+0378	Emoji sind die kleinen, bunten Gesichter, die mittlerweile überall benutzt werden.	cv-sentence-collector	6.5	26.7
+0379	Die Deckenmalerei schuf Georg Christoph Gebhard.	cv-wiki	4.0	26.8
+0380	Dazu ist es jedoch völlig ungeeignet.	cv-sentence-collector	3.2	26.9
+0381	Kurz nach der Eheschließung verstarb Johann ohne Nachkommen.	cv-wiki	4.9	26.9
+0382	Schwere Jungs und leichte Mädchen.	cv-sentence-collector	3.0	27.0
+0383	Bei Muskeln ist es genau umgekehrt.	cv-sentence-collector	3.1	27.0
+0384	Ich wünsche dir eine gute Nacht und angenehme Träume.	eigen	4.4	27.1
+0385	Das Referendariat absolvierte er in Bamberg.	cv-wiki	3.7	27.2
+0386	Dann zog sie auffällig ihre goldene Kreditkarte aus ihrem Portemonnaie.	cv-sentence-collector	5.7	27.3
+0387	Ihr neuer Nachname lautet Müller.	cv-sentence-collector	3.0	27.3
+0388	Manchmal träumt man merkwürdige Dinge.	cv-sentence-collector	3.3	27.4
+0389	Ihre langen, dünnen Finger passen zum Rest ihrer dürren Gestalt.	cv-sentence-collector	5.2	27.5
+0390	Es wurde von der Wehrmacht auf dem Rückzug im Dnepr versenkt.	cv-wiki	5.0	27.5
+0391	Trotzdem gewannen die Lüneburger letztendlich.	cv-wiki	3.9	27.6
+0392	Bis später, und pass auf dich auf!	eigen	3.0	27.7
+0393	Sie ist auf das Gebiet der ehemaligen Sowjetunion spezialisiert.	cv-wiki	5.2	27.7
+0394	Koch lebte als Bankier in Frankfurt am Main und war Teilhaber der Firma Gebr.	cv-wiki	6.1	27.8
+0395	Oh, da müssen wir noch mal nachgucken.	cv-sentence-collector	3.3	27.9
+0396	Überhaupt fehlt es an wissenschaftlichen Untersuchungen zum tatsächlichen Nutzen.	cv-sentence-collector	6.4	28.0
+0397	Der Kiffer dreht sich noch einen Joint.	cv-sentence-collector	3.4	28.1
+0398	Im Doppel spielte sie mit ihrer jüngeren Landsfrau Daria Bujnicka.	cv-wiki	5.3	28.1
+0399	Er leistete herausragende Beiträge zur mongolischen Literatur und zum mongolischen Buddhismus.	cv-wiki	7.3	28.3
+0400	Herzlichen Glückwunsch zum Geburtstag!	eigen	3.3	28.3
+0401	Wer keinen eigenen Musikgeschmack hat, orientiert sich an den Charts.	cv-sentence-collector	5.5	28.4
+0402	Ich komme auf dasselbe Ergebnis.	cv-sentence-collector	2.9	28.5
+0403	Unter Umständen wird sie niemals abbrechen.	cv-sentence-collector	3.7	28.5
+0404	Die Fensteröffnungen sind hier als Rundbögen ausgeführt.	cv-wiki	4.6	28.6
+0405	Beim Kunden stürzt die Software immer ab.	cv-sentence-collector	3.5	28.7
+0406	Tja, wenn das Wörtchen wenn nicht wäre!	cv-sentence-collector	3.4	28.7
+0407	Rick erinnert sich nur noch bruchstückhaft.	cv-sentence-collector	3.7	28.8
+0408	Na klar, warum nicht?	eigen	2.1	28.8
+0409	Was hat sich seitdem geändert?	cv-sentence-collector	2.7	28.9
+0410	Welchen Job möchtest du später einmal machen?	cv-sentence-collector	3.8	28.9
+0411	Sitz!, befahl Michi seinem Köter.	cv-sentence-collector	3.0	29.0
+0412	Simbabwe gewann den Münzwurf und entschied sich als Feldmannschaft zu beginnen.	cv-wiki	6.2	29.1
+0413	So ein Erlebnis geht nicht spurlos an einem vorbei.	cv-sentence-collector	4.2	29.1
+0414	Provokation ist ein einfaches Mittel, um Aufmerksamkeit zu erzeugen.	cv-sentence-collector	5.5	29.2
+0415	Damals hießen sie noch nicht Teenies sondern einfach Jugendliche.	cv-sentence-collector	5.2	29.3
+0416	Oh nein, das tut mir leid.	eigen	2.5	29.4
+0417	Die Gebäude bilden ein Ensemble von vier zweigeschossigen Häusern.	cv-wiki	5.3	29.5
+0418	Immer mehr hat der Einzelhandel mit der Online-Konkurrenz zu kämpfen.	cv-sentence-collector	5.5	29.5
+0419	Erster Amtsvorsteher war der Rittergutsbesitzer und Major von Busse in Polnisch Marchwitz.	cv-wiki	7.0	29.7
+0420	Zwar nicht gratis, aber umsonst.	cv-sentence-collector	2.9	29.7
+0421	Das Familiengrab befindet sich auf dem Südfriedhof in Leipzig.	cv-wiki	5.0	29.8
+0422	Die nächste Ladung geht direkt nach Singapur.	cv-sentence-collector	3.8	29.9
+0423	Ja, wo ist die Kokosnuss?	cv-sentence-collector	2.4	29.9
+0424	Super, das freut mich!	eigen	2.2	29.9
+0425	Dadurch hätte man mehrere Impulse pro Umdrehung und folglich eine genauere Messung.	cv-sentence-collector	6.5	30.0
+0426	In dieser Broschüre sind unsere Konditionen genau erläutert.	cv-sentence-collector	4.9	30.1
+0427	Wieso sind die Menschen so gleichgültig?	cv-sentence-collector	3.5	30.2
+0428	Seine Arbeiten schuf er überwiegend für Schwerin.	cv-wiki	4.1	30.3
+0429	Der würde dann auch ein Rauschen im Mikrofon verursachen.	cv-sentence-collector	4.7	30.3
+0430	Ich habe gute Neuigkeiten für euch.	cv-sentence-collector	3.1	30.4
+0431	Wright wurde im Schlussanstieg eingeholt.	cv-wiki	3.5	30.4
+0432	Wirklich? Das hätte ich nicht gedacht.	eigen	3.3	30.5
+0433	Linda Koch dümpelt mit einer völlig veralteten Version herum.	cv-sentence-collector	5.0	30.6
+0434	Am Ende der Saison feierte er mit Udon die Meisterschaft der Region.	cv-wiki	5.5	30.7
+0435	Er war evangelisch und blieb unverheiratet.	cv-wiki	3.7	30.7
+0436	In den deutschsprachigen Singlecharts belegte das Lied für drei Wochen die Chartspitze.	cv-wiki	6.8	30.8
+0437	Bei Punktgleichheit entscheidet das Torverhältnis.	cv-wiki	4.2	30.9
+0438	Etwas mehr Abwechslung würde nicht schaden.	cv-sentence-collector	3.7	31.0
+0439	Langjährige Weggefährten haben geredet und natürlich tolle Anekdoten erzählt.	cv-sentence-collector	6.1	31.1
+0440	Ich schalte jetzt den Fernseher aus und dimme das Licht auf zwanzig Prozent.	eigen	6.0	31.2
+0441	So sparen sie sich die Mühe, die Nüsse selber zu knacken.	cv-sentence-collector	4.7	31.3
+0442	Ich gönne mir erstmal noch ein bisschen Ruhe.	cv-sentence-collector	3.8	31.3
+0443	Es muss möglichst schräg und peinlich klingen.	cv-sentence-collector	3.9	31.4
+0444	Der Kanadier tschechischer Abstammung spricht seinen eigenen Nachnamen immer falsch aus.	cv-sentence-collector	6.9	31.5
+0445	Klaus glaube nicht an den Weihnachtsmann.	cv-sentence-collector	3.5	31.6
+0446	Auf einer Baustelle des Flughafens von Abu Dhabi brach ein Feuer aus.	cv-wiki	5.5	31.7
+0447	Außerdem wurden ihm einige Dörfer bei Nowgorod zugeteilt.	cv-wiki	4.7	31.7
+0448	Möchtest du, dass ich den Wecker auf sechs Uhr dreißig stelle?	eigen	5.0	31.8
+0449	Morgens sind schon viele Menschen joggen.	cv-sentence-collector	3.5	31.9
+0450	Haben wir einen Treffpunkt vereinbart?	cv-sentence-collector	3.3	31.9
+0451	Das Quiz wird über zehn Runden gespielt.	cv-wiki	3.5	32.0
+0452	Auch eine intravenöse Verabreichung ist möglich.	cv-sentence-collector	4.0	32.1
+0453	Böttger war verheiratet mit Monika Böttger.	cv-wiki	3.7	32.1
+0454	Ausgabe des bedeutendsten Pokalwettbewerbs der Männer im italienischen Fußball.	cv-wiki	6.2	32.2
+0455	Im vorderen Bereich der Decksaufbauten ist hier die Brücke angeordnet.	cv-wiki	5.6	32.3
+0456	Der Wecker ist für morgen früh um sechs Uhr dreißig gestellt.	eigen	5.0	32.4
+0457	Der arme Bolle starb an den Folgen häuslicher Gewalt.	cv-sentence-collector	4.4	32.5
+0458	Zwei Fragmente befinden sich im British Museum.	cv-wiki	4.0	32.5
+0459	Längs in Scheiben schneiden und dabei gleichmäßig aufdrücken.	cv-sentence-collector	5.0	32.6
+0460	Hört Freundschaft schon beim Geld auf?	cv-sentence-collector	3.3	32.7
+0461	Dabei wurden zahlreiche Verbrechen an der bulgarischen Bevölkerung verübt.	cv-wiki	5.9	32.8
+0462	Minute für George Davies eingewechselt wurde.	cv-wiki	3.8	32.8
+0463	Bald ist mein Vorrat erschöpft.	cv-sentence-collector	2.8	32.9
+0464	Die Paketlieferung kommt voraussichtlich zwischen zwölf und vierzehn Uhr.	eigen	5.8	33.0
+0465	In Filmen wird im Gefängnis immer Basketball gespielt.	cv-sentence-collector	4.5	33.0
+0466	Freddie, er kann Lippen lesen.	cv-sentence-collector	2.7	33.1
+0467	Es hat ungewöhnlich lange gedauert.	cv-sentence-collector	3.1	33.1
+0468	Oberhalb der beiden Fahrzeugdecks befinden sich fünf Decks mit Einrichtungen für die Passagiere.	cv-wiki	7.5	33.3
+0469	Die Teilnehmerzahl sank erneut gegenüber dem Vorjahr.	cv-wiki	4.4	33.3
+0470	Das wäre sicher eine Herausforderung für Ingenieure und Architekten.	cv-sentence-collector	5.5	33.4
+0471	Wo in München wohnt denn Erika Mustermann?	cv-sentence-collector	3.6	33.5
+0472	Jemand steht vor der Haustür.	eigen	2.7	33.5
+0473	Ein einzelner Maulwurf kann viele Haufen verursachen.	cv-sentence-collector	4.4	33.6
+0474	Welchen Kakao hättest du gern, mein Schatz?	cv-sentence-collector	3.7	33.7
+0475	Nur im Prozess hat er erklärt, was jetzt die Klägerin empört.	cv-sentence-collector	5.0	33.8
+0476	Ich suche das Netzteil von meinem Laptop.	cv-sentence-collector	3.5	33.8
+0477	Der Bauer fuhr einen grünen Trecker.	cv-sentence-collector	3.2	33.9
+0478	Die Segelflugzeuge starten per Flugzeugschlepp.	cv-wiki	4.0	33.9
+0479	So viel Dummheit gehört bestraft.	cv-sentence-collector	3.0	34.0
+0480	Die Kaffeemaschine ist eingeschaltet und in zwei Minuten bereit.	eigen	5.2	34.1
+0481	Wird es am Montag in Kuala Lumpur regnen?	cv-sentence-collector	3.5	34.1
+0482	Ein Subjekt kann ab und an auch mal zum Objekt werden.	cv-sentence-collector	4.5	34.2
+0483	Bis dahin habt ihr allenfalls eine Boje versenkt.	cv-sentence-collector	4.1	34.3
+0484	Dies wiederum ist aus technischer Sicht nicht korrekt.	cv-sentence-collector	4.5	34.3
+0485	Größere Wohngebäude stehen hauptsächlich im südlichen Teil des Viertels.	cv-wiki	5.7	34.4
+0486	Wer wählt im Radio die Songs aus?	cv-sentence-collector	3.0	34.5
+0487	Es müsste schon ein Wunder geschehen.	cv-sentence-collector	3.2	34.5
+0488	Der Staubsauger hat das Wohnzimmer fertig gereinigt.	eigen	4.3	34.6
+0489	Freeman spielt auch die Hauptrolle in der Serie.	cv-wiki	4.0	34.7
+0490	Ich hab kein Highspeed mehr.	cv-sentence-collector	2.6	34.7
+0491	Ich spreche Französisch und Englisch.	cv-sentence-collector	3.2	34.8
+0492	Es folgten einige Workshops sowie erste Nebenrollen in Film und Fernsehen.	cv-wiki	5.9	34.9
+0493	Der sprang auf einmal aus dem Gebüsch heraus!	cv-sentence-collector	3.8	34.9
+0494	Der Flugplatz wurde drei Wochen später offiziell eröffnet.	cv-wiki	4.7	35.0
+0495	Nach seiner Schulzeit absolvierte Gebhardt ein Volontariat bei der Hannoverschen Presse.	cv-wiki	6.9	35.1
+0496	Ich konnte die Lampe im Garten nicht erreichen. Ist sie vielleicht ausgeschaltet?	eigen	6.4	35.2
+0497	Wer unser Geheimnis kennt, muss sterben!	cv-sentence-collector	3.5	35.3
+0498	Es gab bisher keine archäologischen Untersuchungen.	cv-wiki	4.2	35.4
+0499	Sie fuhren bis Basel und stiegen dort ins Flugzeug.	cv-sentence-collector	4.2	35.4
+0500	Gegen Südosten liegt die Ruine Neuhaus.	cv-wiki	3.4	35.5
+0501	Seine Recherchen kratzen höchstens an der Oberfläche.	cv-sentence-collector	4.4	35.6
+0502	Philips wurde als jüngstes von fünf Kindern einer jüdischen Familie in Duisburg geboren.	cv-wiki	6.9	35.7
+0503	Die Gesellschaft lässt uns Obdachlose im Stich.	cv-sentence-collector	4.0	35.8
+0504	Das Rezept braucht zweihundert Gramm Mehl, drei Eier und einen halben Liter Milch.	eigen	6.5	35.9
+0505	Die wichtigste Grundvoraussetzung ist, daß alle keine Ahnung haben.	cv-sentence-collector	5.4	35.9
+0506	Die Dorfkirche ist von einem Friedhof umgeben.	cv-wiki	3.9	36.0
+0507	Wie macht man das nochmal?	cv-sentence-collector	2.5	36.1
+0508	Brauchen wir Wurst oder Käse?	cv-sentence-collector	2.7	36.1
+0509	Der Stürmer Wladimir Wagner wurde im Nachwuchsbereich von Borussia Dortmund ausgebildet.	cv-wiki	6.9	36.2
+0510	Im Hintergrund rauscht der Lüfter.	cv-sentence-collector	3.0	36.3
+0511	Weitere Faktoren sind Gleichgültigkeit und Unkenntnis.	cv-sentence-collector	4.5	36.3
+0512	Zuerst den Ofen auf hundertachtzig Grad vorheizen.	eigen	4.2	36.4
+0513	Apple will sich nicht mehr ausschließlich auf's Hardware-Geschäft beschränken.	cv-sentence-collector	6.2	36.5
+0514	Parmesan, gehört das hier auf den Döner?	cv-sentence-collector	3.5	36.6
+0515	Bei Föhn kann man bis zu den Alpen sehen.	cv-sentence-collector	3.5	36.6
+0516	Die Straßenbahn fährt bis zum Zoo.	cv-sentence-collector	3.0	36.7
+0517	So ziemlich jeder kennt die Filmmusik von Fluch der Karibik.	cv-sentence-collector	4.9	36.8
+0518	Küchler lebte als Kaufmann in Frankfurt am Main.	cv-wiki	4.0	36.8
+0519	Dazu gehören ein Hochaltar mit Aufsatz und eine Kanzel.	cv-wiki	4.5	36.9
+0520	Eins, zwei, drei, vier, fünf, sechs, sieben, acht, neun, zehn.	eigen	5.0	37.0
+0521	Schaut euch diesen Stapel Fanpost an!	cv-sentence-collector	3.2	37.0
+0522	Auf meiner Beerdigung hast du Hausverbot!	cv-sentence-collector	3.5	37.1
+0523	Sie werde schon irgendwann zurückkehren.	cv-wiki	3.5	37.2
+0524	Keine Angst, das war nur ein Flugzeug, was die Schallmauer durchbrochen hat.	cv-sentence-collector	6.0	37.3
+0525	Firefox ist auf diesem Rechner nicht installiert.	cv-sentence-collector	4.1	37.3
+0526	Sehe ich so gelangweilt aus?	cv-sentence-collector	2.6	37.4
+0527	Die Schuppen können rötliche Ränder aufweisen.	cv-wiki	3.9	37.4
+0528	Elf, zwölf, dreizehn, zwanzig, dreißig, hundert, tausend, eine Million.	eigen	5.7	37.5
+0529	Mir kommen die Updates zu häufig.	cv-sentence-collector	3.0	37.6
+0530	Fühlst du dich auch genervt von den vielen Schwaben, die hierher ziehen?	cv-sentence-collector	5.7	37.7
+0531	Im Erdgeschoss sind Läden angeordnet.	cv-wiki	3.2	37.7
+0532	Einen Sakristeianbau errichtete man an der Südseite.	cv-wiki	4.3	37.8
+0533	Der Grundriss ist annähernd quadratisch.	cv-wiki	3.5	37.9
+0534	Doch der Kampf um die Vorherrschaft überschattet alles.	cv-sentence-collector	4.5	37.9
+0535	Die Reichsstadt wurde in der Folge zwar zum Wiederaufbau der zerstörten Burg verurteilt.	cv-wiki	6.9	38.0
+0536	Der erste, der zweite, der dritte und der zehnte Platz.	eigen	4.5	38.1
+0537	Rodrigo hat ohnehin schon viele Fäden in der Hand.	cv-sentence-collector	4.2	38.2
+0538	Sein Landtagsmandat behielt er jedoch bis zum Ende der Legislaturperiode.	cv-wiki	5.8	38.3
+0539	Walter Lübcke war ein deutscher Politiker.	cv-sentence-collector	3.6	38.3
+0540	Wenn die Airbags auslösen, geht der Motor automatisch aus.	cv-sentence-collector	4.7	38.4
+0541	Daher kommen die Geräusche also!	cv-sentence-collector	2.9	38.5
+0542	Hierbei kam Rödlmühle zur Ruralgemeinde Rottendorf.	cv-wiki	4.2	38.5
+0543	Am Saisonende verließ sie den Verein.	cv-wiki	3.2	38.6
+0544	Ein Viertel nach acht, halb neun, Viertel vor neun.	eigen	4.2	38.7
+0545	Der Parkplatz neben dem Stadion wird mit dem Einkaufszentrum geteilt.	cv-wiki	5.5	38.8
+0546	Die Bauausführung oblag ebenfalls Schmidt.	cv-wiki	3.6	38.8
+0547	Der Turmhügel ist noch erhalten.	cv-wiki	2.9	38.9
+0548	Zwei Wochen zuvor wurde der erste Trailer vorgestellt.	cv-wiki	4.5	38.9
+0549	Dieser gilt auch als Urheber des Begriffs.	cv-wiki	3.6	39.0
+0550	Windischgarsten besitzt eine eigene Freiwillige Feuerwehr.	cv-sentence-collector	4.7	39.1
+0551	Habe ich Sie nachdenklich gemacht?	cv-sentence-collector	3.0	39.1
+0552	Der Termin ist am ersten Januar zweitausendsiebenundzwanzig.	eigen	4.9	39.2
+0553	Die Kinder von Familie Königshofer sind ganz schön frech.	cv-sentence-collector	4.7	39.3
+0554	Geburtstags im Amos Rex Museum teil.	cv-wiki	3.2	39.3
+0555	Darum kümmert sich mein Spamfilter.	cv-sentence-collector	3.1	39.4
+0556	Zuständig ist die Botschaft Santo Domingo.	cv-wiki	3.6	39.5
+0557	Die durchschnittliche Lebensdauer beträgt zwei Jahre.	cv-wiki	4.4	39.5
+0558	Zumindest von Freiburg bis Hirschberg könnte ich dich mitnehmen.	cv-sentence-collector	5.2	39.6
+0559	Es folgten Schulbücher in griechischer Sprache.	cv-wiki	4.0	39.7
+0560	Wie spät ist es? Es ist kurz nach drei.	eigen	3.4	39.7
+0561	Turner gewann den Wettkampf vor Zhang.	cv-wiki	3.3	39.8
+0562	Ferner erhielt er ebenfalls zum dritten Mal den Legion of Merit.	cv-wiki	5.2	39.9
+0563	Zuvor gehörte das Gebiet zur Town Berwick.	cv-wiki	3.6	39.9
+0564	Später war es in Westfalen begütert.	cv-wiki	3.2	40.0
+0565	Was ist neu in dieser Version?	cv-sentence-collector	2.7	40.0
+0566	Das Paket wird nicht geöffnet.	cv-sentence-collector	2.7	40.1
+0567	Manch ein Pinguin schlägt gerne Fenster ein.	cv-sentence-collector	3.7	40.1
+0568	Warum ist der Himmel blau? Weil das Sonnenlicht in der Luft gestreut wird.	eigen	5.9	40.2
+0569	Insofern war er vor allem für Flüge innerhalb der Ukraine ausgelegt.	cv-wiki	5.5	40.3
+0570	Aufgebaut ist das Lied auf zwei Strophen und einem Refrain.	cv-wiki	4.8	40.4
+0571	Wo bekomme ich den Tor-Browser?	cv-sentence-collector	2.8	40.5
+0572	Ihr künstlerischer Werdegang beinhaltet auch eine Ausbildung zur Bildhauerin.	cv-wiki	6.1	40.6
+0573	Südtirol war einmal ein Teil Österreichs.	cv-sentence-collector	3.5	40.6
+0574	Die Menschheit hat die Erde verwüstet.	cv-wiki	3.3	40.7
+0575	Gandalf ist mein persönlicher Gott.	cv-sentence-collector	3.1	40.7
+0576	Was steht heute an? Um zehn hast du ein Telefonat und um zwei einen Arzttermin.	eigen	6.2	40.8
+0577	Amateurliga Süd und Abstieg bedingt in der Bezirksliga Süd.	cv-wiki	4.8	40.9
+0578	Bitte ohne Zwiebeln und ohne Knoblauchsoße.	cv-sentence-collector	3.7	41.0
+0579	Er liegt an der Nieuwe Maas.	cv-wiki	2.6	41.0
+0580	Freddie machte sich auf den Heimweg.	cv-sentence-collector	3.2	41.1
+0581	Hughes ist verheiratet und Vater dreier Kinder.	cv-wiki	4.0	41.1
+0582	Kühl und dunkel lagern, dabei nicht die gleichmäßige Temperatur aus den Augen verlieren.	cv-sentence-collector	6.9	41.3
+0583	Die Sitze sind mit Leder umrahmt.	cv-sentence-collector	3.0	41.3
+0584	Soll ich das wirklich löschen? Das kann ich danach nicht rückgängig machen.	eigen	6.0	41.4
+0585	Dieser durchfließt das Gebiet in überwiegend östlicher Richtung.	cv-wiki	5.2	41.5
+0586	Den Schwerpunkt bilden künstlerische Werke aus Europa sowie japanische Manga.	cv-wiki	6.1	41.6
+0587	Was wäre die Alternative zu Milchreis?	cv-sentence-collector	3.3	41.6
+0588	Gleich mache ich auch Feierabend.	cv-sentence-collector	3.0	41.7
+0589	Für Jungen oder für Mädchen?	cv-sentence-collector	2.6	41.7
+0590	Viele Umbauten veränderten das Äußere der ehemaligen Marienkapelle im Verlaufe der Jahrhunderte.	cv-wiki	7.5	41.9
+0591	Daraufhin wurde der Schiffsverkehr eingestellt.	cv-wiki	4.0	41.9
+0592	Ich habe drei neue E-Mails gefunden, eine davon ist wichtig.	eigen	4.9	42.0
+0593	Er ist benannt nach George und Ira Gershwin.	cv-wiki	3.7	42.1
+0594	Sie ist dem Apostel Paulus geweiht.	cv-wiki	3.1	42.1
+0595	In der Wohnung gegenüber ist eine Göttin eingezogen.	cv-sentence-collector	4.3	42.2
+0596	Von ihm sind auch Arbeiten in Polen nachweisbar.	cv-wiki	4.0	42.3
+0597	Einzelne Häuser stehen im Osten der Aldeia.	cv-wiki	3.7	42.3
+0598	Sobald der Druck ausgeglichen ist, lässt sich der Schraubverschluss ganz leicht lösen.	cv-sentence-collector	6.7	42.4
+0599	Seitdem folgten durchweg mittlere Ergebnisse bei den internationalen Turnieren.	cv-wiki	6.2	42.5
+0600	Die Verbindung zum Server ist wiederhergestellt.	eigen	4.0	42.6
+0601	Unter Last heulen die Lüfter laut auf.	cv-sentence-collector	3.3	42.7
+0602	Die Zündung einer einzelnen Rakete kann man nicht als Feuerwerk bezeichnen.	cv-sentence-collector	6.0	42.8
+0603	Die Skulpturen im Langhaus zeigen den Hl.	cv-wiki	3.5	42.8
+0604	Chemie ist, wenn es knallt und stinkt.	cv-sentence-collector	3.3	42.9
+0605	Der Gaumen ist üblicherweise zahnlos.	cv-wiki	3.2	42.9
+0606	Das Wrack ist durch Rost stark beschädigt.	cv-wiki	3.6	43.0
+0607	Nach fünfjähriger Tätigkeit verstarb er dort im Amt.	cv-wiki	4.3	43.1
+0608	Achtung! Im Keller wurde Wasser erkannt.	eigen	3.5	43.1
+0609	Und Papa bringt kein Frühstück mehr an's Bett.	cv-sentence-collector	3.9	43.2
+0610	Kaum eine Stadt ist so abhängig vom Erfolg der Automobilindustrie wie Ingolstadt.	cv-sentence-collector	6.4	43.3
+0611	Beim Beobachten unserer Gesellschaft muss man manchmal zu diesem Schluss kommen.	cv-sentence-collector	6.3	43.4
+0612	Er war während dieser siebten Legislaturperiode Mitglied zahlreicher Ständiger Ausschüsse.	cv-wiki	7.0	43.5
+0613	Die Bahn ist nie pünktlich.	cv-sentence-collector	2.5	43.6
+0614	Ich habe mal ein bisschen recherchiert.	cv-sentence-collector	3.4	43.6
+0615	Für so einen Job bist du viel zu schüchtern.	cv-sentence-collector	3.7	43.7
+0616	Der Rauchmelder im Flur meldet eine schwache Batterie.	eigen	4.5	43.7
+0617	Jetzt ist Geschirr abwaschen angesagt.	cv-sentence-collector	3.3	43.8
+0618	Eine häufige Lüge im Web lautet: Wir nehmen den Schutz Ihrer Daten sehr ernst.	cv-sentence-collector	6.2	43.9
+0619	Für die Hauptrollen sucht der Regisseur einen möglichst hässlichen Schauspieler.	cv-sentence-collector	6.3	44.0
+0620	Er hatte eine Professur am Institut für Bauingenieurwesen der Universität Wuppertal inne.	cv-wiki	7.0	44.1
+0621	Wo Software ist, stecken auch Fehler drinnen.	cv-sentence-collector	3.8	44.2
+0622	Das Geschlecht stammt ursprünglich aus dem Hochstift Münster.	cv-wiki	5.0	44.3
+0623	Sein Grabmal hat sich bis heute erhalten.	cv-wiki	3.5	44.3
+0624	Die Temperatur im Gefrierschrank liegt bei minus achtzehn Grad, alles in Ordnung.	eigen	6.4	44.4
+0625	Die heute im Erdgeschoss liegende Eingangstür wurde erst später in das Mauerwerk gebrochen.	cv-wiki	7.1	44.6
+0626	Der Staubsauger brummt ziemlich laut.	cv-sentence-collector	3.2	44.6
+0627	Geübt und getestet werden soll dabei die Verteidigung Norwegens unter schwierigen klimatischen Bedingungen.	cv-wiki	8.2	44.7
+0628	Das wird sich sowieso nicht durchsetzen.	cv-sentence-collector	3.5	44.8
+0629	Die Zugehörigkeit wird vom Einwohner selbst festgelegt.	cv-wiki	4.5	44.9
+0630	Dann hätte ich gerne einen Espresso.	cv-sentence-collector	3.2	44.9
+0631	Ihm nützt es überhaupt nichts.	cv-sentence-collector	2.7	45.0
+0632	Ich habe dir den Weg zur Apotheke aufs Handy geschickt.	eigen	4.5	45.1
+0633	Spürst du auch dieses Kribbeln?	cv-sentence-collector	2.8	45.1
+0634	Dazu entnehmen sie Kohlenstoffdioxid aus der Atmosphäre.	cv-sentence-collector	4.6	45.2
+0635	Im selben Jahr erfolgte der Abbruch des Wracks.	cv-wiki	4.0	45.2
+0636	Sein dortiger Nachfolger wurde Helmut Lemke.	cv-wiki	3.7	45.3
+0637	Ich sitze traurig auf einer Parkbank.	cv-sentence-collector	3.2	45.4
+0638	Nach dem Saisonende beendete er seine Karriere.	cv-wiki	4.0	45.4
+0639	Welche User sind gerade online?	cv-sentence-collector	2.8	45.5
+0640	Die Apotheke am Markt hat heute bis zwanzig Uhr geöffnet.	eigen	4.7	45.6
+0641	Der Kredit wird ihnen vorerst etwas Luft verschaffen.	cv-sentence-collector	4.4	45.6
+0642	Der Weg in den ersten Söller führt über eine schmale Eingangstür und eine Treppe.	cv-wiki	6.4	45.7
+0643	Tja, der Flug ist schon gebucht.	cv-sentence-collector	2.9	45.8
+0644	Für die Tschechoslowakei bestritt er ein Länderspiel.	cv-wiki	4.4	45.9
+0645	Einzige österreichische Teilnehmer waren Veronika Windisch und Christian Lukas.	cv-wiki	6.2	46.0
+0646	Wie der Vorgängerbau war sie dem Apostel Jakobus geweiht.	cv-wiki	4.7	46.0
+0647	Fotografisch wurde die Siedlung von Jens Weber dokumentiert.	cv-wiki	4.9	46.1
+0648	Sag einfach Bescheid, wenn du noch etwas brauchst.	eigen	4.2	46.2
+0649	Darüber ist ein Dachgeschoss aufgesetzt.	cv-wiki	3.5	46.2
+0650	Über ihre Kammer führte eine Zugbrücke.	cv-wiki	3.4	46.3
+0651	Sein Umfeld hat ihn negativ beeinflusst.	cv-sentence-collector	3.5	46.4
+0652	Das Schulgebäude steht unter Denkmalschutz.	cv-wiki	3.7	46.4
+0653	Herkömmliche Mittel sind nicht biologisch abbaubar.	cv-sentence-collector	4.2	46.5
+0654	Deshalb haben wir Fräulein Böhm eingestellt.	cv-sentence-collector	3.7	46.6
+0655	Der Malte ist im Krankenhaus.	cv-sentence-collector	2.7	46.6
+0656	Ich bin gleich wieder da.	eigen	2.4	46.6
+0657	Uns fehlen Leute zum Korrekturlesen.	cv-sentence-collector	3.2	46.7
+0658	Anschließend ging er als Generalmajor in den Ruhestand.	cv-wiki	4.5	46.8
+0659	Nicht alles, was einen Fortschrittsbalken hat, ist ein Download.	cv-sentence-collector	5.2	46.9
+0660	Hohersdorf kam zur Obmannschaft Rottendorf.	cv-wiki	3.7	46.9
+0661	Teilweise grenzt die Bebauung direkt an.	cv-wiki	3.5	47.0
+0662	Viele Beifahrer ziehen ihre Schuhe aus und legen die Füße auf dem Airbag ab.	cv-sentence-collector	6.0	47.1
+0663	Langsam wurde klar, wer dieses Chaos zu verantworten hatte.	cv-sentence-collector	4.8	47.2
+0664	Na, wie war dein Tag?	eigen	2.1	47.2
+0665	Güter gehören auf die Schiene.	cv-sentence-collector	2.7	47.2
+0666	Wer wünscht ihn sich nicht, den Kühlschrank, den man niemals auffüllen muss?	cv-sentence-collector	6.0	47.3
+0667	Oben angekommen könnt ihr über eine Hängebrücke die Schlucht überqueren.	cv-sentence-collector	5.7	47.4
+0668	Nachdem du deine Einheiten weiterentwickelt hast, werden sie viel effizienter für dich arbeiten.	cv-sentence-collector	7.5	47.6
+0669	Druck und Verlag erfolgten durch Johann Meißner aus Magdeburg.	cv-wiki	5.0	47.6
+0670	Gibt es auch gute Neuigkeiten?	cv-sentence-collector	2.7	47.7
+0671	Außerdem veröffentlichte er zwei Bücher.	cv-wiki	3.5	47.7
+0672	Das klingt anstrengend. Soll ich dir etwas Entspannendes vorspielen?	eigen	5.5	47.8
+0673	Suizid ist doch keine Lösung.	cv-sentence-collector	2.7	47.9
+0674	Der Genitiv wird umgangssprachlich kaum verwendet.	cv-sentence-collector	4.2	47.9
+0675	Offenbar mochte der Nachbar alte Möbel.	cv-sentence-collector	3.4	48.0
+0676	Ich fahre am liebsten im Frühjahr nach Paris.	cv-sentence-collector	3.8	48.1
+0677	Alte Ziegelhütte gehört zur Pfarrei Waldmünchen.	cv-wiki	4.0	48.1
+0678	Unter Umständen wäre es einfacher, diese Frage zuerst zu klären.	cv-sentence-collector	5.2	48.2
+0679	Die Südseite des Langhauses wird durch eine Fassade mit einem Schweifgiebel geprägt.	cv-wiki	6.6	48.3
+0680	Ich stelle die Rollläden im Wohnzimmer auf halb.	eigen	4.0	48.4
+0681	Ich wollte hier nur joggen und dann das!	cv-sentence-collector	3.5	48.5
+0682	Diese Schere trennt die Spreu vom Weizen.	cv-sentence-collector	3.5	48.5
+0683	Christiansen ist Gründungsmitglied der Künstlergruppe Hamburger Strich.	cv-wiki	5.7	48.6
+0684	Entschuldigen Sie, dass ich störe.	cv-sentence-collector	3.0	48.7
+0685	Demnach sind die heiligen Reliquien völlig unzureichend geschützt.	cv-sentence-collector	5.3	48.7
+0686	Da lache ich doch drüber!	cv-sentence-collector	2.4	48.8
+0687	Na gut, schreibst du mir dann nachher, wie es ausgegangen ist?	cv-sentence-collector	5.0	48.9
+0688	Die Rollläden sind jetzt ganz unten.	eigen	3.2	48.9
+0689	Welchen Browser nutzt du auf deinem Smartphone?	cv-sentence-collector	4.0	49.0
+0690	Tingierung und Helmzier des Wappens sind nicht überliefert.	cv-wiki	4.8	49.1
+0691	Gibt es für das Gerät überhaupt noch Updates?	cv-sentence-collector	3.8	49.1
+0692	Ursprünglich war Georgien als Austragungsort vorgesehen.	cv-wiki	4.6	49.2
+0693	Würden Sie mir Ihren Rasenmäher leihen?	cv-sentence-collector	3.4	49.3
+0694	Von den dortigen Fensteröffnungen ist die Mittlere vermauert.	cv-wiki	5.0	49.3
+0695	Nächste Woche sind Schulferien für Schüler.	cv-sentence-collector	3.7	49.4
+0696	Draußen wird es dunkel, ich schalte die Außenbeleuchtung ein.	eigen	5.0	49.5
+0697	Berichterstattung über die Tat lockt Nachahmer an.	cv-sentence-collector	4.2	49.6
+0698	Bisher wurden fast ausschließlich zweiachsige Fahrzeuge für die Wiener Straßenbahnen gebaut.	cv-wiki	7.2	49.7
+0699	Alle halten Howard für einen sehr guten Ingenieur.	cv-sentence-collector	4.2	49.7
+0700	Ich nehme einen Döner und sie einen Dürüm.	cv-sentence-collector	3.6	49.8
+0701	Es bleibt keine Zeit zum Däumchen drehen.	cv-sentence-collector	3.5	49.9
+0702	Weder zur Hügelschüttung noch zur Grabkammer lassen sich genauere Aussagen treffen.	cv-wiki	6.5	50.0
+0703	Die Explosion ereignete sich nahe des internationalen Flughafens.	cv-sentence-collector	5.2	50.1
+0704	Der Ofen ist seit zwei Stunden an. Soll ich ihn ausschalten?	eigen	4.9	50.1
+0705	Der Erker wird von einem Dreiecksgiebel bekrönt.	cv-wiki	4.0	50.2
+0706	Ein spitzer Schnabel, pass auf!	cv-sentence-collector	2.8	50.3
+0707	Folgen Sie mir auf Twitter!	cv-sentence-collector	2.5	50.3
+0708	So zum Beispiel am Flughafen von Kuala Lumpur.	cv-sentence-collector	3.9	50.4
+0709	Liebe Zugvögel, Süden ist die andere Richtung!	cv-sentence-collector	3.9	50.4
+0710	Wenn das Lämpchen dann leuchtet, kannst du den Stecker ziehen.	cv-sentence-collector	5.0	50.5
+0711	Oberirdisch sind keine Reste mehr vorhanden.	cv-wiki	3.7	50.6
+0712	Gute Fahrt und komm gut an!	eigen	2.5	50.6
+0713	Irgendwie wird sie sich durchschlagen.	cv-sentence-collector	3.3	50.7
+0714	Da steht zwar Bosch drauf, es kommt aber trotzdem aus China.	cv-sentence-collector	4.9	50.8
+0715	Ich kann meinen Laptop nicht bedienen.	cv-sentence-collector	3.3	50.8
+0716	Bevor man einen Neuanfang wagt, sollte man sich ein Konzept überlegen.	cv-sentence-collector	5.6	50.9
+0717	Reparieren ist besser als wegwerfen und neu kaufen.	cv-sentence-collector	4.2	51.0
+0718	Bleiben Sie schön auf Ihren drei Buchstaben sitzen!	cv-sentence-collector	4.2	51.0
+0719	Könnten Sie bitte kurz auf mein Gepäck aufpassen?	cv-sentence-collector	4.1	51.1
+0720	Die meisten Apps für Smartphones können nichts, was nicht auch eine Website könnte.	cv-sentence-collector	6.5	51.2
+0721	Als Erzähler konnte sie Morgan Freeman gewinnen.	cv-wiki	4.0	51.3
+0722	Zuvor absolvierte er verschiedene Schauspielkurse.	cv-wiki	4.2	51.4
+0723	Er merkte, dass seine Mannschaft zunehmend an Terrain verlor.	cv-sentence-collector	5.0	51.4
+0724	Die Empore im Innenraum ist nur durch eine äußere Treppe erreichbar.	cv-wiki	5.5	51.5
+0725	Kommst du mit Erdbeeren pflücken?	cv-sentence-collector	3.0	51.6
+0726	Das Album erreichte auf Anhieb Platz eins der deutschen Albumcharts.	cv-wiki	5.5	51.7
+0727	Sie wurde dort Partnerin in einem Architekturbüro.	cv-wiki	4.2	51.7
+0728	Er kam ins Finale und besiegte im Halbfinale Torbjörn Blomdahl glatt in drei Sätzen.	cv-wiki	6.6	51.9
+0729	Schwächen wollte die Sowjetunion gegenüber dem Westen natürlich nicht zugeben.	cv-sentence-collector	6.2	52.0
+0730	Junge und alte Menschen wohnen gemeinsam in einer Wohngemeinschaft.	cv-sentence-collector	5.4	52.0
+0731	Die Bebauung hat den Charakter einer Streusiedlung.	cv-wiki	4.2	52.1
+0732	Der bedeutendste polnische Komponist trug einen französischen Namen.	cv-sentence-collector	5.5	52.2
+0733	Weihnachten ist ein Geschenk für die Wirtschaft.	cv-sentence-collector	4.0	52.3
+0734	Einige nahmen auch Nebenjobs an.	cv-wiki	2.9	52.3
+0735	Ende August und Anfang September war die Kurve hoch.	cv-sentence-collector	4.3	52.4
+0736	Das ist seine einzige Schöpfung.	cv-wiki	2.9	52.4
+0737	Es heißt Mozilla Firefox und nicht Mozzarella Firefox.	cv-sentence-collector	4.5	52.5
+0738	Das Paar lebt in Sarajevo.	cv-wiki	2.5	52.6
+0739	Dabei verrichten die Materialien mechanische Arbeit.	cv-wiki	4.3	52.6
+0740	Aufklärungsgruppe der Hochseeflotte und zugleich Führer der Torpedoboote der Ostsee.	cv-wiki	6.6	52.7
+0741	Da wollte Franziska aber noch ein Wörtchen mitreden.	cv-sentence-collector	4.3	52.8
+0742	Die nachfolgende Kreuztabelle stellt die Ergebnisse aller Spiele dieser Aufstiegsrunde dar.	cv-wiki	7.1	52.9
+0743	Mittlerweile können wir den Klimawandel am eigenen Leib spüren.	cv-sentence-collector	5.1	53.0
+0744	Er wurde durch den Neubau einer Scheune nahezu komplett zerstört.	cv-wiki	5.2	53.1
+0745	Das Fachwerkhaus steht wie die gesamte Straße unter Denkmalschutz.	cv-wiki	5.3	53.2
+0746	Das Genie beherrscht das Chaos.	cv-sentence-collector	2.8	53.2
+0747	Die Nachricht dürfte für Jubel unter den Anhängern sorgen.	cv-sentence-collector	4.7	53.3
+0748	Na, was lag denn im Körbchen?	cv-sentence-collector	2.7	53.4
+0749	Mein Kopfhörer hat sich gerade verabschiedet.	cv-sentence-collector	3.8	53.4
+0750	Die Abgrenzung zahlreicher Populationen als Arten oder Unterarten war bis in jüngste Zeit umstritten.	cv-wiki	7.8	53.6
+0751	Er setzt die Verordnungen um und koordiniert die Arbeit der einzelnen Archive.	cv-wiki	6.2	53.7
+0752	Unterschrieben ist das Gesuch wiederum auf Arabisch.	cv-wiki	4.3	53.7
+0753	Ich wollte fünf Kilo in einer Woche abnehmen.	cv-sentence-collector	3.8	53.8
+0754	Sobald Sie den Kadaver geplündert haben, sollten Sie Ihren Rucksack öffnen.	cv-sentence-collector	6.0	53.9
+0755	Hier liegen noch Erdnüsse rum.	cv-sentence-collector	2.7	53.9
+0756	Die Richter sind in Ausübung ihres richterlichen Amtes unabhängig.	cv-sentence-collector	5.3	54.0
+0757	Auch in Afrika leben Pinguine.	cv-sentence-collector	2.7	54.1
+0758	Was er selbst nicht kann, kann er auch nicht von seiner Belegschaft erwarten.	cv-sentence-collector	6.1	54.2
+0759	Das wurde einfach über unsere Köpfe hinweg entschieden.	cv-sentence-collector	4.5	54.3
+0760	Ein Umtausch ist bei Filmen und Software ausgeschlossen.	cv-sentence-collector	4.6	54.3
+0761	Diesmal kam der Defensivspieler zu sieben Einsätzen in der höchsten russischen Spielklasse.	cv-wiki	7.1	54.4
+0762	Der nördliche Zubau hat ein Pultdach.	cv-wiki	3.2	54.5
+0763	Ihr ungewöhnliches Aussehen sorgte für Aufmerksamkeit.	cv-wiki	4.5	54.6
+0764	Im Hochaltar stehen barocke Figuren der Hl.	cv-wiki	3.7	54.6
+0765	Im Wald begegnete das Mädchen einem Fuchs.	cv-sentence-collector	3.6	54.7
+0766	Gemäß der Politik der Östlichen Partnerschaft kann die Ukraine Mitglied der Europäischen Union werden.	cv-wiki	7.9	54.8
+0767	Geier wohnt in Sande bei Wilhelmshaven.	cv-wiki	3.4	54.9
+0768	Pavel erklärte den Sachverhalt so langsam, dass ihn jeder verstand.	cv-sentence-collector	5.4	55.0
+0769	Anita Eichhorn lebt in München.	cv-wiki	2.8	55.0
+0770	Plötzlich gibt es eine Maschine, die seinen Job besser erledigen kann als er.	cv-sentence-collector	6.1	55.1
+0771	Schildkröten werden bis zu zweihundert Jahre alt.	cv-sentence-collector	4.1	55.2
+0772	Ohne Photoshop sieht keine Frau der Welt so aus.	cv-sentence-collector	4.0	55.3
+0773	Es wird bereits gebaut, obwohl eine endgültige Genehmigung bisher fehlt.	cv-sentence-collector	5.7	55.4
+0774	Lass uns einmal zur Boje und wieder zurück schwimmen.	cv-sentence-collector	4.4	55.4
+0775	Die Magdeburger Straße verlief auf dem Ostufer der Naab.	cv-wiki	4.6	55.5
+0776	Eine genauere Zuordnung zu dessen bekannten Nachkommen ist nicht möglich.	cv-wiki	5.8	55.6
+0777	Tatsächlich bleiben die Daten im Browser und werden nicht zum Server übertragen.	cv-sentence-collector	6.3	55.7
+0778	Die Illusion der freien Entscheidung täuscht.	cv-sentence-collector	3.8	55.8
+0779	Ich möchte um sieben Uhr frühstücken.	cv-sentence-collector	3.2	55.8
+0780	Unterschiedliche Schreibweisen verlangen unterschiedliche Aussprache.	cv-sentence-collector	5.5	55.9
+0781	Wir haben nicht zufällig noch irgendwo einen Feuerlöscher herumliegen?	cv-sentence-collector	5.6	56.0
+0782	Austragung des belarussischen Pokalwettbewerbs der Männer.	cv-wiki	4.7	56.1
+0783	Die Hülle hatte das Smartphone beim Sturz gut geschützt.	cv-sentence-collector	4.6	56.2
+0784	Das war nicht Teil der Abmachung!	cv-sentence-collector	3.0	56.2
+0785	Einige Rätsel nehmen Bezug auf die Tätigkeit des Spielers als Maler.	cv-wiki	5.5	56.3
+0786	Sollten all seine Bemühungen umsonst gewesen sein?	cv-sentence-collector	4.2	56.4
+0787	Niemals dürfen Add-ons hinter dem Rücken des Nutzers installiert werden.	cv-sentence-collector	5.7	56.5
+0788	Gibt's das auch in Grün-Pink?	cv-sentence-collector	2.7	56.5
+0789	Langfristig kann ich mir das schon als Lösung vorstellen.	cv-sentence-collector	4.7	56.6
+0790	In der Arbeit wurde das Trentino erstmals ausführlich und unabhängig vom deutschsprachigen Tirol beschrieben.	cv-wiki	8.4	56.7
+0791	Tja, so kann man sich irren.	cv-sentence-collector	2.6	56.8
+0792	Der Schwerpunkt bilden künstlerische Werke aus Europa sowie japanische Manga.	cv-wiki	6.1	56.9
+0793	Später wurden die drei Dörfer aufgegeben.	cv-wiki	3.5	56.9
+0794	Das Kirchenäußere zeigt am spätgotischen Strebepfeiler und Maßwerkfenster.	cv-wiki	5.9	57.0
+0795	Der folgende Humor ist für Publikum über dreißig Jahren nicht geeignet.	cv-sentence-collector	5.7	57.1
+0796	Ich persönlich höre bei bei solchen Sachen eher auf mein Bauchgefühl.	cv-sentence-collector	5.5	57.2
+0797	Die Namen der Schiffe wurden vorerst beibehalten.	cv-wiki	4.1	57.3
+0798	Dort erlebte sie die Befreiung durch das britische Militär.	cv-wiki	4.8	57.4
+0799	Als Autoren der Songs fungierten überwiegend Elton John und Bernie Taupin.	cv-wiki	5.9	57.5
+0800	Bei der Besichtigung sollten Keller und Garage nicht vergessen werden.	cv-sentence-collector	5.6	57.6
+0801	Er schrieb für Spiegel online eine Kolumne über den englischen Fußball.	cv-wiki	5.7	57.7
+0802	Nicht aus jedem Ei schlüpft ein Küken.	cv-sentence-collector	3.3	57.7
+0803	Nach dem Aufstieg verließ er Mariupol allerdings.	cv-wiki	4.1	57.8
+0804	Das Oberlandesgericht Stuttgart verurteilte ihn zu zweieinhalb Jahren Gefängnis.	cv-wiki	6.3	57.9
+0805	Später zog die Familie nach Edmonton.	cv-wiki	3.2	57.9
+0806	In diesem Kontext entstandene Bilder wirken objektiv und nüchtern.	cv-wiki	5.3	58.0
+0807	Also ich würde es als Kompliment auffassen.	cv-sentence-collector	3.7	58.1
+0808	In den können Bürger der Region investieren und somit langfristig profitieren.	cv-sentence-collector	6.2	58.2
+0809	Menschen werfen ihren Müll überall hin.	cv-sentence-collector	3.4	58.2
+0810	Das Gebüsch dort vorne sieht sehr vertrocknet aus.	cv-sentence-collector	4.2	58.3
+0811	Früher war ich auch ganz schön radikal, was den Umweltschutz angeht.	cv-sentence-collector	5.5	58.4
+0812	Sie durften sich nur tagsüber in der Stadt aufhalten.	cv-wiki	4.4	58.5
+0813	Sie finden die App zum kostenlosen Download hier.	cv-sentence-collector	4.1	58.5
+0814	Geburtstag des Museum neu eröffnet.	cv-wiki	3.1	58.6
+0815	Fowler begann mit sechs Jahren das Tennisspielen und bevorzugt Hartplätze.	cv-wiki	5.9	58.7
+0816	Möglicherweise sägen die Gewerkschaften hier am eigenen Ast.	cv-sentence-collector	4.9	58.8
+0817	Obwohl die Ärztin die Stelle betäubt hatte, tat es immer noch weh.	cv-sentence-collector	5.3	58.9
+0818	Der Distrikt liegt auf der Hochebene des Dekkan zentral in Telangana.	cv-wiki	5.5	59.0
+0819	Dabei hatte Franz allen Grund dazu auf Frederik wütend zu sein.	cv-sentence-collector	5.1	59.0
+0820	Sind Chefs im Schnitt dümmer als ihre Angestellten?	cv-sentence-collector	4.2	59.1
+0821	Das funktioniert auch mit Android und Windows.	cv-sentence-collector	3.9	59.2
+0822	Mann unterscheidet Züge, Triebwagen und Triebzüge.	cv-sentence-collector	4.2	59.2
+0823	Die Hausnummer muss beleuchtet sein.	cv-sentence-collector	3.2	59.3
+0824	Durch unsere Lebensweise können wir die Gene unserer Nachkommen beeinflussen.	cv-sentence-collector	6.1	59.4
+0825	Mauritius galt als Schutzpatron des Königreiches.	cv-wiki	4.1	59.5
+0826	Darauf engagierte ihn Alberto Pugliese als Sänger seines Orchesters.	cv-wiki	5.5	59.6
+0827	Dieser ist schmal genug für ausreichend Diffusion.	cv-wiki	4.2	59.6
+0828	Der Botschafter hat seinen Sitz in der griechischen Botschaft in Singapur.	cv-wiki	5.9	59.7
+0829	Langsam hat sich die Situation beruhigt, jetzt solltest du wieder in deine Wohnung zurückkehren.	cv-sentence-collector	7.5	59.9
+0830	Leider fehlt ihr das nötige Kleingeld dazu.	cv-sentence-collector	3.7	59.9
+0831	Die Ausstellung erreichte über zwei Millionen Besucher.	cv-wiki	4.5	60.0
+0832	Dazu muss man den Aufsatz wechseln.	cv-sentence-collector	3.1	60.0
+0833	Einen Waldbrand bekämpft man nicht mit dem Feuerlöscher.	cv-sentence-collector	4.6	60.1
+0834	Man glaubte es nicht, der vierjährige Junge spielte das Schlagzeug wie ein Profi.	cv-sentence-collector	6.4	60.2
+0835	Da hinten steht ein Ferrari auf dem Parkplatz.	cv-sentence-collector	3.9	60.3
+0836	Buchstabieren Sie das Wort einmal rückwärts!	cv-sentence-collector	3.7	60.4
+0837	Mit diesem Ensemble trat er jedes Jahr in den Sommermonaten in Karlsbad auf.	cv-wiki	6.0	60.5
+0838	Lasst eurer Fantasie freien Lauf!	cv-sentence-collector	3.0	60.5
+0839	Vielleicht spürt dieses Buch wirklich den Einfluss von Ted Hughes.	cv-wiki	5.3	60.6
+0840	In Jugoslawien gab es bereits früher weibliche Feuerwehrleute.	cv-wiki	5.0	60.7
+0841	Zwischen Langhaus und dem Erdgeschoss des Turms ist der Chorbogen des Vorgängerbaus erhalten.	cv-wiki	7.2	60.8
+0842	Erika und Max Mustermann sind verheiratet.	cv-sentence-collector	3.6	60.9
+0843	Patronin der Kirche ist Margareta von Antiochia.	cv-wiki	4.0	60.9
+0844	Ein solcher Boden ist oft durch feuchte und warme Bedingungen gekennzeichnet.	cv-wiki	6.1	61.0
+0845	Bis Weihnachten dürften die Zweige vertrocknet sein.	cv-sentence-collector	4.3	61.1
+0846	Leider sind alle Software-Lizenzen abgelaufen.	cv-sentence-collector	3.9	61.2
+0847	Die Durchfahrt hat ein Tonnengewölbe mit einer rechteckigen Öffnung im Scheitel.	cv-wiki	6.3	61.3
+0848	Sein Grabmal ist bis heute erhalten.	cv-wiki	3.2	61.3
+0849	Im Winter suchen Obdachlose in dem verlassenen Gebäude Schutz.	cv-sentence-collector	5.0	61.4
+0850	Auch vor dem Zorn der Götter fürchtet er sich kein Stück.	cv-sentence-collector	4.7	61.5
+0851	Er verläuft nahezu geradlinig in südöstlicher Richtung.	cv-wiki	4.5	61.6
+0852	Strom kommt aus der Steckdose.	cv-sentence-collector	2.7	61.6
+0853	Er mündet beim Wohnplatz Hirschberg von links und Westen in die oberste Bühler.	cv-wiki	6.2	61.7
+0854	Naturräumlich liegt der Flugplatz im Grazer Bergland.	cv-wiki	4.4	61.8
+0855	Jackson beendete seine Laufbahn und ging nach Kalifornien zurück.	cv-wiki	5.2	61.9
+0856	Mit Höchst schaffte er zu Saisonende den Aufstieg in die Regionalliga.	cv-wiki	5.6	62.0
+0857	Der Geschirrspüler läuft aber noch.	cv-sentence-collector	3.1	62.0
+0858	Manche Menschen bekommen im Sommer schnell T-Shirt abdrücke.	cv-sentence-collector	4.9	62.1
+0859	Wohin fährst du mich, fragte Veronika ängstlich.	cv-sentence-collector	4.0	62.2
+0860	Und vor allem so viele Fremdwörter.	cv-sentence-collector	3.1	62.2
+0861	Als Teenager arbeitete Blackburn in einem Sägewerk.	cv-wiki	4.2	62.3
+0862	Die Leute sind nicht alle so gleichgültig.	cv-sentence-collector	3.6	62.3
+0863	Der See ist im Sommer ein beliebtes Ausflugsziel.	cv-sentence-collector	4.1	62.4
+0864	Klemperer stammte aus einer jüdischen Familie.	cv-wiki	3.9	62.5
+0865	Zuckerguss auf die Torte oder den Kuchen sind das I-Tüpfelchen beim Backen.	cv-sentence-collector	6.0	62.6
+0866	Was sagt der Chefarzt dazu?	cv-sentence-collector	2.5	62.6
+0867	Das Labor konnte im Blut keine Antikörper nachweisen.	cv-sentence-collector	4.4	62.7
+0868	Mein Nachbar ist zwar rücksichtslos, hat aber wenigstens Musikgeschmack.	cv-sentence-collector	5.7	62.8
+0869	Üblicherweise erzählt er auf diesen Fahrten viel über sich und lernt wenig über andere.	cv-sentence-collector	6.8	62.9
+0870	Moment, ich will mir mal kurz eine Sprachnachricht von Babsi anhören.	cv-sentence-collector	5.5	63.0
+0871	Der Torhüter war nach seinem Karriereende als Trainer im Amateurbereich tätig.	cv-wiki	6.2	63.1
+0872	Und warum sollte es da ein Urheberrecht drauf geben?	cv-sentence-collector	4.3	63.2
+0873	Rodrigo Santos ist verheiratet und hat drei Kinder.	cv-wiki	4.2	63.2
+0874	Die Suppe müsst ihr schon selbst auslöffeln!	cv-sentence-collector	3.7	63.3
+0875	Freie Software muss nicht kostenlos sein.	cv-sentence-collector	3.5	63.4
+0876	Bestimmte Produkte kann man halt nur kaufen, wenn sie im Preis herabgesetzt sind.	cv-sentence-collector	6.4	63.5
+0877	Manchmal ist Veränderung aber zwingend erforderlich.	cv-sentence-collector	4.3	63.5
+0878	Ihre Freundschaft hält jedoch bis heute an.	cv-wiki	3.7	63.6
+0879	Die barocke Kirche ist von einem Friedhof mit Umfassungsmauer umgeben.	cv-wiki	5.6	63.7
+0880	Majestät, es gibt keinen Ort, wo ihr hier sicher seid.	cv-sentence-collector	4.5	63.8
+0881	Können wir bitte aufhören zu behaupten, Autos und Kraftwerke würden Kohlenstoffdioxid verbrauchen?	cv-sentence-collector	7.6	63.9
+0882	Ralf Schwarzkopf wuchs in Lüdenscheid auf.	cv-wiki	3.6	64.0
+0883	Der weltweite Wettbewerb zur Dokumentation der urbanen Biodiversität findet jedes Jahr im Frühjahr statt.	cv-wiki	8.1	64.1
+0884	Mann, war die Predigt heute langweilig!	cv-sentence-collector	3.4	64.1
+0885	Jennifer wird demnächst Zwillinge - ein Mädchen und einen Jungen - gebären.	cv-sentence-collector	6.0	64.2
+0886	Das Lied erreichte in den deutschen und österreichischen Singlecharts die Chartspitze.	cv-wiki	6.7	64.4
+0887	Freiwillige Feuerwehrleute gibt es in der Mongolei nicht.	cv-wiki	4.7	64.4
+0888	Onkel Ingo hat mich mit auf die Jagd genommen.	cv-sentence-collector	3.9	64.5
+0889	Vorher war Wuhan vor allem für scharfes Essen bekannt.	cv-sentence-collector	4.5	64.6
+0890	Im Stadion finden auch Konzerte statt.	cv-wiki	3.3	64.6
+0891	Afghanistan gewann den Münzwurf und entschied sich als Schlagmannschaft zu beginnen.	cv-wiki	6.6	64.7
+0892	Das Bauwerk steht unter Denkmalschutz.	cv-wiki	3.3	64.8
+0893	Natürliche Ereignisse wie Waldbrände oder Dürren stellen weitere Gefahren dar.	cv-wiki	6.2	64.9
+0894	Soll ich heute wirklich schon wieder Milchreis kochen?	cv-sentence-collector	4.5	65.0
+0895	Wegwerfen wollte er sie aber auch nicht.	cv-sentence-collector	3.5	65.0
+0896	Dies ermöglicht zwei Klubs aus den Kreisen Dortmund und Bochum die Teilnahme.	cv-wiki	6.1	65.1
+0897	Unter Tränen erinnert sich die Witwe an das Geschehene.	cv-sentence-collector	4.5	65.2
+0898	Er blieb auch nach ihrer Scheidung als ihr Manager aktiv.	cv-wiki	4.7	65.3
+0899	Das Ergebnis seiner Überprüfung gibt der Rechnungshof der betreffenden Landesregierung bekannt.	cv-sentence-collector	7.4	65.4
+0900	Teilweise orientieren sich ihre Holzschnitte in Format und Abstraktion an japanischen Grafiken.	cv-wiki	7.4	65.5
+0901	Laurentius unterstellte Pfarrkirche gehört zum Dekanat Hall in der Diözese Innsbruck.	cv-wiki	6.7	65.6
+0902	Zudem erhielt er die Plakette Förderer des deutschen Buches vom Börsenverein des Deutschen Buchhandels.	cv-wiki	8.0	65.8
+0903	Ohne Abschluss kann man notfalls noch Möbelpacker werden.	cv-sentence-collector	4.7	65.9
+0904	Der Kirchturm des Vorgängerbaus wurde in den Neubau einbezogen.	cv-wiki	5.1	65.9
+0905	Auf der Alm befinden sich sieben Almhütten.	cv-wiki	3.7	66.0
+0906	Die dritte Abteilung des Museum ist den archäologischen Funden aus dem Landkreis gewidmet.	cv-wiki	7.0	66.1
+0907	Würstchen und Kartoffelsalat gehen immer.	cv-sentence-collector	3.5	66.2
+0908	Nimm doch bitte mal dein Laptop vom Tisch, wir wollen hier Plätzchen backen.	cv-sentence-collector	6.0	66.3
+0909	Aber reicht das schon für eine Veröffentlichung?	cv-sentence-collector	4.0	66.3
+0910	Auch diese Broschüre fand ein großes Publikum.	cv-wiki	3.9	66.4
+0911	Als angehende Ingenieure sollten Sie das locker im Kopf rechnen können.	cv-sentence-collector	5.7	66.5
+0912	Hinzu kamen erst später mehrere Wohngebäude.	cv-wiki	3.7	66.6
+0913	Zunächst gelang den neun gepanzerten Fahrzeugen der Durchbruch.	cv-wiki	5.1	66.6
+0914	Majestät, wir müssen mit der Zeremonie anfangen.	cv-sentence-collector	4.0	66.7
+0915	Zeitgenössische Kritiken bewerteten das Stück trotz zahlreicher Aufführungen eher negativ.	cv-wiki	7.0	66.8
+0916	Goldbach entstammte einer angesehenen Patrizierfamilie aus der Reichsstadt Wangen.	cv-wiki	6.5	66.9
+0917	Warum schlagen die Updates in letzter Zeit immer fehl?	cv-sentence-collector	4.5	67.0
+0918	Von oben hat man eine Aussicht über die Hintere Sächsische Schweiz.	cv-wiki	5.4	67.1
+0919	Die Imagines beobachtet man gewöhnlich in den Monaten Mai und Juni.	cv-wiki	5.4	67.2
+0920	An der Brest Business School machte sie ihren Bachelor in Management.	cv-wiki	5.5	67.3
+0921	In den höchsten Tönen hat er dich gelobt.	cv-sentence-collector	3.5	67.3
+0922	Sein Studium absolvierte er unter anderem in der damaligen Sowjetunion.	cv-wiki	5.7	67.4
+0923	Ich bin von der Politik enttäuscht!	cv-sentence-collector	3.1	67.5
+0924	Die Überlandstraße von Maubisse nach Ainaro teilt die Aldeia in zwei Hälften.	cv-wiki	6.1	67.6
+0925	Das Altarretabel des Hochaltars wurde von Georg Sebastian Urlaub gemalt.	cv-wiki	5.7	67.7
+0926	Die Sakristei befindet sich an der Südseite des Turms.	cv-wiki	4.5	67.8
+0927	Nicht annähernd so geil wie das Original!	cv-sentence-collector	3.5	67.8
+0928	Nachgewiesen ist seine Tätigkeit als Drucker und Herausgeber in Bologna.	cv-wiki	5.7	67.9
+0929	Aus der Zeit sind wieder Werke von ihr nachweisbar.	cv-wiki	4.2	68.0
+0930	Mein Handlanger möchte ein größeres Stück vom Kuchen.	cv-sentence-collector	4.4	68.1
+0931	In der Viehzucht werden hauptsächlich Schafe gehalten.	cv-wiki	4.5	68.1
+0932	Es ist quasi ein Findelkind.	cv-sentence-collector	2.6	68.2
+0933	Der Defensivspieler bestritt seine bisherige Karriere in Schweden und Italien.	cv-wiki	6.2	68.3
+0934	Ich schätze, dieser Sachverhalt wurde noch nicht ausreichend untersucht.	cv-sentence-collector	5.7	68.4
+0935	Zum Glück kam die Müllabfuhr nicht.	cv-sentence-collector	3.1	68.4
+0936	So war es ursprünglich mal gedacht.	cv-sentence-collector	3.1	68.5
+0937	Juckt es denn wieder, Jochen?	cv-sentence-collector	2.7	68.5
+0938	Zur Eiablage kehren die Weibchen allein zum Gewässer zurück.	cv-wiki	4.9	68.6
+0939	Sie wollte sich jedoch dafür nicht den Hut aufsetzen.	cv-sentence-collector	4.4	68.7
+0940	Mittlerweile hat sich David zurückgezogen.	cv-wiki	3.6	68.7
+0941	Zwiebeln, Knoblauch und anderes Wurzelgemüse sind der Hit der Saison.	cv-sentence-collector	5.5	68.8
+0942	Soll ich dir etwas abnehmen?	cv-sentence-collector	2.6	68.9
+0943	So stelle ich mir meinen Feierabend vor!	cv-sentence-collector	3.5	68.9
+0944	Die Passage befindet sich zwischen zwei Gebäuden der Deutschen Bank.	cv-wiki	5.5	69.0
+0945	Die Maxillare reicht nur bis zu den vorderen Nasenöffnungen.	cv-wiki	4.9	69.1
+0946	Auch Erwachsene kaufen sich manchmal Spielzeug.	cv-sentence-collector	4.0	69.2
+0947	Der häusliche Unterricht unterliegt keiner solchen Beschränkung.	cv-sentence-collector	5.2	69.3
+0948	Nehmen Sie Ihren Hund online!	cv-sentence-collector	2.7	69.3
+0949	Nicht umsonst sagt man Akademikern eine gewisse Arroganz nach.	cv-sentence-collector	5.0	69.4
+0950	Zurzeit studiert sie in Göteborg Schauspiel und Drehbuch.	cv-wiki	4.7	69.5
+0951	Karaoke wäre so schön, wenn man den Ton treffen würde.	cv-sentence-collector	4.5	69.5
+0952	In der Familie lernen Kinder das Phänomen der Autorität kennen.	cv-wiki	5.1	69.6
+0953	Kilian nimmt die Körperpflege sehr ernst.	cv-sentence-collector	3.5	69.7
+0954	Die Gestalt verschwand daraufhin spurlos.	cv-wiki	3.5	69.7
+0955	In der nächste Pause probiere ich das nochmal.	cv-sentence-collector	3.9	69.8
+0956	Die Artenvielfalt ist durch den Bergbau stark gefährdet.	cv-wiki	4.6	69.9
+0957	Die beiden Exemplare im British Museum sind unvollständig.	cv-wiki	4.7	70.0
+0958	Es hat nur ein bisschen gefehlt und es wäre zu einem Blechschaden gekommen.	cv-sentence-collector	6.0	70.1
+0959	So ging das Sprichwort doch, oder?	cv-sentence-collector	3.0	70.1
+0960	Sie war mit einer Packung aus Feuerstein ummantelt.	cv-wiki	4.2	70.2
+0961	Ein Bedürfnis, das sie sonst nie verspürt hätten.	cv-sentence-collector	4.1	70.2
+0962	Dazu veranstaltet die Gesellschaft regelmäßige Treffen der Mitglieder in Form von Konferenzen und Workshops.	cv-wiki	8.3	70.4
+0963	Aber zum Wegwerfen ist es zu schade.	cv-sentence-collector	3.2	70.4
+0964	Wenn sie nicht mehr benötigt werden, verlieren sie ihre Jobs.	cv-sentence-collector	5.0	70.5
+0965	Göbel ist verheiratet und hat vier Kinder.	cv-wiki	3.6	70.6
+0966	Das Ehepaar hat zwei gemeinsame Töchter und lebt in Göttingen.	cv-wiki	5.0	70.7
+0967	Das Fahrzeugdeck war vollständig geschlossen und mit den Decksaufbauten überbaut.	cv-wiki	6.4	70.8
+0968	Die Straße frei von Schnee zu halten, war aufwendiger als gedacht.	cv-sentence-collector	5.3	70.9
+0969	In öffentlichen Verkehrsmitteln gilt die Maskenpflicht.	cv-sentence-collector	4.5	70.9
+0970	Diese wurde von Johann Joachim Wagner gebaut.	cv-wiki	3.8	71.0
+0971	Erschöpft aber glücklich lächelte sie aus ihrem Sessel.	cv-sentence-collector	4.5	71.1
+0972	Über den Fenstern des dritten Obergeschosses finden sich Dreiecksgiebel.	cv-wiki	5.7	71.2
+0973	Das durchschaut man doch sofort.	cv-sentence-collector	2.9	71.2
+0974	Das Album erschien auch in Belgien und den deutschsprachigen Ländern.	cv-wiki	5.5	71.3
+0975	Auf internationalem Level traten die Brüder nur selten in denselben Wettbewerben an.	cv-wiki	6.6	71.4
+0976	Bis Saisonende absolvierte er neun Partien in Russlands höchster Spielklasse.	cv-wiki	6.1	71.5
+0977	Ihre Mitglieder in Namibia und Südafrika sind vor allem deutschsprachige Gläubige.	cv-wiki	6.5	71.6
+0978	Objekte ab einer bestimmten Distanz werden nur noch statisch beleuchtet.	cv-sentence-collector	5.7	71.7
+0979	Außerhalb von Helsinki und Turku wurden damals keine Grafiken erstellt.	cv-wiki	5.7	71.8
+0980	Im Vergleich zum Vorjahr veränderte sich die Streckenführung nur geringfügig.	cv-wiki	6.1	71.9
+0981	Ludwig wohnt jetzt wieder in Amsterdam.	cv-sentence-collector	3.4	72.0
+0982	Rieche ich da etwa Alkohol?	cv-sentence-collector	2.5	72.0
+0983	Schüler muss man fördern und fordern.	cv-sentence-collector	3.2	72.1
+0984	Für die Republik Österreich besteht eine einheitliche Staatsbürgerschaft.	cv-sentence-collector	5.8	72.2
+0985	Seitdem ist nur noch die Hügelschüttung vorhanden.	cv-wiki	4.2	72.2
+0986	Das überlasse ich eurer Fantasie.	cv-sentence-collector	3.0	72.3
+0987	Sophie ist seit kurzem mit Bee zusammen.	cv-wiki	3.5	72.3
+0988	Mein Gott ist der größte!	cv-sentence-collector	2.4	72.4
+0989	Als Folge bekam er eine Lungenentzündung an der er starb.	cv-wiki	4.7	72.5
+0990	Hier gibt es eine Abkürzung.	cv-sentence-collector	2.6	72.5
+0991	Die Straßenseite zeigt zehn Fensterachsen und weist nach Norden.	cv-wiki	5.2	72.6
+0992	Auf der Südseite sind mittig vier rechteckige Fenster übereinander angeordnet.	cv-wiki	6.2	72.7
+0993	Die Grabstelle wurde aber inzwischen eingeebnet.	cv-wiki	4.0	72.8
+0994	Die neusten Nachrichten im Anschluss.	cv-sentence-collector	3.2	72.8
+0995	Entschuldigen Sie, ist Herr Song zu Hause?	cv-sentence-collector	3.6	72.9
+0996	Hier konnte man sich jedoch nicht durchsetzen.	cv-wiki	3.9	72.9
+0997	An Bord sind einige hundert Passagiere.	cv-sentence-collector	3.4	73.0
+0998	Das Erdgeschoss ist in massiver Bauweise aus Bruchsteinen errichtet.	cv-wiki	5.5	73.1
+0999	Für letzteres erstellte das Studio vier Trailer in Form von Kurzfilmen.	cv-wiki	5.7	73.2
+1000	Aus Kasachstan hatte Georg schon viel gehört.	cv-sentence-collector	3.8	73.3

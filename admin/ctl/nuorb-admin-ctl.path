@@ -1,0 +1,9 @@
+[Unit]
+Description=NuOrb-Verwaltung: Neustart-Anfragen beobachten
+
+[Path]
+PathModified=/var/lib/nuorb-admin-ctl/request
+Unit=nuorb-admin-ctl.service
+
+[Install]
+WantedBy=multi-user.target

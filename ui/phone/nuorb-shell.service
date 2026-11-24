@@ -1,0 +1,21 @@
+# systemd-User-Dienst auf dem Handy (Benutzer nuorb). Kiosk oeffnet danach http://127.0.0.1:8770/
+[Unit]
+Description=NuOrb-Shell (lokale UI + Proxy zu nuorb und Geraetedienst)
+After=network.target
+
+[Service]
+ExecStart=/run/current-system/sw/bin/python3 -I %h/.local/lib/nuorb-shell/nuorb-shell.py
+# Replace NUORB_SERVER_IP with the address of the backend LXC (see config.env.example)
+Environment=NUORB_URL=https://NUORB_SERVER_IP:8443
+# Geraetedienst von handy-linux (Port 8765, Pfade /api/*, prueft den Origin bei POST):
+Environment=DEVICE_URL=http://127.0.0.1:8765
+Environment=DEVICE_PREFIX=/api/
+Environment=DEVICE_ORIGIN=https://NUORB_SERVER_IP:8443
+Environment=SHELL_PORT=8770
+# Heim-CA: entweder systemweit vertraut (security.pki.certificateFiles) oder hier explizit:
+# Environment=NUORB_CA=/etc/nuorb/nuorb-ca.crt
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target

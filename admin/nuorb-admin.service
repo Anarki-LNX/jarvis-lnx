@@ -1,0 +1,36 @@
+[Unit]
+Description=NuOrb-Verwaltung (Einstellungs-Web-UI, HTTPS :8444, nur LAN)
+After=network-online.target nuorb-ui.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nuorb
+Group=nuorb
+WorkingDirectory=/home/nuorb/nuorb-admin
+ExecStart=/home/nuorb/nuorb-admin/venv/bin/python -I /home/nuorb/nuorb-admin/server.py
+Restart=on-failure
+RestartSec=3
+Environment=ADMIN_PORT=8444
+Environment=PYTHONUNBUFFERED=1
+# Replace the placeholders with your addresses (see config.env.example)
+Environment=PHONE_HOST=PHONE_HOST
+Environment=OLLAMA_HOST=OLLAMA_HOST
+Environment=PHONE_USER=nuorb-ctl
+UMask=0077
+# Haertung: schreibt nur Hermes-Konfiguration, eigene Daten, ui.json und die Neustart-Anfrage
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=no
+ReadWritePaths=/home/nuorb /var/lib/nuorb-admin-ctl
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=768M
+
+[Install]
+WantedBy=multi-user.target
