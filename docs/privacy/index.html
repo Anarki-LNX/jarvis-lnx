@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NuOrb – Privacy Policy / Datenschutzerklärung</title>
+<style>
+  :root { --bg:#0b0f14; --fg:#e6edf3; --muted:#9aa7b4; --accent:#3ad6f0; --card:#121922; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:1.8rem; margin:0 0 4px; } h2 { color:var(--accent); margin-top:2.2rem; font-size:1.25rem; }
+  h3 { font-size:1.05rem; margin-top:1.4rem; }
+  .muted { color:var(--muted); } a { color:var(--accent); }
+  nav a { margin-right:16px; }
+  table { border-collapse:collapse; width:100%; margin:12px 0; font-size:.95rem; }
+  th,td { text-align:left; padding:8px; border-bottom:1px solid #223; vertical-align:top; }
+  section { background:var(--card); border-radius:14px; padding:4px 20px 16px; margin-top:24px; }
+</style>
+</head>
+<body>
+<main>
+<h1>NuOrb – Privacy Policy</h1>
+<p class="muted">Android app <b>NuOrb</b> (<code>io.github.anarkilnx.nuorb</code>) · Last updated: 24 November 2026</p>
+<nav><a href="#en">English</a><a href="#de">Deutsch</a></nav>
+
+<section id="en">
+<h2>English</h2>
+<h3>Summary</h3>
+<p>NuOrb is a client for a voice-assistant server <b>that you install and operate yourself</b> (the open-source
+<a href="https://github.com/Anarki-LNX/jarvis-lnx">Jarvis LNX</a> server, e.g. as a Docker container in your own network).
+The developer of NuOrb runs no servers, receives none of your data, and the app contains no advertising, analytics or crash-reporting SDKs.</p>
+
+<h3>What data the app processes and where it goes</h3>
+<table>
+<tr><th>Data</th><th>Purpose</th><th>Where it goes</th></tr>
+<tr><td>Voice recordings (microphone)</td><td>Voice input – only while you actively talk to the assistant (after tapping or holding the mic button)</td><td>Only to <b>your own server</b>, encrypted (HTTPS with certificate pinning). Not stored by the app.</td></tr>
+<tr><td>Questions and answers as text</td><td>Core function of the assistant</td><td>Only to your own server</td></tr>
+<tr><td>Device name (manufacturer and model, e.g. "Pixel 8")</td><td>So you can recognise paired devices in your server's admin panel</td><td>Only to your own server, once during pairing</td></tr>
+<tr><td>Camera image</td><td>Only to scan the pairing QR code</td><td>Processed on the device, never stored or sent</td></tr>
+<tr><td>Technical log lines (app version, error messages)</td><td>Troubleshooting by the server operator (you)</td><td>Only to your own server</td></tr>
+</table>
+<p>The app does not access your location, contacts, photos, files, calendar or other personal data.</p>
+
+<h3>Third parties</h3>
+<p>The app shares no data with third parties. Your server may, if <b>you</b> enable it, use a cloud language model
+(for example Claude by Anthropic with your own API key). In that case <b>your server</b> – not the app – sends the conversation
+text to that provider under that provider's privacy policy. The app shows which "brain" is active.</p>
+<p>If you enable a future wake-word feature, the app may download the wake-word model files from your own server or,
+if not available there, from public GitHub release files. No personal data is sent in these downloads.</p>
+
+<h3>Storage, retention and deletion</h3>
+<p>The app stores only your server address, the pairing token (in the Android Keystore) and your settings on the device.
+"Unpair" in the app or uninstalling the app deletes them. Conversation data and memories are stored only on your own server;
+you can delete them there at any time via the admin panel.</p>
+
+<h3>Security</h3>
+<p>All connections use TLS; the app trusts only the certificate of the server you paired with. Plain HTTP is disabled.</p>
+
+<h3>Children</h3>
+<p>The app is not directed at children under 13.</p>
+
+<h3>Changes and contact</h3>
+<p>Changes to this policy are published on this page. Questions: open an issue at
+<a href="https://github.com/Anarki-LNX/jarvis-lnx/issues">github.com/Anarki-LNX/jarvis-lnx/issues</a> or use the developer
+contact shown on the app's Google Play page.</p>
+</section>
+
+<section id="de">
+<h2>Deutsch</h2>
+<h3>Kurzfassung</h3>
+<p>NuOrb ist ein Client für einen Sprachassistenz-Server, <b>den du selbst installierst und betreibst</b> (den quelloffenen
+<a href="https://github.com/Anarki-LNX/jarvis-lnx">Jarvis-LNX</a>-Server, z. B. als Docker-Container in deinem Netz).
+Der Entwickler von NuOrb betreibt keine Server, erhält keine deiner Daten, und die App enthält keine Werbe-, Analyse- oder Absturzbericht-SDKs.</p>
+
+<h3>Welche Daten die App verarbeitet und wohin sie gehen</h3>
+<table>
+<tr><th>Daten</th><th>Zweck</th><th>Wohin</th></tr>
+<tr><td>Sprachaufnahmen (Mikrofon)</td><td>Spracheingabe – nur während du aktiv mit dem Assistenten sprichst (nach Tippen oder Halten des Mikro-Knopfs)</td><td>Nur an <b>deinen eigenen Server</b>, verschlüsselt (HTTPS mit Zertifikats-Pinning). Die App speichert sie nicht.</td></tr>
+<tr><td>Fragen und Antworten als Text</td><td>Kernfunktion des Assistenten</td><td>Nur an deinen eigenen Server</td></tr>
+<tr><td>Gerätename (Hersteller und Modell, z. B. „Pixel 8“)</td><td>Damit du gekoppelte Geräte im Admin-Panel deines Servers erkennst</td><td>Nur an deinen eigenen Server, einmalig beim Koppeln</td></tr>
+<tr><td>Kamerabild</td><td>Nur zum Scannen des Kopplungs-QR-Codes</td><td>Wird auf dem Gerät verarbeitet, nie gespeichert oder gesendet</td></tr>
+<tr><td>Technische Protokollzeilen (App-Version, Fehlermeldungen)</td><td>Fehlersuche durch den Server-Betreiber (dich)</td><td>Nur an deinen eigenen Server</td></tr>
+</table>
+<p>Die App greift nicht auf Standort, Kontakte, Fotos, Dateien, Kalender oder andere persönliche Daten zu.</p>
+
+<h3>Dritte</h3>
+<p>Die App gibt keine Daten an Dritte weiter. Dein Server kann, wenn <b>du</b> es einschaltest, ein Cloud-Sprachmodell nutzen
+(z. B. Claude von Anthropic mit deinem eigenen API-Schlüssel). Dann sendet <b>dein Server</b> – nicht die App – den Gesprächstext
+an diesen Anbieter, nach dessen Datenschutzbestimmungen. Die App zeigt an, welches „Gehirn“ aktiv ist.</p>
+<p>Schaltest du eine künftige Weckwort-Funktion ein, lädt die App die Modelldateien von deinem Server oder, falls dort nicht
+vorhanden, aus öffentlichen GitHub-Release-Dateien. Dabei werden keine personenbezogenen Daten übertragen.</p>
+
+<h3>Speicherung, Dauer und Löschung</h3>
+<p>Auf dem Gerät speichert die App nur die Server-Adresse, das Kopplungs-Token (im Android-Keystore) und deine Einstellungen.
+„Entkoppeln“ in der App oder die Deinstallation löscht sie. Gesprächsdaten und Erinnerungen liegen nur auf deinem eigenen Server;
+dort kannst du sie jederzeit im Admin-Panel löschen.</p>
+
+<h3>Sicherheit</h3>
+<p>Alle Verbindungen sind TLS-verschlüsselt; die App vertraut nur dem Zertifikat des Servers, mit dem du gekoppelt hast.
+Unverschlüsseltes HTTP ist abgeschaltet.</p>
+
+<h3>Kinder</h3>
+<p>Die App richtet sich nicht an Kinder unter 13 Jahren.</p>
+
+<h3>Änderungen und Kontakt</h3>
+<p>Änderungen dieser Erklärung werden auf dieser Seite veröffentlicht. Fragen: Issue unter
+<a href="https://github.com/Anarki-LNX/jarvis-lnx/issues">github.com/Anarki-LNX/jarvis-lnx/issues</a> oder über den
+Entwicklerkontakt auf der Google-Play-Seite der App.</p>
+</section>
+</main>
+</body>
+</html>
