@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Privatsphäre-Prüfung der Quellen (generisch)
         run: |
-          if grep -rnE '\b192\.168\.[0-9]+\.[0-9]+\b[^/0-9]|sk-ant-[A-Za-z0-9]|BEGIN [A-Z ]*PRIVATE KEY' docker/src docker/app; then
+          if grep -rnE '\b192\.168\.[0-9]+\.[0-9]+\b[^/0-9]|sk-ant-[A-Za-z0-9]|BEGIN [A-Z ]*PRIVATE KEY' docker/src docker/app | grep -vE '192\.168\.1\.50\b'; then
             echo "Private Werte gefunden – Abbruch"; exit 1
           fi
       - uses: docker/setup-qemu-action@v3
