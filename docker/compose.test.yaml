@@ -1,0 +1,18 @@
+# Nur für den lokalen Testlauf auf einem Rechner OHNE Docker-Bridge-Netz (z. B. ip_forward=0):
+# Host-Netz, eigene Ports (18xxx), eigenes Projekt -> berührt keine produktive Installation.
+#   docker compose -p jarvis-lnx-test -f compose.yaml -f compose.test.yaml --env-file .env.test up -d --build
+services:
+  jarvis:
+    build:
+      network: host
+    image: jarvis-lnx:test
+    pull_policy: build
+    network_mode: host
+    ports: !reset []
+    env_file: !override .env.test
+    environment:
+      UI_PORT: "18443"
+      ADMIN_PORT: "18444"
+      HERMES_API_PORT: "18642"
+      STT_ROUTER_PORT: "18178"
+      JARVIS_UI_PORT_PUBLIC: "18443"

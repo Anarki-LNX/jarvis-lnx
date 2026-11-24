@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JARVIS · Einrichtung</title>
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="/ui/tokens.css">
+<link rel="stylesheet" href="/static/docker/docker.css">
+</head>
+<body>
+<main>
+  <a class="back" href="/" data-t="back">← Zur Verwaltung</a>
+  <h1 data-t="title">Einrichtung</h1>
+  <p class="lead" data-t="lead">Drei Schritte: Sprache, Gehirn, Gerät koppeln. Alles lässt sich später in der Verwaltung ändern.</p>
+
+  <section class="panel" id="pStatus">
+    <h2 data-t="h_status">Zustand</h2>
+    <p id="brainState"></p>
+    <p id="modelState" class="muted"></p>
+    <div class="bar" id="bar" hidden><span id="barFill"></span></div>
+  </section>
+
+  <section class="panel">
+    <h2 data-t="h_lang">1 · Sprache und Stimme</h2>
+    <div class="row">
+      <div><label for="lang" data-t="l_lang">Sprache</label>
+        <select id="lang"><option value="de">Deutsch</option><option value="en">English</option></select></div>
+      <div><label for="voice" data-t="l_voice">Stimme</label><select id="voice"></select></div>
+      <div class="fit"><button class="btn" id="saveLang" type="button" data-t="apply">Übernehmen</button></div>
+    </div>
+    <p class="muted" id="langMsg"></p>
+  </section>
+
+  <section class="panel">
+    <h2 data-t="h_mode">2 · Gehirn</h2>
+    <div class="choices" id="modes">
+      <label class="choice" data-mode="local"><input type="radio" name="mode" value="local"><b data-t="m_local">Lokal (Ollama)</b><br><span class="muted" data-t="m_local_d">Nur dein Ollama. Nichts verlässt das Haus. Kostenlos.</span></label>
+      <label class="choice" data-mode="auto"><input type="radio" name="mode" value="auto"><b data-t="m_auto">Beides (Automatik)</b><br><span class="muted" data-t="m_auto_d">Ollama, und Claude, wenn der PC aus ist.</span></label>
+      <label class="choice" data-mode="remote"><input type="radio" name="mode" value="remote"><b data-t="m_remote">Claude (API)</b><br><span class="muted" data-t="m_remote_d">Kein eigener PC nötig, kostet pro Frage.</span></label>
+    </div>
+  </section>
+
+  <section class="panel" id="pOllama">
+    <h2 data-t="h_ollama">Ollama</h2>
+    <div class="row">
+      <div><label for="url" data-t="l_url">Adresse</label><input id="url" placeholder="http://192.168.1.50:11434" spellcheck="false"></div>
+      <div class="fit"><button class="btn" id="probe" type="button" data-t="probe">Verbindung testen</button></div>
+    </div>
+    <p class="muted" id="probeMsg"></p>
+    <label for="model" data-t="l_model">Modell</label>
+    <select id="model"><option value="">–</option></select>
+    <label for="ctx" data-t="l_ctx">Kontext (Token)</label>
+    <select id="ctx"><option selected>65536</option><option>131072</option></select>
+    <p class="muted" data-t="ctx_hint">Wichtig: Hermes verlangt mindestens 64k Token Kontext. Setze am Ollama-Server OLLAMA_CONTEXT_LENGTH=65536 oder lege eine Modell-Variante mit „PARAMETER num_ctx“ an, sonst werden Antworten abgeschnitten.</p>
+  </section>
+
+  <section class="panel" id="pClaude">
+    <h2 data-t="h_claude">Claude</h2>
+    <label for="key" data-t="l_key">Anthropic-API-Schlüssel</label>
+    <input id="key" type="password" autocomplete="off" placeholder="sk-ant-…" spellcheck="false">
+    <p class="muted" id="keyState"></p>
+    <label for="remote" data-t="l_remote">Claude-Modell</label>
+    <select id="remote"></select>
+    <p class="muted" data-t="cost">Kosten: Abrechnung pro Token direkt bei Anthropic (console.anthropic.com). Eine kurze Sprachfrage kostet mit Haiku etwa 0,1–0,5 Cent, mit Sonnet einige Cent. Lege dort ein Ausgabenlimit fest.</p>
+    <p class="muted warn" data-t="privacy">Datenschutz: Bei Claude gehen die Gesprächstexte an Anthropic (USA). Audio bleibt immer lokal.</p>
+  </section>
+
+  <p><button class="btn primary" id="save" type="button" data-t="save">Gehirn speichern</button>
+     <button class="btn" id="skip" type="button" data-t="skip">Später</button></p>
+  <p id="msg" role="alert"></p>
+
+  <section class="panel">
+    <h2 data-t="h_pair">3 · Gerät koppeln</h2>
+    <p class="muted" data-t="pair_d">Erzeuge einen QR-Code für die JARVIS-App oder einen Code für den Browser.</p>
+    <a class="btn" href="/static/docker/koppeln.html" data-t="pair_go">Zu „Gerät koppeln“</a>
+  </section>
+</main>
+<script src="/static/docker/einrichtung.js"></script>
+</body>
+</html>

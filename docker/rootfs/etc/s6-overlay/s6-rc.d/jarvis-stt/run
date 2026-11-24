@@ -1,0 +1,4 @@
+#!/command/with-contenv sh
+. /opt/jarvis/bin/jarvis-env
+exec 2>&1
+exec s6-setuidgid hermes /opt/jarvis/bin/start-stt

@@ -1,0 +1,5 @@
+#!/bin/sh
+# Gesund = Oberfläche und Admin antworten. (Spracherkennung/Gehirn zählen nicht: Modelle laden beim ersten Start noch.)
+case "${JARVIS_TLS:-selfsigned}" in off) S=http ;; *) S=https ;; esac
+curl -fsk -m 4 -o /dev/null "$S://127.0.0.1:${UI_PORT:-8443}/api/info" || exit 1
+curl -fsk -m 4 -o /dev/null "$S://127.0.0.1:${ADMIN_PORT:-8444}/api/auth/state" || exit 1

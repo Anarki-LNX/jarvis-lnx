@@ -1,0 +1,24 @@
+# JARVIS LNX: gemeinsame Umgebung aller JARVIS-Dienste im Container (wird von den s6-run-Skripten eingelesen).
+export HOME=/opt/jarvis/home JARVIS_HOME=/opt/jarvis/home
+export HERMES_HOME=/opt/data HERMES_BIN=/opt/hermes/bin/hermes
+export JARVIS_MODELS=/opt/models
+export PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 ORT_DISABLE_TELEMETRY=1 HF_HUB_DISABLE_TELEMETRY=1
+export LANG=C.UTF-8
+: "${JARVIS_LANG:=de}" "${UI_PORT:=8443}" "${ADMIN_PORT:=8444}" "${HERMES_API_PORT:=8642}" "${STT_ROUTER_PORT:=8178}"
+export JARVIS_LANG UI_PORT ADMIN_PORT HERMES_API_PORT STT_ROUTER_PORT
+case "${JARVIS_TLS:-selfsigned}" in off) SCHEME=http ;; *) SCHEME=https ;; esac
+D=/opt/data/jarvis
+export UI_CERT_DIR=$D/certs ADMIN_CERTS=$D/certs
+export UI_CONFIG=$D/config/ui.json JARVIS_UI_SETTINGS=$D/config/ui.json ADMIN_TOKEN_FILE=$D/config/internal.token
+export ADMIN_DATA=$D/admin JARVIS_UI_STATIC=/opt/jarvis/ui/static
+export HERMES_URL=http://127.0.0.1:$HERMES_API_PORT
+export STT_URL=http://127.0.0.1:$STT_ROUTER_PORT/v1/audio/transcriptions STT_HEALTH_URL=http://127.0.0.1:$STT_ROUTER_PORT/health
+export STT_ROUTER_HOST=127.0.0.1 PARAKEET_DIR=/opt/models/stt/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8
+export JARVIS_UI_URL=$SCHEME://127.0.0.1:$UI_PORT ADMIN_URL=$SCHEME://127.0.0.1:$ADMIN_PORT
+export OLLAMA_URL="${JARVIS_INIT_OLLAMA_URL:-http://ollama:11434}"
+export BRAIN_URL="${OLLAMA_URL%/}/api/version"
+NETS="${JARVIS_ALLOWED_NETS:-127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,fc00::/7,fe80::/10}"
+export UI_ALLOWED_NETS="$NETS" ADMIN_ALLOWED_NETS="$NETS"
+export JARVIS_MODE=live JARVIS_FEATURE_ZUHAUSE="${JARVIS_FEATURE_ZUHAUSE:-0}" JARVIS_FEATURE_GERAET=0
+export PHONE_HOST="" PATH="/opt/hermes/bin:/opt/hermes/.venv/bin:/command:/usr/local/bin:/usr/bin:/bin"
+PY=/opt/jarvis/venv/bin/python

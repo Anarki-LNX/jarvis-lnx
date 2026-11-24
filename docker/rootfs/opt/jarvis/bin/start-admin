@@ -1,0 +1,4 @@
+#!/bin/sh
+. /opt/jarvis/bin/jarvis-env
+cd /opt/jarvis/admin
+exec $PY -I /opt/jarvis/app/admin_main.py

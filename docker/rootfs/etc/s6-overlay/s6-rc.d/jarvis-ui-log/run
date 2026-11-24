@@ -1,0 +1,2 @@
+#!/bin/sh
+exec s6-setuidgid hermes s6-log -b -- n5 s2000000 T /opt/data/jarvis/logs/ui 1
