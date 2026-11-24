@@ -105,7 +105,13 @@ def cur_mode() -> str:
 
 def cur_persona() -> str:
     p = cfg().get("persona")
-    return p.strip()[:4000] if isinstance(p, str) and p.strip() else PERSONA
+    p = p.strip()[:4000] if isinstance(p, str) and p.strip() else PERSONA
+    uc = ui_cfg()
+    if uc["assistant_name"] != "NuOrb":  # Name nur einsetzen, wenn geaendert (sonst bleibt der Prompt-Cache gleich)
+        wake = uc["wake_phrase"] or "Hey " + (uc["brand"].capitalize() if uc["brand"].isupper() else uc["brand"])
+        p = p.replace("Hey NuOrb", wake).replace("NuOrb", uc["assistant_name"])
+        p = f"Du heisst {uc['assistant_name']}; so spricht dich der Nutzer an. " + p
+    return p
 
 
 def cur_reasoning() -> bool:
@@ -222,6 +228,7 @@ async def status():
         "tts": tts_engine.ready, "time": datetime.now().isoformat(timespec="seconds"), "mode": cur_mode(),
         "voice": Path(tts_engine.path).stem,
         "wake_word": cfg().get("wake_word") is True,
+        **ui_cfg(), "onboarding": onboarding_due(), "onboarded": not onboarding_due(), "user_name": None,
         "features": {"zuhause": feature("zuhause"), "geraet": feature("geraet"), "cloud_weiche": feature("cloud_weiche")},
         "rooms": custom_rooms(),
         # Gespraechsmodus: nach der Antwort nachfragen und weiter zuhoeren (Standard an), Wartezeit bis Sprachbeginn
@@ -645,7 +652,46 @@ async def wetter(request: Request):
     return await zuhause_satz("wetter", {"zeitraum": zr})
 
 
-UI_SETTINGS = {"follow_up": bool, "follow_up_timeout_s": int}
+# Gleiche Schnittstelle wie im Docker-Image (Sitzung Docker-Server): GET/POST /api/assistant.
+# Auf nuorb schreibt sie ueber nuorb-admin /internal/ui (assistant_name, onboarded); den Nutzernamen merkt sich Hermes
+# (die UI schickt den Satz an /api/ask), user_name wird hier daher nur angenommen, nicht gespeichert.
+def greeting_text(lang: str, name: str) -> str:
+    if lang == "en":
+        return f"My creator named me {name}. If that's too complicated, tell me what you'd like to call me."
+    return f"Mein Schöpfer hat mich {name} getauft. Falls dir das zu kompliziert ist, sag mir, wie du mich nennen möchtest."
+
+
+@app.get("/api/assistant")
+async def assistant_get():
+    uc = ui_cfg()
+    return {"assistant_name": uc["assistant_name"], "brand": uc["brand"], "user_name": None,
+            "onboarded": not onboarding_due(), "greeting": greeting_text(uc["ui_lang"], uc["assistant_name"])}
+
+
+@app.post("/api/assistant")
+async def assistant_set(request: Request):
+    body = await request.json()
+    if not isinstance(body, dict) or set(body) - {"assistant_name", "user_name", "onboarded"}:
+        raise HTTPException(400, "Unbekanntes Feld.")
+    d = {}
+    if "assistant_name" in body:
+        n = str(body["assistant_name"] or "").strip() or ui_cfg()["brand"]  # leer = zurueck zur Marke
+        if not NAME_RE.fullmatch(n):
+            raise HTTPException(400, "Name ungültig (1–24 Zeichen, Buchstaben, Ziffern, Leerzeichen, Punkt, Bindestrich).")
+        d["assistant_name"] = n
+    if "onboarded" in body:
+        if not isinstance(body["onboarded"], bool):
+            raise HTTPException(400, "onboarded muss true/false sein.")
+        d["onboarded"] = body["onboarded"]
+    if not d:
+        return {"ok": True, "unchanged": True}
+    code, data = await _admin("POST", "/internal/ui", {**d, "source": "handy"})
+    _status_cache["t"] = 0
+    print(f"Assistent vom Handy: {d} -> {code}", flush=True)
+    return JSONResponse(data, status_code=code)
+
+
+UI_SETTINGS = {"follow_up": bool, "follow_up_timeout_s": int, "assistant_name": str, "onboarded": bool}
 
 
 @app.post("/api/setting")
@@ -653,6 +699,10 @@ async def setting_set(request: Request):
     """Weitere ui.json-Schalter vom Handy (Whitelist), ueber nuorb-admin /internal/ui."""
     body = await request.json()
     d = {k: v for k, v in body.items() if k in UI_SETTINGS and type(v) is UI_SETTINGS[k]}
+    if "assistant_name" in d:
+        d["assistant_name"] = d["assistant_name"].strip()
+        if not NAME_RE.fullmatch(d["assistant_name"]):
+            raise HTTPException(400, "Name ungültig (1–24 Zeichen, Buchstaben, Ziffern, Leerzeichen, Punkt, Bindestrich).")
     if not d or len(d) != len(body) or ("follow_up_timeout_s" in d and not 4 <= d["follow_up_timeout_s"] <= 30):
         raise HTTPException(400, "Unbekannte oder ungültige Einstellung.")
     code, data = await _admin("POST", "/internal/ui", {**d, "source": "handy"})
@@ -795,15 +845,40 @@ async def ca_cert():
 
 # Build-Kennung = Hash ueber die ausgelieferten Dateien. index.html bekommt sie als data-build und als ?v= an
 # allen JS/CSS-Links (Cache-Busting fuer Epiphany). Die App fragt /api/version und laedt sich bei Aenderung neu.
-_BUILD_FILES = ("index.html", "app.js", "orb.js", "style.css", "orb.css", "tokens.css")
+_BUILD_FILES = ("index.html", "app.js", "orb.js", "style.css", "orb.css", "tokens.css", "i18n.js", "i18n-en.js")
+
+
+def ui_cfg() -> dict:
+    """Marke, Weckwort und Oberflaechensprache. ui.json (brand_name, wake_phrase, ui_lang) vor Umgebung
+    (BRAND_NAME, WAKE_PHRASE, UI_LANG). Standard: NuOrb, „Hey NuOrb“, Deutsch. ui_lang: de | en | auto (Browser)."""
+    def pick(key, env, default):
+        v = cfg().get(key)
+        v = v if isinstance(v, str) and v.strip() else os.environ.get(env, default)
+        return re.sub(r"[^\w .äöüÄÖÜß-]", "", str(v)).strip()[:24] or default
+    lang = pick("ui_lang", "UI_LANG", "de").lower()
+    brand = pick("brand_name", "BRAND_NAME", "NuOrb")
+    wake = pick("wake_phrase", "WAKE_PHRASE", "")
+    name = pick("assistant_name", "ASSISTANT_NAME", brand)  # wie der Assistent heisst (Standard = Produkt)
+    return {"brand": brand, "assistant_name": name, "wake_phrase": wake or None,
+            "ui_lang": lang if lang in ("de", "en", "auto") else "de"}
+
+
+def onboarding_due() -> bool:
+    """Begruessung beim ersten Start: nur wenn ausdruecklich gewuenscht (Image: NUORB_ONBOARDING=1 oder ui.json
+    onboarded=false) und noch nicht erledigt. Die bestehende Instanz (ohne beides) begruesst nie von selbst."""
+    ob = cfg().get("onboarded")
+    return ob is False or (ob is not True and os.environ.get("NUORB_ONBOARDING") == "1")
+
+
+NAME_RE = re.compile(r"[A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß0-9 .-]{0,23}")
 _build_cache: dict = {"key": None, "build": "0"}
 
 
 def build_id() -> str:
     import hashlib
-    key = tuple((BASE / "static" / f).stat().st_mtime_ns for f in _BUILD_FILES)
+    key = tuple((BASE / "static" / f).stat().st_mtime_ns for f in _BUILD_FILES) + tuple(ui_cfg().values())
     if key != _build_cache["key"]:
-        h = hashlib.sha256()
+        h = hashlib.sha256(json.dumps(ui_cfg(), sort_keys=True).encode())  # Marke/Sprache aendern -> neuer Build
         for f in _BUILD_FILES:
             h.update((BASE / "static" / f).read_bytes())
         _build_cache.update(key=key, build=h.hexdigest()[:10])
@@ -823,7 +898,8 @@ async def manifest():
     files = {}
     for f in sorted(root.rglob("*")):
         if f.is_file() and f.name != "index.html" and not f.name.startswith("."):
-            files[f.relative_to(root).as_posix()] = hashlib.sha256(f.read_bytes()).hexdigest()
+            data = webmanifest_bytes() if f.name == "manifest.webmanifest" else f.read_bytes()  # dynamisch (Marke)
+            files[f.relative_to(root).as_posix()] = hashlib.sha256(data).hexdigest()
     return {"build": build_id(), "files": files}
 
 
@@ -831,9 +907,25 @@ async def manifest():
 async def index():
     b = build_id()
     html = (BASE / "static/index.html").read_text(encoding="utf-8")
-    html = re.sub(r'((?:src|href)="(?:app|orb)\.js|href="(?:style|orb|tokens)\.css)"', rf'\1?v={b}"', html)
+    html = re.sub(r'((?:src|href)="(?:app|orb|i18n|i18n-en)\.js|href="(?:style|orb|tokens)\.css)"', rf'\1?v={b}"', html)
     html = html.replace('<html lang="de">', f'<html lang="de" data-build="{b}">', 1)
+    uc = ui_cfg()
+    html = html.replace("<title>NuOrb</title>", f"<title>{uc['brand']}</title>", 1)
+    cfg_js = json.dumps(uc, ensure_ascii=False).replace("</", "<\\/")
+    html = html.replace('<script src="i18n.js', f'<script>window.NUORB_CFG={cfg_js};</script>\n<script src="i18n.js', 1)
     return Response(html, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-cache, no-store"})
+
+
+def webmanifest_bytes() -> bytes:
+    m = json.loads((BASE / "static/manifest.webmanifest").read_text(encoding="utf-8"))
+    uc = ui_cfg()
+    m.update(name=uc["brand"], short_name=uc["brand"], lang="en" if uc["ui_lang"] == "en" else "de")
+    return json.dumps(m, ensure_ascii=False, indent=2).encode()
+
+
+@app.get("/manifest.webmanifest")
+async def webmanifest():
+    return Response(webmanifest_bytes(), media_type="application/manifest+json")
 
 
 app.mount("/", StaticFiles(directory=BASE / "static"), name="static")

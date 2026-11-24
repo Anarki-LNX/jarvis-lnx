@@ -68,7 +68,7 @@
       <canvas id="orb" aria-hidden="true"></canvas>
     </div>
     <div class="offline-box" id="offlineBox" hidden>
-      <p id="offlineText">nuorb ist nicht erreichbar.</p>
+      <p id="offlineText">Der Server ist nicht erreichbar.</p>
       <button class="btn btn-yes big" id="offlineWifi">WLAN einschalten</button>
     </div>
     <div class="state-line" aria-live="polite">
@@ -129,7 +129,7 @@
         <button class="br-opt" data-mode="remote" role="radio"><b>Remote</b><span>nur Claude · PC wird geschont</span></button>
       </div>
       <div class="br-models" id="brModels" role="radiogroup" aria-label="Claude-Modell"></div>
-      <p class="br-privacy" id="brPrivacy" hidden>Datenschutz: Die Gesprächstexte gehen an Anthropic (USA). Audio bleibt lokal auf nuorb.</p>
+      <p class="br-privacy" id="brPrivacy" hidden>Datenschutz: Die Gesprächstexte gehen an Anthropic (USA). Audio bleibt lokal auf deinem Server.</p>
       <p class="br-note muted" id="brNote"></p>
       <div class="ap-actions">
         <button class="btn btn-deny" id="brCancel">Abbrechen</button>
@@ -164,7 +164,8 @@
           <input type="range" id="sVol" min="0" max="100" step="1" aria-label="Lautstärke"><span class="mono" id="sVolV"></span></label>
       </div>
       <h3 class="set-h">Einstellungen</h3>
-      <label class="row"><span>Wecken mit „Hey NuOrb“</span><input type="checkbox" id="optWake"></label>
+      <label class="row"><span>Name des Assistenten</span><input type="text" id="optName" maxlength="24" autocomplete="off" spellcheck="false" aria-label="Name des Assistenten"></label>
+      <label class="row" id="wakeRow"><span>Wecken mit „Hey NuOrb“</span><input type="checkbox" id="optWake"></label>
       <label class="row"><span>Nach Antwort weiter zuhören</span><input type="checkbox" id="optFollow" checked></label>
       <div class="row info" id="wakeInfo"><span></span><span>Mikro hört dann ständig mit, aber nichts wird gespeichert oder gesendet, bevor „Hey NuOrb“ erkannt ist.</span></div>
       <label class="row"><span>Sprachausgabe</span><input type="checkbox" id="optVoice" checked></label>
@@ -182,6 +183,9 @@
 
   <div class="toast" id="toast" role="status"></div>
 </div>
+<script src="i18n.js"></script>
+<script src="i18n-en.js"></script>
+<script>window.I18N && I18N.apply();</script>
 <script src="orb.js"></script>
 <script src="app.js"></script>
 </body>

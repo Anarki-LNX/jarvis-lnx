@@ -22,13 +22,19 @@
   </section>
 
   <section class="panel">
-    <h2 data-t="h_lang">1 · Sprache und Stimme</h2>
+    <h2 data-t="h_lang">1 · Name, Sprache und Stimme</h2>
     <div class="row">
       <div><label for="lang" data-t="l_lang">Sprache</label>
         <select id="lang"><option value="de">Deutsch</option><option value="en">English</option></select></div>
       <div><label for="voice" data-t="l_voice">Stimme</label><select id="voice"></select></div>
       <div class="fit"><button class="btn" id="saveLang" type="button" data-t="apply">Übernehmen</button></div>
     </div>
+    <div class="row">
+      <div><label for="aname" data-t="l_aname">Name des Assistenten (so sprichst du ihn an)</label>
+        <input id="aname" maxlength="40" spellcheck="false"></div>
+      <div><label for="uname" data-t="l_uname">Dein Name (optional)</label><input id="uname" maxlength="40" spellcheck="false"></div>
+    </div>
+    <p class="muted" data-t="name_hint">Das Weckwort bleibt „Hey“ plus Produktname. Den Namen kannst du auch im Gespräch ändern: „Ab jetzt heißt du …“.</p>
     <p class="muted" id="langMsg"></p>
   </section>
 

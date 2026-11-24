@@ -13,6 +13,7 @@
   fetch("/api/info", { cache: "no-store" }).then((r) => r.json()).then((i) => {
     if (i.lang === "en") { t = T.en; document.documentElement.lang = "en"; }
     $("lead").textContent = t.lead; $("go").textContent = t.go; $("hint").textContent = t.hint;
+    if (i.brand) document.querySelector("h1").textContent = i.brand;
     if (i.name) document.title = i.name + " · " + t.go;
     if (i.paired) location.replace("/");
   }).catch(() => {});

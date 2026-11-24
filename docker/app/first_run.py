@@ -165,12 +165,33 @@ def first_config() -> None:
     log(f"Grundkonfiguration fertig (Sprache {lg}, Stimme {voice_name()}).")
 
 
+def ensure_mcp() -> None:
+    """MCP-Server „nuorb“ (Name ändern, Nutzername, Kennenlernen) bei jedem Start sicherstellen."""
+    os.environ.setdefault("NUORB_HOME", "/opt/nuorb/home")
+    sys.path.insert(0, "/opt/nuorb/admin")
+    import server as adm
+    data = adm.load_config_rt()
+    want = {"command": "/opt/nuorb/venv/bin/python", "args": ["-I", "/opt/nuorb/app/nuorb_mcp.py"],
+            "env": {"ADMIN_URL": os.environ.get("ADMIN_URL", "https://127.0.0.1:8444"),
+                    "ADMIN_TOKEN_FILE": str(jc.CONF / "internal.token")},
+            "trust": "full", "timeout": 15, "tools": {"resources": False, "prompts": False}}
+    cur = adm.to_plain((data.get("mcp_servers") or {}).get("nuorb") or {})
+    if {k: cur.get(k) for k in want} != want:
+        adm.cfg_set(data, "mcp_servers.nuorb", want)
+        adm.atomic_write(adm.FILES["config"][0], adm.dump_rt(data))
+        log("MCP-Werkzeug „nuorb“ (Name, Kennenlernen) eingetragen.")
+
+
 def main() -> None:
     dirs()
     jc.ensure_certs()
     api_key()
     if not MARK.exists():
         first_config()
+    try:
+        ensure_mcp()
+    except Exception as exc:
+        log(f"MCP „nuorb“ nicht eingetragen: {exc}")
     log(f"Bereit. Heim-CA-Fingerabdruck: {jc.ca_fingerprint() or '(eigenes Zertifikat)'}")
 
 

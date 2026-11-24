@@ -1,8 +1,12 @@
 /* NuOrb – Oberflaechenlogik: Zustaende, Push-to-Talk, Hermes-Run-Stream, satzweise TTS, Approvals. */
 (function () {
   "use strict";
+  // Oberflaechentexte ueber t(deText, vars): Deutsch unveraendert, Englisch aus i18n-en.js (siehe i18n.js)
+  const t = (s, v) => (window.I18N ? window.I18N.t(s, v) : v ? String(s).replace(/\{(\w+)\}/g, (m, k) => (v[k] != null ? String(v[k]) : m)) : s);
+  const DE = !window.I18N || window.I18N.lang === "de"; // lokale Sprachbefehle (deutsche Muster) nur auf Deutsch
+  const LOC = DE ? "de-DE" : "en-GB";
   const $ = (id) => document.getElementById(id);
-  const VERSION = "2026-11-24.44";
+  const VERSION = "2026-11-24.48";
   // Kurzes Client-Log ins Server-Journal (Kiosk hat keine JS-Konsole)
   function clog(msg) {
     try { fetch("/api/clientlog", { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
@@ -19,9 +23,9 @@
     toast: $("toast"),
   };
   const LABEL = {
-    idle: ["Bereit", ""], listening: ["Ich höre zu", ""], transcribing: ["Verstehe", ""],
-    thinking: ["Denke nach", ""], speaking: ["Spreche", ""], offline: ["Gehirn offline", "Der PC mit dem Sprachmodell ist aus."],
-    error: ["Störung", ""],
+    idle: [t("Bereit"), ""], listening: [t("Ich höre zu"), ""], transcribing: [t("Verstehe"), ""],
+    thinking: [t("Denke nach"), ""], speaking: [t("Spreche"), ""], offline: [t("Gehirn offline"), t("Der PC mit dem Sprachmodell ist aus.")],
+    error: [t("Störung"), ""],
   };
 
   // ------------------------------------------------------------------ Einstellungen
@@ -66,11 +70,11 @@
     els.stateSub.textContent = sub !== undefined ? sub : s;
     Orb.set({ state: st === "transcribing" ? "thinking" : st });
     app.dataset.busy = String(["transcribing", "thinking", "speaking"].includes(st));
-    els.pttHint.textContent = st === "listening" ? (app.dataset.latched === "true" ? "Sprich einfach · Tippen sendet sofort" : "Loslassen zum Senden")
-      : app.dataset.busy === "true" ? "Tippen zum Unterbrechen" : st === "offline" ? (S.link === false ? "Offline" : "Gehirn offline · „wechsel auf Sonnet“") : "Tippen zum Sprechen";
+    els.pttHint.textContent = st === "listening" ? (app.dataset.latched === "true" ? t("Sprich einfach · Tippen sendet sofort") : t("Loslassen zum Senden"))
+      : app.dataset.busy === "true" ? t("Tippen zum Unterbrechen") : st === "offline" ? (S.link === false ? "Offline" : t("Gehirn offline · „wechsel auf Sonnet“")) : t("Tippen zum Sprechen");
   }
   function restingState() {
-    if (S.brain === false || S.link === false) setState("offline", S.link === false ? "Keine Verbindung zu nuorb." : undefined);
+    if (S.brain === false || S.link === false) setState("offline", S.link === false ? t("Keine Verbindung zum Server.") : undefined);
     else setState("idle", "");
   }
   function view(v) { app.dataset.view = v; }
@@ -97,29 +101,29 @@
     d.append(i, s); els.convo.appendChild(d); els.convo.scrollTop = els.convo.scrollHeight;
     return d;
   }
-  const TOOLNAME = (n) => ({ terminal: "Terminal", read_file: "Datei lesen", write_file: "Datei schreiben", memory: "Gedächtnis",
-    web_search: "Websuche", execute_code: "Code", cronjob: "Zeitplan", browser_exec: "Browser", patch: "Datei ändern",
-    search_files: "Suche", todo: "Aufgaben", skill_view: "Fähigkeit", delegate_task: "Unteragent",
-    mcp_claude_fragen: "Claude fragen", mcp_claude_auftrag: "Claude-Auftrag", mcp_claude_rueckgaengig: "Claude: rückgängig",
-    mcp_claude_aenderungen: "Claude: Änderungen", mcp__geraet__anfordern: "Gerät" }[n] ||
-    (n && /^mcp_+claude_+/.test(n) ? "Claude · " + n.replace(/^mcp_+claude_+/, "") : n && /^mcp__/.test(n) ? n.slice(5).replace(/__/g, " · ") : n) || "Werkzeug");
+  const TOOLNAME = (n) => ({ terminal: "Terminal", read_file: t("Datei lesen"), write_file: t("Datei schreiben"), memory: t("Gedächtnis"),
+    web_search: t("Websuche"), execute_code: "Code", cronjob: t("Zeitplan"), browser_exec: "Browser", patch: t("Datei ändern"),
+    search_files: t("Suche"), todo: t("Aufgaben"), skill_view: t("Fähigkeit"), delegate_task: t("Unteragent"),
+    mcp_claude_fragen: t("Claude fragen"), mcp_claude_auftrag: t("Claude-Auftrag"), mcp_claude_rueckgaengig: t("Claude: rückgängig"),
+    mcp_claude_aenderungen: t("Claude: Änderungen"), mcp__geraet__anfordern: t("Gerät") }[n] ||
+    (n && /^mcp_+claude_+/.test(n) ? "Claude · " + n.replace(/^mcp_+claude_+/, "") : n && /^mcp__/.test(n) ? n.slice(5).replace(/__/g, " · ") : n) || t("Werkzeug"));
 
   // ------------------------------------------------------------------ Uhr, Begruessung, Widgets
-  const fmtTime = new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit" });
-  const fmtDate = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long" });
+  const fmtTime = new Intl.DateTimeFormat(LOC, { hour: "2-digit", minute: "2-digit" });
+  const fmtDate = new Intl.DateTimeFormat(LOC, { weekday: "long", day: "numeric", month: "long" });
   function greeting(h) {
-    if (h < 5) return "Späte Stunde. Ich bin wach.";
-    if (h < 11) return "Guten Morgen.";
-    if (h < 14) return "Mahlzeit. Was steht an?";
-    if (h < 18) return "Guten Tag. Zu Diensten.";
-    if (h < 22) return "Guten Abend.";
-    return "Noch wach? Ich auch.";
+    if (h < 5) return t("Späte Stunde. Ich bin wach.");
+    if (h < 11) return t("Guten Morgen.");
+    if (h < 14) return t("Mahlzeit. Was steht an?");
+    if (h < 18) return t("Guten Tag. Zu Diensten.");
+    if (h < 22) return t("Guten Abend.");
+    return t("Noch wach? Ich auch.");
   }
   function tick() {
-    const d = new Date(), t = fmtTime.format(d);
-    els.clockMini.textContent = t; els.heroTime.textContent = t;
+    const d = new Date(), hm = fmtTime.format(d);
+    els.clockMini.textContent = hm; els.heroTime.textContent = hm;
     els.heroDate.textContent = fmtDate.format(d);
-    els.heroGreet.textContent = S.brain === false ? "Gehirn schläft. Basis läuft." : greeting(d.getHours());
+    els.heroGreet.textContent = S.brain === false ? t("Gehirn schläft. Basis läuft.") : greeting(d.getHours());
     // nach 90 s Ruhe zurueck zum Dashboard
     if (app.dataset.view === "talk" && !S.busy && S.state !== "listening" && !S.approval && Date.now() - S.lastActivity > 90000) view("home");
   }
@@ -127,7 +131,7 @@
     if (!iso) return "";
     const d = new Date(iso); if (isNaN(d)) return String(iso);
     const now = new Date(), days = Math.round((new Date(d.toDateString()) - new Date(now.toDateString())) / 864e5);
-    const day = days === 0 ? "Heute" : days === 1 ? "Morgen" : days === 2 ? "Übermorgen" : new Intl.DateTimeFormat("de-DE", { weekday: "short", day: "numeric", month: "short" }).format(d);
+    const day = days === 0 ? t("Heute") : days === 1 ? t("Morgen") : days === 2 ? t("Übermorgen") : new Intl.DateTimeFormat(LOC, { weekday: "short", day: "numeric", month: "short" }).format(d);
     return day + ", " + fmtTime.format(d);
   }
   function fillList(ul, items, empty) {
@@ -143,10 +147,10 @@
     try {
       const r = await fetch("/api/widgets"); const d = await r.json();
       fillList(els.jobs, (d.jobs || []).slice(0, 2).map((j) => ({ when: relWhen(j.next) || j.schedule || "", text: j.name })),
-        "Nichts geplant. Sag z. B. „Erinnere mich morgen um acht …“");
-      fillList(els.notes, (d.notes || []).slice(0, 2).map((n) => ({ text: n })), "Noch leer. Sag „Merk dir …“");
+        t("Nichts geplant. Sag z. B. „Erinnere mich morgen um acht …“"));
+      fillList(els.notes, (d.notes || []).slice(0, 2).map((n) => ({ text: n })), t("Noch leer. Sag „Merk dir …“"));
     } catch (e) {
-      fillList(els.jobs, [], "Keine Daten von Hermes."); fillList(els.notes, [], "Keine Daten von Hermes.");
+      fillList(els.jobs, [], t("Keine Daten von Hermes.")); fillList(els.notes, [], t("Keine Daten von Hermes."));
     }
   }
 
@@ -163,8 +167,8 @@
     const mode = d.brain_mode || "local", eff = d.brain_effective || "local";
     const name = eff === "remote" ? modelShort(d.brain_model_remote || (d.brain_model && /claude/i.test(d.brain_model) ? d.brain_model : null), "remote")
       : modelShort(d.brain_model && !/claude/i.test(d.brain_model) ? d.brain_model : null, "local");
-    const head = mode === "auto" ? "Auto" : mode === "remote" ? "Remote" : "Lokal";
-    return name ? head + " · " + name : (mode === "local" ? "Gehirn online" : head);
+    const head = mode === "auto" ? "Auto" : mode === "remote" ? "Remote" : t("Lokal");
+    return name ? head + " · " + name : (mode === "local" ? t("Gehirn online") : head);
   }
   async function pollStatus() {
     let d = null;
@@ -182,17 +186,21 @@
     if (!DEV.st) els.chipLink.dataset.ok = String(S.link);
     if (DEV.st) renderDevice(); else renderOffline();
     els.chipBrain.dataset.ok = d ? (demo ? "demo" : !brain ? "false" : remote ? "remote" : "true") : "unknown";
-    els.chipBrain.querySelector(".chip-label").textContent = !d ? (S.link === false ? "Offline" : "Gehirn ?") : demo ? "Demo-Modus" : brain ? brainLabel(d) : (!d.hermes ? "Hermes aus" : "Gehirn offline");
-    LABEL.offline[1] = d && !d.hermes ? "Hermes-Dienst antwortet nicht." : "Der PC mit dem Sprachmodell ist aus.";
+    els.chipBrain.querySelector(".chip-label").textContent = !d ? (S.link === false ? "Offline" : t("Gehirn ?")) : demo ? t("Demo-Modus") : brain ? brainLabel(d) : (!d.hermes ? t("Hermes aus") : t("Gehirn offline"));
+    LABEL.offline[1] = d && !d.hermes ? t("Hermes-Dienst antwortet nicht.") : t("Der PC mit dem Sprachmodell ist aus.");
     $("privacyRow").hidden = !(d && remote && !demo);
-    if (d && remote !== S._remote && S._remote !== undefined && !demo) toast(remote ? "Gehirn: Claude (Remote). Text geht an Anthropic, Audio bleibt lokal." : "Gehirn: wieder lokal.");
+    if (d && remote !== S._remote && S._remote !== undefined && !demo) toast(remote ? t("Gehirn: Claude (Remote). Text geht an Anthropic, Audio bleibt lokal.") : t("Gehirn: wieder lokal."));
     S._remote = d ? remote : S._remote;
-    $("sysInfo").textContent = d ? `${demo ? "DEMO · " : ""}${d.brain_mode ? "Modus " + d.brain_mode + " · " : ""}LLM ${d.brain ? "✓" : "✗"} · Hermes ${d.hermes ? "✓" : "✗"} · STT ${d.stt ? "✓" : "✗"} · TTS ${d.tts ? "✓" : "…"}` : "keine Verbindung";
+    $("sysInfo").textContent = d ? `${demo ? "DEMO · " : ""}${d.brain_mode ? t("Modus {m}", { m: d.brain_mode }) + " · " : ""}LLM ${d.brain ? "✓" : "✗"} · Hermes ${d.hermes ? "✓" : "✗"} · STT ${d.stt ? "✓" : "✗"} · TTS ${d.tts ? "✓" : "…"}` : t("keine Verbindung");
     if (!S.busy && S.state !== "listening" && (changed || !d || S.state === "offline" || S.state === "idle")) restingState();
-    if (changed && S.brain === true && S._wasOffline) { toast("Gehirn wieder online."); earcon("up"); }
+    if (changed && S.brain === true && S._wasOffline) { toast(t("Gehirn wieder online.")); earcon("up"); }
     S._wasOffline = S.brain === false;
     if (d) wakeApply(d.wake_word === true || qp.get("wake") === "1"); // ?wake=1 nur fuer Tests mit mock-wake.py
-    if (d) { S.features = d.features || {}; setRooms(d.rooms); }
+    if (d) { S.features = d.features || {}; setRooms(d.rooms); renderWake();
+      // Name serverseitig geaendert (Admin, LLM-Werkzeug name_setzen im Image)? Uebernehmen, ausser ?name= ist gesetzt.
+      if (window.I18N && d.assistant_name && d.assistant_name !== I18N.name && !qp.get("name") && !qp.get("brand")) { I18N.setName(d.assistant_name); I18N.reapply(); }
+      if (document.activeElement !== $("optName")) $("optName").value = window.I18N ? I18N.name : (d.assistant_name || "");
+      if ((d.onboarding === true || d.onboarded === false) && d.brain_ok && !ONB.started && !S.busy && !S.demo && S.state !== "listening") setTimeout(() => { if (!ONB.started && !S.busy) greet(false); }, 1500); }
     if (d) {
       opts.follow = d.follow_up !== false;
       opts.followTimeout = Math.max(4, Math.min(30, +d.follow_up_timeout_s || 8));
@@ -312,8 +320,10 @@
     },
     idleCheck() {
       if (!this.playing && !this.queue.length) { this.endedAt = Date.now(); convCheck(); }
+      // Auch ohne Audio (TTS 204/500, Piper aus) nicht in „Denke nach“ haengen bleiben: Lauf fertig -> Ruhe.
+      if (!this.playing && !this.queue.length && S.state === "thinking" && !S.busy && !S.run && !S.approval) { restingState(); return; }
       if (!this.playing && !this.queue.length && S.state === "speaking") {
-        if (S.approval) setState("thinking", "wartet auf Freigabe");
+        if (S.approval) setState("thinking", t("wartet auf Freigabe"));
         else if (!S.busy) restingState(); else setState("thinking", S.thinkSub || "");
       }
     },
@@ -356,13 +366,13 @@
 
   async function startRec() {
     if (rec.mr || rec.starting) return;
-    if (!navigator.mediaDevices || !window.MediaRecorder) { toast("Mikrofon braucht HTTPS und einen aktuellen Browser."); return; }
+    if (!navigator.mediaDevices || !window.MediaRecorder) { toast(t("Mikrofon braucht HTTPS und einen aktuellen Browser.")); return; }
     rec.starting = true;
     interrupt();
     try {
       rec.stream = await navigator.mediaDevices.getUserMedia({ audio: opts.echoOff ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 } : { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
     } catch (e) {
-      rec.starting = false; setState("error", "Kein Mikrofonzugriff."); earcon("err"); clog("Mikrofon verweigert: " + e.name + " " + e.message); return;
+      rec.starting = false; setState("error", t("Kein Mikrofonzugriff.")); earcon("err"); clog("Mikrofon verweigert: " + e.name + " " + e.message); return;
     }
     rec.starting = false;
     if (!S._micLogged) { S._micLogged = true; const tr = rec.stream.getAudioTracks()[0]; clog("Mikrofon offen: " + (tr && tr.label || "?") + " " + JSON.stringify(tr && tr.getSettings ? tr.getSettings() : {})); }
@@ -453,7 +463,7 @@
     const wasConv = rec.conv, latched = rec.wasLatched || rec.noneMs > 0; rec.conv = false; rec.noneMs = 0;
     if (rec.cancel || dur < 350 || !chunks.length) {
       if (wasConv && rec.silent) { convEnd("Stille"); return; } // Nachfrage ohne Antwort: leise zurueck in Bereitschaft
-      restingState(); if (rec.silent) toast("Ich habe nichts gehört."); return;
+      restingState(); if (rec.silent) toast(t("Ich habe nichts gehört.")); return;
     }
     const blob = new Blob(chunks, { type });
     setState("transcribing", "");
@@ -461,13 +471,13 @@
     try {
       const fd = new FormData(); fd.append("audio", blob, "aufnahme." + (type.includes("ogg") ? "ogg" : type.includes("mp4") ? "m4a" : "webm"));
       const r = await fetch("/api/stt", { method: "POST", body: fd });
-      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || "Spracherkennung fehlgeschlagen");
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || t("Spracherkennung fehlgeschlagen"));
       const d = await r.json();
       S.busy = false;
-      if (!d.text) { if (wasConv) { convEnd("nichts verstanden"); return; } restingState(); toast("Ich habe nichts verstanden."); return; }
-      if (CONV.active && CONV_END.test(normSay(d.text))) { card("user", d.text); convEnd("Nutzer", true); return; }
+      if (!d.text) { if (wasConv) { convEnd("nichts verstanden"); return; } restingState(); toast(t("Ich habe nichts verstanden.")); return; }
+      if (CONV.active && (DE ? CONV_END : CONV_END_EN).test(normSay(d.text))) { card("user", d.text); convEnd("Nutzer", true); return; }
       convTouch(latched || wasConv);
-      if (deviceCommand(d.text) || brainCommand(d.text)) return;
+      if (localCommand(d.text)) return;
       if (S.brain === false) { card("user", d.text); offlineReply(); return; }
       ask(d.text);
     } catch (e) {
@@ -505,8 +515,9 @@
   // Nach einer Antwort auf eine gesprochene Frage (Tippen, Halten, F14, „Hey NuOrb“) fragt NuOrb kurz nach und hoert
   // ohne Wake-Word wieder zu (opts.followTimeout s bis zum Sprachbeginn). Ende: Abschiedssatz, Stille, 20 Runden, 5 min.
   // Nie waehrend offener Karte (Karten bleiben Tippen-only), nie waehrend Sprachausgabe (kein Echo ins Mikro).
-  const CONV_ASK = ["Noch etwas?", "Kann ich noch etwas für dich tun?", "Sonst noch was?", "Noch eine Frage?"];
+  const CONV_ASK = [t("Noch etwas?"), t("Kann ich noch etwas für dich tun?"), t("Sonst noch was?"), t("Noch eine Frage?")];
   const CONV_END = /^(nein|nee|ne|nö|nichts|nix|danke|das war'?s|das wars|das ist alles|passt|ruhemodus|ruhe|schlaf\w*|gute nacht|tschüss|tschau|bis später|bis dann|stopp?|ende|fertig|ok(ay)? danke)( (danke|das war'?s|das wars|mehr|nuorb|schön|sehr|alles|gut|bitte|für jetzt))*$/;
+  const CONV_END_EN = /^(no|nope|nothing|no thanks?|no thank you|thanks?|thank you|that'?s all|that'?s it|thats all|thats it|goodbye|good ?bye|bye|good night|stop|sleep|nothing else|all good)( (thanks?|thank you|nuorb|for now|that'?s all|thats all|bye|then))*$/;
   const normSay = (t) => String(t).toLowerCase().replace(/[.!?,;:]/g, " ").replace(/\s+/g, " ").trim();
   function convTouch(start) {
     if (!opts.follow) { CONV.active = false; return; }
@@ -517,9 +528,9 @@
   function convEnd(why, say) {
     if (!CONV.active) return;
     CONV.active = false; clearTimeout(CONV.timer); clog(`Gespräch endet (${why}, ${CONV.rounds} Runden)`);
-    if (say) speech.say("Okay, ich bin da, wenn du mich brauchst.");
+    if (say) speech.say(t("Okay, ich bin da, wenn du mich brauchst."));
     if (!S.busy && !speech.active) restingState();
-    if (WAKE.on) { els.stateSub.textContent = "Sag „Hey NuOrb“"; }
+    if (WAKE.on) { els.stateSub.textContent = t("Sag „Hey NuOrb“"); }
   }
   function convCheck() {
     clearTimeout(CONV.timer);
@@ -538,12 +549,12 @@
 
   function offlineReply() {
     const lines = [
-      "Mein Gehirn ist gerade offline. Sobald der PC läuft, bin ich wieder ganz für dich da.",
-      "Der PC schläft, und mit ihm mein Sprachmodell. Uhr und Notizen laufen trotzdem.",
+      t("Mein Gehirn ist gerade offline. Sobald der PC läuft, bin ich wieder ganz für dich da."),
+      t("Der PC schläft, und mit ihm mein Sprachmodell. Uhr und Notizen laufen trotzdem."),
     ];
-    const t = lines[Math.floor(Math.random() * lines.length)];
-    card("sys", "Gehirn offline – Frage nicht möglich.");
-    speech.say(t);
+    const line = lines[Math.floor(Math.random() * lines.length)];
+    card("sys", t("Gehirn offline – Frage nicht möglich."));
+    speech.say(line);
   }
 
   // ------------------------------------------------------------------ Hermes-Run
@@ -552,20 +563,20 @@
     if (stopRun && S.run) {
       fetch(`/api/runs/${encodeURIComponent(S.run)}/stop`, { method: "POST" }).catch(() => {});
       if (S.abort) S.abort.abort();
-      card("sys", "Unterbrochen.");
+      card("sys", t("Unterbrochen."));
       S.run = null; S.busy = false;
     }
   }
 
-  async function ask(text, retry) {
-    if (!retry) card("user", text);
-    S.busy = true; setState("thinking", retry ? "zweiter Versuch" : "");
+  async function ask(text, retry, noCard) {
+    if (!retry && !noCard) card("user", text);
+    S.busy = true; setState("thinking", retry ? t("zweiter Versuch") : "");
     let res;
     try {
       const r = await fetch("/api/ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, session_id: S.session, device: ANDROID ? "" : deviceSummary(), no_haiku: !!retry,
         ...(ANDROID ? { client: "android", wake: !!WAKE.on } : {}) }) });
       res = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(r.status === 503 ? "Hermes ist nicht erreichbar." : r.status === 429 ? "Hermes ist ausgelastet." : (res.detail || "Fehler " + r.status));
+      if (!r.ok) throw new Error(r.status === 503 && res.code === "no_brain" && res.detail ? String(res.detail) : r.status === 503 ? t("Hermes ist nicht erreichbar.") : r.status === 429 ? t("Hermes ist ausgelastet.") : (res.detail || t("Fehler {s}", { s: r.status })));
     } catch (e) { return fail(String(e.message || e)); }
     S.session = res.session_id; store.set("session", S.session); store.set("sessionDay", today);
     S.run = res.run_id;
@@ -578,7 +589,7 @@
   function fail(msg) {
     if (CONV.active) convEnd("Fehler");
     S.busy = false; S.run = null; card("err", msg); earcon("err");
-    setState("error", ""); speech.say("Da ist etwas schiefgelaufen. " + (S.brain === false ? "Mein Gehirn ist offline." : ""));
+    setState("error", ""); speech.say(t("Da ist etwas schiefgelaufen.") + " " + (S.brain === false ? t("Mein Gehirn ist offline.") : ""));
     setTimeout(() => { if (S.state === "error") restingState(); }, 5000);
   }
 
@@ -594,6 +605,7 @@
   const EN_W = /\b(the|is|isn't|it's|i'll|i'm|i|so|will|would|should|use|using|value|message|current|this|that|there|user|let|me|we|need|tool|call|default|moderate|which|because|then|now|just|isn|don't|can't|they|their)\b/gi;
   const DE_W = /\b(der|die|das|und|ist|nicht|ich|du|dich|dir|es|ein|eine|einen|auf|mit|zu|für|von|den|dem|im|wird|sind|gerade|prozent|grad|uhr|noch|schon|auch|bitte)\b|[äöüß]/gi;
   function stripEnglish(t) {
+    if (!DE) return t; // englische Oberflaeche: Antworten sind englisch
     const parts = String(t).match(/[^.!?]+(?:[.!?]+|$)\s*/g) || [];
     const keep = parts.filter((p) => !((p.match(EN_W) || []).length >= 3 && (p.match(DE_W) || []).length <= 1));
     return keep.length === parts.length ? t : keep.join("").trim();
@@ -634,7 +646,7 @@
         clearInterval(watch); clog(`Run ${runId.slice(0, 12)}: keine Ereignisse seit ${Math.round((Date.now() - lastEv) / 1000)} s – abgebrochen`);
         fetch(`/api/runs/${encodeURIComponent(runId)}/stop`, { method: "POST" }).catch(() => {});
         finished = true; ctl.abort(); speech.stop(); S.retryAsk = null;
-        fail(S.brain === false ? "Gehirn offline." : "Das Sprachmodell antwortet gerade nicht (2 Minuten ohne Lebenszeichen). Abgebrochen – bitte gleich nochmal versuchen.");
+        fail(S.brain === false ? t("Gehirn offline.") : t("Das Sprachmodell antwortet gerade nicht (2 Minuten ohne Lebenszeichen). Abgebrochen – bitte gleich nochmal versuchen."));
       }
     }, 5000);
     const handle = (ev) => {
@@ -664,15 +676,15 @@
           toolSeen = true;
           if (ANDROID && /geraet_+anfordern$/.test(ev.tool || "") && !capped) {
             // Android-App: keine Geraetesteuerung. Vortext/Behauptungen des Modells verwerfen, festen Satz sprechen.
-            capped = true; speech.stop(); full = "Das geht nur am NuOrb-Handy."; spoken = 0;
+            capped = true; speech.stop(); full = t("Gerätebefehle gehen in dieser App nicht."); spoken = 0;
             ensureCard().textContent = full; flush(true); clog("Android: Geraete-Werkzeug abgefangen");
             break;
           }
           const chip = toolChip(ev.tool, (ev.preview || "").slice(0, 80));
           tools[ev.tool_call_id || ev.tool] = chip;
           if (/^mcp_claude_/.test(ev.tool || "")) {
-            S.thinkSub = "Claude arbeitet …"; setState("thinking", S.thinkSub);
-            if (!claudeSaid && !/aenderungen/.test(ev.tool)) { claudeSaid = true; speech.say("Einen Moment, Claude arbeitet daran."); }
+            S.thinkSub = t("Claude arbeitet …"); setState("thinking", S.thinkSub);
+            if (!claudeSaid && !/aenderungen/.test(ev.tool)) { claudeSaid = true; speech.say(t("Einen Moment, Claude arbeitet daran.")); }
           } else if (!speech.active) setState("thinking", TOOLNAME(ev.tool) + " …");
           break;
         }
@@ -694,10 +706,10 @@
           break;
         }
         case "reasoning.available":
-          if (!speech.active && S.state === "thinking") els.stateSub.textContent = "überlege …"; break;
+          if (!speech.active && S.state === "thinking") els.stateSub.textContent = t("überlege …"); break;
         case "approval.request": showApproval(runId, ev); break;
         case "approval.responded": hideRunApproval(); break;
-        case "run.queued": els.stateSub.textContent = "in der Warteschlange …"; break;
+        case "run.queued": els.stateSub.textContent = t("in der Warteschlange …"); break;
         case "run.completed": {
           finished = true;
           if (capped) break;
@@ -709,7 +721,7 @@
           if (letters(full) < 8 || /^\s*[{\[]/.test(full)) {
             const pre = cleanOut(preTool).replace(/^\[[^\]]{0,260}\]\s*/, "");
             clog("Kaputte Endausgabe ersetzt: " + JSON.stringify(String(ev.output || "").slice(0, 40)));
-            full = letters(pre) >= 8 ? pre : (devRequested ? (S.lastIntentSay || "Erledige ich.") : "Dazu habe ich gerade keine Antwort.");
+            full = letters(pre) >= 8 ? pre : (devRequested ? (S.lastIntentSay || t("Erledige ich.")) : t("Dazu habe ich gerade keine Antwort."));
           }
           spoken = Math.min(spoken, full.length); ensureCard().textContent = full;
           flush(true); break;
@@ -726,13 +738,13 @@
             const offline = S.brain === false;
             S.busy = false; S.run = null; hideRunApproval();
             const er = String(ev.error || "");
-            const why = offline ? "Gehirn offline – das Sprachmodell auf dem PC ist nicht erreichbar."
-              : /too large|context|token/i.test(er) ? "Das Sprachmodell hat zu wenig Kontext für Hermes (Backend-Einstellung nötig)."
-              : /connect|refused|unreachable|timed? ?out/i.test(er) ? "Das Sprachmodell antwortet nicht. Läuft Ollama auf dem PC?"
-              : "Hermes: " + (er || "Lauf fehlgeschlagen");
+            const why = offline ? t("Gehirn offline – das Sprachmodell auf dem PC ist nicht erreichbar.")
+              : /too large|context|token/i.test(er) ? t("Das Sprachmodell hat zu wenig Kontext für Hermes (Backend-Einstellung nötig).")
+              : /connect|refused|unreachable|timed? ?out/i.test(er) ? t("Das Sprachmodell antwortet nicht. Läuft Ollama auf dem PC?")
+              : t("Hermes: {e}", { e: er || t("Lauf fehlgeschlagen") });
             return fail(why);
           }
-          card("sys", ev.event === "run.cancelled" ? "Abgebrochen." : "Unterbrochen.");
+          card("sys", ev.event === "run.cancelled" ? t("Abgebrochen.") : t("Unterbrochen."));
           break;
       }
     };
@@ -758,7 +770,7 @@
       if (ctl.signal.aborted) return;
       // Stream abgerissen: Status einmal pollen
       try { const st = await (await fetch(`/api/runs/${encodeURIComponent(runId)}`)).json(); if (st.output) handle({ event: "run.completed", output: st.output }); finished = !!st.output; } catch (e2) { /* egal */ }
-      if (!finished) return fail("Verbindung zum Lauf verloren.");
+      if (!finished) return fail(t("Verbindung zum Lauf verloren."));
     }
     setTimeout(convCheck, 50); // auch ohne Sprachausgabe (Stimme aus) weiter im Gespraech
     clog(`Run ${runId.slice(0, 12)}: Ereignisse ${JSON.stringify(seen)}, fertig=${finished}, Text ${full.length} Z., gesprochen ${spoken}`);
@@ -778,36 +790,39 @@
   // ------------------------------------------------------------------ Bestaetigungskarten
   // Feste deutsche Karten fuer bekannte MCP-Werkzeuge (Server „claude“ = Projekt-Claude, Sitzung sprachsteuerung).
   // Kosten und Argumente stehen im command-Text: „Costs 1-30 Cent (…)“, „Arguments: {json}“.
-  const CLAUDE_ZIEL = "Projekt-Claude (Sonnet 5.5), Ordner nuorb-ui (Arbeitskopie auf nuorb)";
+  const CLAUDE_ZIEL = t("Projekt-Claude (Sonnet 5.5), Ordner nuorb-ui (Arbeitskopie auf nuorb)");
   const KNOWN = {
-    "claude:fragen": { title: "Claude fragen?", ziel: CLAUDE_ZIEL, befehl: "nur lesen und durchsuchen", arg: ["frage", "Frage"],
-      kosten: "ca. 1–30 Cent", folgen: "Claude antwortet auf Deutsch in höchstens fünf Sätzen. Es wird nichts geändert.",
-      yes: "Ja, fragen", say: "Soll ich Claude das fragen? Kostet ein paar Cent." },
-    "claude:auftrag": { title: "Claude-Auftrag ausführen?", ziel: CLAUDE_ZIEL, befehl: "Dateien lesen und ändern, keine Befehle ausführen", arg: ["auftrag", "Auftrag"],
-      kosten: "ca. 5–100 Cent", folgen: "Die Änderung wird als Git-Commit gespeichert und lässt sich mit „rückgängig“ zurücknehmen. Die laufende Oberfläche bleibt unverändert.",
-      yes: "Ja, ausführen", say: "Soll Claude das wirklich ändern?" },
-    "claude:rueckgaengig": { title: "Letzte Claude-Änderung zurücknehmen?", ziel: CLAUDE_ZIEL, befehl: "git revert der letzten Claude-Änderung",
-      kosten: "kostenlos", folgen: "Die letzte Änderung von Claude wird mit einem neuen Commit zurückgenommen.",
-      yes: "Ja, zurücknehmen", say: "Soll ich die letzte Änderung von Claude zurücknehmen?" },
+    "claude:fragen": { title: t("Claude fragen?"), ziel: CLAUDE_ZIEL, befehl: t("nur lesen und durchsuchen"), arg: ["frage", t("Frage")],
+      kosten: t("ca. 1–30 Cent"), folgen: t("Claude antwortet auf Deutsch in höchstens fünf Sätzen. Es wird nichts geändert."),
+      yes: t("Ja, fragen"), say: t("Soll ich Claude das fragen? Kostet ein paar Cent.") },
+    "claude:auftrag": { title: t("Claude-Auftrag ausführen?"), ziel: CLAUDE_ZIEL, befehl: t("Dateien lesen und ändern, keine Befehle ausführen"), arg: ["auftrag", t("Auftrag")],
+      kosten: t("ca. 5–100 Cent"), folgen: t("Die Änderung wird als Git-Commit gespeichert und lässt sich mit „rückgängig“ zurücknehmen. Die laufende Oberfläche bleibt unverändert."),
+      yes: t("Ja, ausführen"), say: t("Soll Claude das wirklich ändern?") },
+    "claude:rueckgaengig": { title: t("Letzte Claude-Änderung zurücknehmen?"), ziel: CLAUDE_ZIEL, befehl: t("git revert der letzten Claude-Änderung"),
+      kosten: t("kostenlos"), folgen: t("Die letzte Änderung von Claude wird mit einem neuen Commit zurückgenommen."),
+      yes: t("Ja, zurücknehmen"), say: t("Soll ich die letzte Änderung von Claude zurücknehmen?") },
   };
   // Haus-Schalter (Server zuhause_schalten, sprachsteuerung): Karte aus den Argumenten bauen
-  const ZH_ZIEL = "Haus-Dashboard (Heizung/Klima)";
-  KNOWN["zuhause_schalten:klima_stellen"] = { ziel: ZH_ZIEL, kosten: "kostenlos", fmt: (a) => {
-    const g = a.geraet === "alle" ? "alle Klimaanlagen" : "Klimaanlage " + (a.geraet || "?");
-    const aus = a.an === false;
-    return { title: aus ? `${g} ausschalten?` : `${g} ${a.an ? "einschalten" : "einstellen"}?`,
-      facts: [["Gerät", g], aus ? null : ["Modus", a.modus], aus ? null : ["Soll", a.soll != null ? a.soll + " °C" : null], aus ? null : ["Lüfter", a.luefter]].filter(Boolean),
-      say: aus ? `Soll ich ${g} ausschalten?` : `Soll ich ${g} ${a.an ? "einschalten" : "einstellen"}${a.soll != null ? " auf " + a.soll + " Grad" : ""}?`,
-      yes: aus ? "Ja, ausschalten" : a.an ? "Ja, einschalten" : "Ja, einstellen", folgen: "Die Anlage wird über das Haus-Dashboard gestellt." }; } };
-  KNOWN["zuhause_schalten:raum_soll_gross"] = { ziel: ZH_ZIEL, kosten: "kostenlos", fmt: (a) => {
+  const ZH_ZIEL = t("Haus-Dashboard (Heizung/Klima)");
+  KNOWN["zuhause_schalten:klima_stellen"] = { ziel: ZH_ZIEL, kosten: t("kostenlos"), fmt: (a) => {
+    const g = a.geraet === "alle" ? t("alle Klimaanlagen") : t("Klimaanlage {g}", { g: a.geraet || "?" });
+    const aus = a.an === false, s = a.soll;
+    return { title: aus ? t("{g} ausschalten?", { g }) : a.an ? t("{g} einschalten?", { g }) : t("{g} einstellen?", { g }),
+      facts: [[t("Gerät"), g], aus ? null : [t("Modus"), a.modus], aus ? null : [t("Soll"), a.soll != null ? a.soll + " °C" : null], aus ? null : [t("Lüfter"), a.luefter]].filter(Boolean),
+      say: aus ? t("Soll ich {g} ausschalten?", { g })
+        : a.soll != null ? (a.an ? t("Soll ich {g} einschalten auf {s} Grad?", { g, s }) : t("Soll ich {g} einstellen auf {s} Grad?", { g, s }))
+        : a.an ? t("Soll ich {g} einschalten?", { g }) : t("Soll ich {g} einstellen?", { g }),
+      yes: aus ? t("Ja, ausschalten") : a.an ? t("Ja, einschalten") : t("Ja, einstellen"), folgen: t("Die Anlage wird über das Haus-Dashboard gestellt.") }; } };
+  KNOWN["zuhause_schalten:raum_soll_gross"] = { ziel: ZH_ZIEL, kosten: t("kostenlos"), fmt: (a) => {
     const ziel = a.soll != null ? a.soll + " °C" : (a.aendern > 0 ? "+" : "") + a.aendern + " K";
-    return { title: `${a.raum || "Raum"}: Soll-Temperatur auf ${ziel}?`, facts: [["Raum", a.raum], ["Neu", ziel]],
-      say: `Soll ich ${a.raum || "den Raum"} auf ${a.soll != null ? a.soll + " Grad" : ziel} stellen?`, yes: "Ja, einstellen",
-      folgen: "Größere Änderung (über drei Grad) – deshalb diese Rückfrage." }; } };
+    return { title: t("{r}: Soll-Temperatur auf {z}?", { r: a.raum || t("Raum"), z: ziel }), facts: [[t("Raum"), a.raum], [t("Neu"), ziel]],
+      say: a.soll != null ? t("Soll ich {r} auf {s} Grad stellen?", { r: a.raum || t("den Raum"), s: a.soll }) : t("Soll ich {r} auf {z} stellen?", { r: a.raum || t("den Raum"), z: ziel }),
+      yes: t("Ja, einstellen"),
+      folgen: t("Größere Änderung (über drei Grad) – deshalb diese Rückfrage.") }; } };
   function mcpDetails(cmd) {
     const out = {};
     const c = cmd.match(/Costs?\s+([0-9]+(?:\s*[-–]\s*[0-9]+)?)\s*Cent/i);
-    if (c) out.kosten = "ca. " + c[1].replace(/\s*[-–]\s*/, "–") + " Cent";
+    if (c) out.kosten = t("ca. {c} Cent", { c: c[1].replace(/\s*[-–]\s*/, "–") });
     const a = cmd.match(/Arguments:\s*(\{[\s\S]*\})/);
     if (a) { try { out.args = JSON.parse(a[1]); } catch (e) { /* redigiert/abgeschnitten */ } }
     return out;
@@ -822,36 +837,36 @@
     const cmd = String(ev.command || ev.preview || "");
     const raw = String(ev.description || ev.reason || "").trim();
     const mcp = cmd.match(/MCP tool '([\w.-]+)' on (?:UNTRUSTED )?server '([\w.-]+)'/i) || raw.match(/run '([\w.-]+)'.*?Server '([\w.-]+)'/i);
-    let title = "NuOrb möchte etwas ausführen", desc, facts = [], code = cmd, yes = "Ja, ausführen", say = "Ich brauche deine Bestätigung.";
+    let title = t("NuOrb möchte etwas ausführen"), desc, facts = [], code = cmd, yes = t("Ja, ausführen"), say = t("Ich brauche deine Bestätigung.");
     if (mcp) {
       const [, tool, server] = mcp, k = KNOWN[server + ":" + tool];
       const det = mcpDetails(cmd);
       if (k && k.fmt && det.args) {
         const f = k.fmt(det.args); title = f.title; desc = f.folgen; yes = f.yes; say = f.say; code = "";
-        facts = [["Ziel", k.ziel], ...f.facts.map(([a, b]) => [a, b != null ? String(b) : null])];
+        facts = [[t("Ziel"), k.ziel], ...f.facts.map(([a, b]) => [a, b != null ? String(b) : null])];
       } else if (k && !k.fmt) {
         title = k.title; desc = k.folgen; yes = k.yes; say = k.say; code = "";
         const argVal = k.arg && det.args ? det.args[k.arg[0]] : null;
-        facts = [["Ziel", k.ziel], ["Befehl", k.befehl], k.arg ? [k.arg[1], argVal ? String(argVal) : "(nicht lesbar)"] : null,
-          ["Kosten", det.kosten || k.kosten]].filter(Boolean);
+        facts = [[t("Ziel"), k.ziel], [t("Befehl"), k.befehl], k.arg ? [k.arg[1], argVal ? String(argVal) : t("(nicht lesbar)")] : null,
+          [t("Kosten"), det.kosten || k.kosten]].filter(Boolean);
       }
       else {
-        title = server === "handy" ? `Handy-Werkzeug „${tool}“ ausführen?` : `Werkzeug „${tool}“ von „${server}“ ausführen?`;
-        desc = `Der Server „${server}“ ist als nicht vertrauenswürdig eingestuft; jede schreibende Aktion braucht deine Freigabe.`;
-        facts = [["Werkzeug", server + " · " + tool], ["Kosten", det.kosten]];
+        title = server === "handy" ? t("Handy-Werkzeug „{tool}“ ausführen?", { tool }) : t("Werkzeug „{tool}“ von „{server}“ ausführen?", { tool, server });
+        desc = t("Der Server „{server}“ ist als nicht vertrauenswürdig eingestuft; jede schreibende Aktion braucht deine Freigabe.", { server });
+        facts = [[t("Werkzeug"), server + " · " + tool], [t("Kosten"), det.kosten]];
         if (det.args) code = JSON.stringify(det.args, null, 1).slice(0, 600);
-        say = `Darf ich das Werkzeug ${tool} ausführen?`;
+        say = t("Darf ich das Werkzeug {tool} ausführen?", { tool });
       }
     } else {
-      const DE = [[/recursive delete|rm -r/i, "Rekursives Löschen – Dateien und Ordner werden endgültig entfernt."],
-        [/delete|remov/i, "Löschen von Dateien."], [/overwrit|truncat/i, "Überschreiben von Dateien."],
-        [/sudo|privilege|root/i, "Befehl mit erhöhten Rechten."], [/chmod|chown|permission/i, "Ändern von Rechten oder Besitzern."],
-        [/kill|shutdown|reboot|systemctl/i, "Eingriff in laufende Dienste oder das System."], [/network|curl|wget|download/i, "Netzwerkzugriff / Download."],
-        [/git push|force/i, "Erzwungene Änderung (z. B. force push)."], [/install|package/i, "Installation von Paketen."],
-        [/write|edit|patch/i, "Schreiben in Dateien."], [/mcp|consent|untrusted/i, "Werkzeug eines nicht vertrauenswürdigen Servers."]];
-      const hit = raw && DE.find(([rx]) => rx.test(raw));
-      desc = hit ? hit[1] : raw ? "Hermes stuft das als gefährlich ein: " + raw : "Diese Aktion ist als gefährlich eingestuft und braucht deine Freigabe.";
-      if (/rm -r/i.test(cmd)) say = "Soll ich das wirklich löschen?";
+      const RISK = [[/recursive delete|rm -r/i, t("Rekursives Löschen – Dateien und Ordner werden endgültig entfernt.")],
+        [/delete|remov/i, t("Löschen von Dateien.")], [/overwrit|truncat/i, t("Überschreiben von Dateien.")],
+        [/sudo|privilege|root/i, t("Befehl mit erhöhten Rechten.")], [/chmod|chown|permission/i, t("Ändern von Rechten oder Besitzern.")],
+        [/kill|shutdown|reboot|systemctl/i, t("Eingriff in laufende Dienste oder das System.")], [/network|curl|wget|download/i, t("Netzwerkzugriff / Download.")],
+        [/git push|force/i, t("Erzwungene Änderung (z. B. force push).")], [/install|package/i, t("Installation von Paketen.")],
+        [/write|edit|patch/i, t("Schreiben in Dateien.")], [/mcp|consent|untrusted/i, t("Werkzeug eines nicht vertrauenswürdigen Servers.")]];
+      const hit = raw && RISK.find(([rx]) => rx.test(raw));
+      desc = hit ? hit[1] : raw ? t("Hermes stuft das als gefährlich ein: {r}", { r: raw }) : t("Diese Aktion ist als gefährlich eingestuft und braucht deine Freigabe.");
+      if (/rm -r/i.test(cmd)) say = t("Soll ich das wirklich löschen?");
     }
     $("apTitle").textContent = title;
     $("apDesc").textContent = desc;
@@ -859,7 +874,7 @@
     $("apCmd").textContent = code;
     $("apYes").textContent = yes;
     $("approvalBackdrop").hidden = false; setTimeout(() => $("apNo").focus(), 50);
-    view("talk"); setState("thinking", "wartet auf Freigabe");
+    view("talk"); setState("thinking", t("wartet auf Freigabe"));
     earcon("confirm"); if (navigator.vibrate) navigator.vibrate([30, 60, 30]);
     speech.say(say);
     clog("Bestätigungskarte: " + title);
@@ -878,9 +893,9 @@
     try {
       const r = await fetch(`/api/runs/${encodeURIComponent(a.runId)}/approval`, { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ choice, request_id: a.request_id, execution_generation: a.execution_generation }) });
-      if (!r.ok) { const d = await r.json().catch(() => ({})); toast("Freigabe nicht angenommen: " + (d.error?.message || d.detail || r.status)); }
-      else card("sys", choice === "once" ? "Freigegeben." : "Abgelehnt.");
-    } catch (e) { toast("Freigabe fehlgeschlagen."); }
+      if (!r.ok) { const d = await r.json().catch(() => ({})); toast(t("Freigabe nicht angenommen: {e}", { e: d.error?.message || d.detail || r.status })); }
+      else card("sys", choice === "once" ? t("Freigegeben.") : t("Abgelehnt."));
+    } catch (e) { toast(t("Freigabe fehlgeschlagen.")); }
     $("apYes").disabled = $("apNo").disabled = false;
     hideApproval();
   }
@@ -891,7 +906,7 @@
   $("apYes").addEventListener("click", (e) => {
     const a = S.approval, age = a ? Date.now() - (a.shownAt || 0) : -1, tapped = e.isTrusted && Date.now() - yesDown < 1500;
     clog(`Karte „Ja“: trusted=${e.isTrusted} getippt=${tapped} detail=${e.detail} nach ${age} ms${a && a.local ? " (lokal)" : ""}`);
-    if (a && a.local && (!tapped || age < 1200)) { toast("Bitte direkt auf „" + $("apYes").textContent + "“ tippen."); return; }
+    if (a && a.local && (!tapped || age < 1200)) { toast(t("Bitte direkt auf „{b}“ tippen.", { b: $("apYes").textContent })); return; }
     answerApproval("once");
   });
   $("apNo").addEventListener("click", () => answerApproval("deny"));
@@ -930,7 +945,7 @@
     }
     const r = await fetch("/device/" + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.detail || d.fehler || "Gerätedienst: Fehler " + r.status);
+    if (!r.ok) throw new Error(d.detail || d.fehler || t("Gerätedienst: Fehler {s}", { s: r.status }));
     clog(`Gerät ${path} ${JSON.stringify(body || {})} -> ok`);
     setTimeout(pollDevice, 400);
     return d;
@@ -941,10 +956,10 @@
       const r = await fetch("/device/status", { cache: "no-store" });
       if (r.status === 404 || !(r.headers.get("content-type") || "").includes("json")) { DEV.available = false; return; }
       const d = await r.json();
-      if (!r.ok) { DEV.available = true; DEV.st = null; DEV.err = d.detail || d.fehler || "Gerätedienst nicht erreichbar"; }
+      if (!r.ok) { DEV.available = true; DEV.st = null; DEV.err = d.detail || d.fehler || t("Gerätedienst nicht erreichbar"); }
       else { DEV.available = true; DEV.err = null;
         if (d && d.akku_prozent !== undefined) { DEV.schema = "de"; DEV.st = fromDe(d); } else { DEV.schema = "en"; DEV.st = d; } }
-    } catch (e) { DEV.err = "Gerätedienst nicht erreichbar"; }
+    } catch (e) { DEV.err = t("Gerätedienst nicht erreichbar"); }
     renderDevice();
   }
   const pct = (x) => (x == null ? "–" : Math.round(x) + " %");
@@ -953,7 +968,7 @@
     $("devBox").hidden = !has;
     $("sbBat").hidden = !(st && st.battery && st.battery.percent != null);
     if (!st) { renderOffline(); return; }
-    const b = st.battery || {}, w = st.wifi || {}, t = st.temp || {};
+    const b = st.battery || {}, w = st.wifi || {}, tp = st.temp || {};
     if (b.percent != null) {
       $("batFill").style.width = Math.max(4, Math.min(100, b.percent)) + "%";
       $("batPct").textContent = Math.round(b.percent);
@@ -963,15 +978,15 @@
     link.dataset.off = String(!w.enabled);
     link.dataset.ok = String(!!w.connected && S.link !== false);
     link.dataset.sig = String(w.signal == null ? 3 : w.signal >= 70 ? 3 : w.signal >= 45 ? 2 : w.signal >= 20 ? 1 : 0);
-    link.title = !w.enabled ? "WLAN aus" : w.connected ? `WLAN ${w.ssid || ""}` : "WLAN nicht verbunden";
-    const hot = !!t.warn, tc = Math.max(t.cpu_c || 0, t.battery_c || 0);
-    $("chipTemp").hidden = !hot; $("tempVal").textContent = tc ? Math.round(tc) + "°" : "heiß"; $("chipTemp").title = tc ? "Handy warm: " + Math.round(tc) + " °C" : "Handy warm";
-    if (hot && !S._hotSaid) { S._hotSaid = true; toast("Das Handy ist warm (" + Math.round(tc) + " °C)."); }
+    link.title = !w.enabled ? t("WLAN aus") : w.connected ? t("WLAN {s}", { s: w.ssid || "" }) : t("WLAN nicht verbunden");
+    const hot = !!tp.warn, tc = Math.max(tp.cpu_c || 0, tp.battery_c || 0);
+    $("chipTemp").hidden = !hot; $("tempVal").textContent = tc ? Math.round(tc) + "°" : t("heiß"); $("chipTemp").title = tc ? t("Handy warm: {c} °C", { c: Math.round(tc) }) : t("Handy warm");
+    if (hot && !S._hotSaid) { S._hotSaid = true; toast(t("Das Handy ist warm ({c} °C).", { c: Math.round(tc) })); }
     if (!hot) S._hotSaid = false;
-    $("devLine").textContent = [b.percent != null ? "Akku " + pct(b.percent) + (b.charging ? " · lädt" : "") : null,
-      t.cpu_c != null ? "CPU " + Math.round(t.cpu_c) + " °C" : null, w.enabled ? (w.connected ? "WLAN " + (w.ssid || "verbunden") : "WLAN sucht …") : "WLAN aus"]
+    $("devLine").textContent = [b.percent != null ? (b.charging ? t("Akku {p} · lädt", { p: pct(b.percent) }) : t("Akku {p}", { p: pct(b.percent) })) : null,
+      tp.cpu_c != null ? "CPU " + Math.round(tp.cpu_c) + " °C" : null, w.enabled ? (w.connected ? t("WLAN {s}", { s: w.ssid || t("verbunden") }) : t("WLAN sucht …")) : t("WLAN aus")]
       .filter(Boolean).join(" · ");
-    $("tWifi").dataset.on = String(!!w.enabled); $("tWifiSub").textContent = !w.enabled ? "aus" : w.connected ? (w.ssid || "verbunden") : "sucht …";
+    $("tWifi").dataset.on = String(!!w.enabled); $("tWifiSub").textContent = !w.enabled ? t("aus") : w.connected ? (w.ssid || t("verbunden")) : t("sucht …");
     const sb = $("sBright"), sv = $("sVol");
     if (document.activeElement !== sb && st.brightness) { sb.value = st.brightness.percent; $("sBrightV").textContent = pct(st.brightness.percent); }
     if (document.activeElement !== sv && st.volume) { sv.value = st.volume.percent; $("sVolV").textContent = pct(st.volume.percent); $("bMute").dataset.muted = String(!!st.volume.muted); }
@@ -982,22 +997,22 @@
     $("offlineBox").hidden = !off;
     if (!off) return;
     const btn = $("offlineWifi");
-    if (w && !w.enabled) { $("offlineText").textContent = "WLAN ist aus. Für Sprache und Antworten braucht NuOrb WLAN."; btn.textContent = "WLAN einschalten"; btn.hidden = false; btn.dataset.act = "wifi"; }
-    else if (w && !w.connected) { $("offlineText").textContent = "WLAN ist an, aber noch nicht verbunden. Suche Netz …"; btn.hidden = true; }
-    else { $("offlineText").textContent = "nuorb ist nicht erreichbar. Gerät und Uhr funktionieren weiter."; btn.textContent = "Erneut versuchen"; btn.hidden = false; btn.dataset.act = "retry"; }
+    if (w && !w.enabled) { $("offlineText").textContent = t("WLAN ist aus. Für Sprache und Antworten braucht NuOrb WLAN."); btn.textContent = t("WLAN einschalten"); btn.hidden = false; btn.dataset.act = "wifi"; }
+    else if (w && !w.connected) { $("offlineText").textContent = t("WLAN ist an, aber noch nicht verbunden. Suche Netz …"); btn.hidden = true; }
+    else { $("offlineText").textContent = t("Der Server ist nicht erreichbar. Gerät und Uhr funktionieren weiter."); btn.textContent = t("Erneut versuchen"); btn.hidden = false; btn.dataset.act = "retry"; }
   }
   $("offlineWifi").addEventListener("click", async () => {
     const btn = $("offlineWifi");
     if (btn.dataset.act === "retry") { pollStatus(); return; }
-    btn.disabled = true; $("offlineText").textContent = "Schalte WLAN ein …";
+    btn.disabled = true; $("offlineText").textContent = t("Schalte WLAN ein …");
     try { await devCall("wifi", { on: true }); earcon("up"); } catch (e) { toast(String(e.message || e)); }
     btn.disabled = false;
   });
   // Lokale Bestätigungskarte (gleiches Layout wie Hermes-Freigaben)
   function confirmLocal({ title, desc, facts, yes, say, run }) {
-    S.approval = { shownAt: Date.now(), local: async (choice) => { if (choice === "once") await run(); else card("sys", "Abgebrochen."); } };
+    S.approval = { shownAt: Date.now(), local: async (choice) => { if (choice === "once") await run(); else card("sys", t("Abgebrochen.")); } };
     $("apTitle").textContent = title; $("apDesc").textContent = desc || ""; setFacts(facts || []);
-    $("apCmd").textContent = ""; $("apYes").textContent = yes || "Ja";
+    $("apCmd").textContent = ""; $("apYes").textContent = yes || t("Ja");
     $("approvalBackdrop").hidden = false; earcon("confirm"); if (navigator.vibrate) navigator.vibrate([30, 60, 30]);
     setTimeout(() => $("apNo").focus(), 50); // Tastatur: „Nein“ vorausgewaehlt, Tab -> „Ja“
     if (say) speech.say(say);
@@ -1006,27 +1021,27 @@
     const reboot = kind === "reboot";
     closeSheet("setBackdrop");
     confirmLocal({
-      title: reboot ? "Handy neu starten?" : "Handy ausschalten?",
-      desc: reboot ? "NuOrb ist etwa zwei Minuten weg und startet danach von selbst." : "Zum Einschalten danach die Ein-Taste lange drücken.",
-      facts: [["Ziel", "NuOrb-Handy (Xiaomi, NixOS)"], ["Befehl", reboot ? "Neustart in 3 s" : "Ausschalten in 3 s"]],
-      yes: reboot ? "Ja, neu starten" : "Ja, ausschalten",
-      say: reboot ? "Soll ich das Handy wirklich neu starten?" : "Soll ich das Handy wirklich ausschalten?",
+      title: reboot ? t("Handy neu starten?") : t("Handy ausschalten?"),
+      desc: reboot ? t("NuOrb ist etwa zwei Minuten weg und startet danach von selbst.") : t("Zum Einschalten danach die Ein-Taste lange drücken."),
+      facts: [[t("Ziel"), t("NuOrb-Handy (Xiaomi, NixOS)")], [t("Befehl"), reboot ? t("Neustart in 3 s") : t("Ausschalten in 3 s")]],
+      yes: reboot ? t("Ja, neu starten") : t("Ja, ausschalten"),
+      say: reboot ? t("Soll ich das Handy wirklich neu starten?") : t("Soll ich das Handy wirklich ausschalten?"),
       run: async () => {
         try {
           await devCall(reboot ? "reboot" : "poweroff", {});
-          speech.say(reboot ? "Bis gleich." : "Gute Nacht.");
-          $("powerText").textContent = reboot ? "Handy startet neu …" : "Handy wird ausgeschaltet …"; $("powerVeil").hidden = false;
+          speech.say(reboot ? t("Bis gleich.") : t("Gute Nacht."));
+          $("powerText").textContent = reboot ? t("Handy startet neu …") : t("Handy wird ausgeschaltet …"); $("powerVeil").hidden = false;
         } catch (e) { card("err", String(e.message || e)); }
       },
     });
   }
   function wifiAction(on) {
-    if (on) return devCall("wifi", { on: true }).then(() => { card("sys", "WLAN eingeschaltet."); }).catch((e) => card("err", String(e.message || e)));
+    if (on) return devCall("wifi", { on: true }).then(() => { card("sys", t("WLAN eingeschaltet.")); }).catch((e) => card("err", String(e.message || e)));
     confirmLocal({
-      title: "WLAN ausschalten?", desc: "Ohne WLAN kann NuOrb nicht sprechen und nicht antworten. Zum Wiedereinschalten erscheint ein großer Knopf.",
-      facts: [["Ziel", "WLAN des Handys"], ["Wieder an", "Knopf „WLAN einschalten“ oder Gerät-Panel"]],
-      yes: "Ja, ausschalten", say: "Soll ich das WLAN wirklich ausschalten? Dann bin ich offline.",
-      run: async () => { try { await devCall("wifi", { on: false }); card("sys", "WLAN ausgeschaltet."); } catch (e) { card("err", String(e.message || e)); } },
+      title: t("WLAN ausschalten?"), desc: t("Ohne WLAN kann NuOrb nicht sprechen und nicht antworten. Zum Wiedereinschalten erscheint ein großer Knopf."),
+      facts: [[t("Ziel"), t("WLAN des Handys")], [t("Wieder an"), t("Knopf „WLAN einschalten“ oder Gerät-Panel")]],
+      yes: t("Ja, ausschalten"), say: t("Soll ich das WLAN wirklich ausschalten? Dann bin ich offline."),
+      run: async () => { try { await devCall("wifi", { on: false }); card("sys", t("WLAN ausgeschaltet.")); } catch (e) { card("err", String(e.message || e)); } },
     });
   }
   $("tWifi").addEventListener("click", () => wifiAction(!(DEV.st && DEV.st.wifi && DEV.st.wifi.enabled)));
@@ -1074,15 +1089,15 @@
     clog("Geräteaktion nicht gefunden: " + callId);
   }
   // Von Hermes angeforderte Geräteaktion (MCP „geraet“, Werkzeug „anfordern“) – lokal ausführen, kritische mit Karte
-  const INTENT_SAY = { wlan_an: "Ich schalte das WLAN ein.", wlan_aus: "Bitte bestätige: WLAN ausschalten.",
-    neustart: "Bitte bestätige den Neustart auf dem Display.", ausschalten: "Bitte bestätige das Ausschalten auf dem Display.",
-    helligkeit: "Ich stelle die Helligkeit auf {w} Prozent.", lautstaerke: "Ich stelle die Lautstärke auf {w} Prozent.",
-    bildschirm_aus: "Ich schalte den Bildschirm aus.", bildschirm_an: "Bildschirm ist an." };
+  const INTENT_SAY = { wlan_an: t("Ich schalte das WLAN ein."), wlan_aus: t("Bitte bestätige: WLAN ausschalten."),
+    neustart: t("Bitte bestätige den Neustart auf dem Display."), ausschalten: t("Bitte bestätige das Ausschalten auf dem Display."),
+    helligkeit: t("Ich stelle die Helligkeit auf {w} Prozent."), lautstaerke: t("Ich stelle die Lautstärke auf {w} Prozent."),
+    bildschirm_aus: t("Ich schalte den Bildschirm aus."), bildschirm_an: t("Bildschirm ist an.") }; // {w} bleibt (ohne vars) stehen
   function deviceIntent(a) {
     clog("Hermes fordert Geräteaktion: " + JSON.stringify(a));
-    S.lastIntentSay = (INTENT_SAY[a.aktion] || "Erledige ich.").replace("{w}", a.wert);
-    if (ANDROID) { S.lastIntentSay = "Das geht nur am NuOrb-Handy."; return; } // Antwort setzt streamRun (fester Satz)
-    if (!DEV.available) { card("err", "Geräteaktion nicht möglich: kein Gerätedienst (läuft die Seite auf dem Handy?)."); return; }
+    S.lastIntentSay = (INTENT_SAY[a.aktion] || t("Erledige ich.")).replace("{w}", a.wert);
+    if (ANDROID) { S.lastIntentSay = t("Gerätebefehle gehen in dieser App nicht."); return; } // Antwort setzt streamRun (fester Satz)
+    if (!DEV.available) { card("err", t("Geräteaktion nicht möglich: kein Gerätedienst (läuft die Seite auf dem Handy?).")); return; }
     const v = a.wert == null ? null : Math.max(0, Math.min(100, Math.round(+a.wert)));
     const err = (e) => card("err", String(e.message || e));
     switch (a.aktion) {
@@ -1091,50 +1106,51 @@
       case "neustart": return powerAction("reboot");
       case "ausschalten": return powerAction("poweroff");
       case "helligkeit": if (v != null) { const hv = Math.max(5, v); S.lastIntentSay = INTENT_SAY.helligkeit.replace("{w}", hv); // nie ganz schwarz
-        return devCall("brightness", { percent: hv }).then(() => card("sys", "Helligkeit " + hv + " %")).catch(err); } break;
-      case "lautstaerke": if (v != null) return devCall("volume", { percent: v, muted: false }).then(() => card("sys", "Lautstärke " + v + " %")).catch(err); break;
+        return devCall("brightness", { percent: hv }).then(() => card("sys", t("Helligkeit {v} %", { v: hv }))).catch(err); } break;
+      case "lautstaerke": if (v != null) return devCall("volume", { percent: v, muted: false }).then(() => card("sys", t("Lautstärke {v} %", { v }))).catch(err); break;
       case "bildschirm_aus": return setTimeout(() => devCall("screen", { on: false }).catch(err), 4000);
       case "bildschirm_an": return devCall("screen", { on: true }).catch(err);
     }
-    card("err", "Unbekannte Geräteaktion: " + JSON.stringify(a));
+    card("err", t("Unbekannte Geräteaktion: {a}", { a: JSON.stringify(a) }));
   }
 
   // Sprach-/Textbefehle für das Gerät (lokal, ohne Hermes)
   function deviceCommand(text) {
-    const t = " " + text.toLowerCase().replace(/[.!?,]/g, " ") + " ";
-    if (wakeCommand(t, text)) return true; // geht auch ohne Geraetedienst (Schalter liegt auf nuorb)
-    if (S.features.zuhause !== false && (homeQuery(t, text) || weatherCommand(t, text))) return true;
+    if (!DE) return false; // deutsche Muster (Geraet, Wake, Wetter, Haus); auf Englisch entscheidet Hermes
+    const lc = " " + text.toLowerCase().replace(/[.!?,]/g, " ") + " ";
+    if (wakeCommand(lc, text)) return true; // geht auch ohne Geraetedienst (Schalter liegt auf nuorb)
+    if (S.features.zuhause !== false && (homeQuery(lc, text) || weatherCommand(lc, text))) return true;
     if (!DEV.available) return false;
     const say = (msg) => { card("user", text); if (msg) speech.say(msg); return true; };
     let m;
-    if (/\b(w-?lan|wifi|wi-fi|internet)\b.*\b(aus|ab|ausschalten|abschalten|deaktivier\w*)\b/.test(t)) { card("user", text); wifiAction(false); return true; }
-    if (/\b(w-?lan|wifi|wi-fi|internet)\b.*\b(an|ein|einschalten|anschalten|aktivier\w*)\b/.test(t)) { say("WLAN geht an."); wifiAction(true); return true; }
-    if (/\b(handy|telefon|gerät|system)\b.*\b(neu ?start\w*|neustarten|rebooten)\b|\bneustart\b|\bstart\w*\b.*\b(handy|telefon|gerät|system)\b.*\bneu\b/.test(t)) { card("user", text); powerAction("reboot"); return true; }
-    if (/\b(handy|telefon|gerät)\b.*\b(ausschalten|abschalten|herunterfahren|runterfahren)\b/.test(t) || /\b(schalt\w*|fahr\w*)\b.*\b(handy|telefon|gerät)\b.*\b(aus|ab|herunter|runter)\b/.test(t)) { card("user", text); powerAction("poweroff"); return true; }
-    if (/\bbildschirm\b.*\b(aus|ausschalten|dunkel)\b/.test(t)) { say("Bildschirm aus. Tippen weckt mich."); setTimeout(() => devCall("screen", { on: false }).catch(() => {}), 1800); return true; }
-    if ((m = t.match(/\bhelligkeit\b\D{0,12}(\d{1,3})/))) { say("Helligkeit " + m[1] + " Prozent."); devCall("brightness", { percent: +m[1] }).catch((e) => card("err", e.message)); return true; }
-    if (/\b(heller)\b/.test(t) || /\b(dunkler)\b/.test(t)) {
-      const cur = (DEV.st && DEV.st.brightness && DEV.st.brightness.percent) || 50, up = /\bheller\b/.test(t);
-      const v = Math.max(5, Math.min(100, cur + (up ? 20 : -20))); say((up ? "Heller" : "Dunkler") + ", " + v + " Prozent.");
+    if (/\b(w-?lan|wifi|wi-fi|internet)\b.*\b(aus|ab|ausschalten|abschalten|deaktivier\w*)\b/.test(lc)) { card("user", text); wifiAction(false); return true; }
+    if (/\b(w-?lan|wifi|wi-fi|internet)\b.*\b(an|ein|einschalten|anschalten|aktivier\w*)\b/.test(lc)) { say(t("WLAN geht an.")); wifiAction(true); return true; }
+    if (/\b(handy|telefon|gerät|system)\b.*\b(neu ?start\w*|neustarten|rebooten)\b|\bneustart\b|\bstart\w*\b.*\b(handy|telefon|gerät|system)\b.*\bneu\b/.test(lc)) { card("user", text); powerAction("reboot"); return true; }
+    if (/\b(handy|telefon|gerät)\b.*\b(ausschalten|abschalten|herunterfahren|runterfahren)\b/.test(lc) || /\b(schalt\w*|fahr\w*)\b.*\b(handy|telefon|gerät)\b.*\b(aus|ab|herunter|runter)\b/.test(lc)) { card("user", text); powerAction("poweroff"); return true; }
+    if (/\bbildschirm\b.*\b(aus|ausschalten|dunkel)\b/.test(lc)) { say(t("Bildschirm aus. Tippen weckt mich.")); setTimeout(() => devCall("screen", { on: false }).catch(() => {}), 1800); return true; }
+    if ((m = lc.match(/\bhelligkeit\b\D{0,12}(\d{1,3})/))) { say(t("Helligkeit {v} Prozent.", { v: m[1] })); devCall("brightness", { percent: +m[1] }).catch((e) => card("err", e.message)); return true; }
+    if (/\b(heller)\b/.test(lc) || /\b(dunkler)\b/.test(lc)) {
+      const cur = (DEV.st && DEV.st.brightness && DEV.st.brightness.percent) || 50, up = /\bheller\b/.test(lc);
+      const v = Math.max(5, Math.min(100, cur + (up ? 20 : -20))); say(up ? t("Heller, {v} Prozent.", { v }) : t("Dunkler, {v} Prozent.", { v }));
       devCall("brightness", { percent: v }).catch((e) => card("err", e.message)); return true;
     }
-    if ((m = t.match(/\blautstärke\b\D{0,12}(\d{1,3})/))) { say("Lautstärke " + m[1] + " Prozent."); devCall("volume", { percent: +m[1] }).catch((e) => card("err", e.message)); return true; }
-    if (/\b(lauter|leiser)\b/.test(t)) {
-      const cur = (DEV.st && DEV.st.volume && DEV.st.volume.percent) || 50, up = /\blauter\b/.test(t);
+    if ((m = lc.match(/\blautstärke\b\D{0,12}(\d{1,3})/))) { say(t("Lautstärke {v} Prozent.", { v: m[1] })); devCall("volume", { percent: +m[1] }).catch((e) => card("err", e.message)); return true; }
+    if (/\b(lauter|leiser)\b/.test(lc)) {
+      const cur = (DEV.st && DEV.st.volume && DEV.st.volume.percent) || 50, up = /\blauter\b/.test(lc);
       const v = Math.max(0, Math.min(100, cur + (up ? 15 : -15)));
-      devCall("volume", { percent: v, muted: false }).then(() => say((up ? "Lauter" : "Leiser") + ", " + v + " Prozent.")).catch((e) => card("err", e.message)); return true;
+      devCall("volume", { percent: v, muted: false }).then(() => say(up ? t("Lauter, {v} Prozent.", { v }) : t("Leiser, {v} Prozent.", { v }))).catch((e) => card("err", e.message)); return true;
     }
-    if (/\b(stumm|ton aus)\b/.test(t)) { card("user", text); devCall("volume", { muted: true }).then(() => card("sys", "Stumm. Antworten erscheinen nur als Text.")).catch((e) => card("err", e.message)); return true; }
-    if (/\b(ton an|laut machen)\b/.test(t)) { devCall("volume", { muted: false }).then(() => say("Ton ist wieder an.")).catch((e) => card("err", e.message)); return true; }
+    if (/\b(stumm|ton aus)\b/.test(lc)) { card("user", text); devCall("volume", { muted: true }).then(() => card("sys", t("Stumm. Antworten erscheinen nur als Text."))).catch((e) => card("err", e.message)); return true; }
+    if (/\b(ton an|laut machen)\b/.test(lc)) { devCall("volume", { muted: false }).then(() => say(t("Ton ist wieder an."))).catch((e) => card("err", e.message)); return true; }
     return false;
   }
 
   // ------------------------------------------------------------------ Gehirn-Schalter (Umschalten macht nuorb-admin)
   const BR = { data: null, mode: "local", claude: null };
-  const MODE_DE = { local: "Lokal", auto: "Automatisch", remote: "Remote" };
-  const fmtUsd = (x) => (Math.round(x * 100) / 100).toLocaleString("de-DE") + " $";
+  const MODE_DE = { local: t("Lokal"), auto: t("Automatisch"), remote: "Remote" };
+  const fmtUsd = (x) => (Math.round(x * 100) / 100).toLocaleString(LOC) + " $";
   async function loadBrain() {
-    try { BR.data = await (await fetch("/api/brain")).json(); } catch (e) { BR.data = { available: false, detail: "Keine Verbindung." }; }
+    try { BR.data = await (await fetch("/api/brain")).json(); } catch (e) { BR.data = { available: false, detail: t("Keine Verbindung.") }; }
     return BR.data;
   }
   function renderBrain() {
@@ -1144,16 +1160,16 @@
     for (const [id, m] of Object.entries(models)) {
       const b = document.createElement("button"); b.className = "br-model"; b.setAttribute("role", "radio");
       b.setAttribute("aria-checked", String(id === BR.claude));
-      const t = document.createElement("b"); t.textContent = modelShort(id, "remote");
-      const p = document.createElement("span"); p.textContent = `${fmtUsd(m.in)} / ${fmtUsd(m.out)}\nje 1 Mio. Token`;
-      p.style.whiteSpace = "pre-line"; b.append(t, p); b.title = m.hint || "";
+      const nm = document.createElement("b"); nm.textContent = modelShort(id, "remote");
+      const p = document.createElement("span"); p.textContent = t("{i} / {o}\nje 1 Mio. Token", { i: fmtUsd(m.in), o: fmtUsd(m.out) });
+      p.style.whiteSpace = "pre-line"; b.append(nm, p); b.title = m.hint || "";
       b.addEventListener("click", () => { BR.claude = id; renderBrain(); }); box.appendChild(b);
     }
     $("brPrivacy").hidden = BR.mode === "local";
-    const cur = d.mode ? `Aktiv: ${MODE_DE[d.mode] || d.mode}${d.mode !== "local" && d.claude ? " · " + modelShort(d.claude, "remote") : ""}` : "";
+    const cur = d.mode ? t("Aktiv: {m}", { m: (MODE_DE[d.mode] || d.mode) + (d.mode !== "local" && d.claude ? " · " + modelShort(d.claude, "remote") : "") }) : "";
     const m = models[BR.claude];
-    $("brNote").textContent = !d.available ? (d.detail || "Umschalten nur im Admin-UI möglich.")
-      : [cur, BR.mode !== "local" && m ? `${m.name}: ${m.hint || ""} (Eingabe ${fmtUsd(m.in)}, Ausgabe ${fmtUsd(m.out)} je 1 Mio. Token)` : ""].filter(Boolean).join(" · ");
+    $("brNote").textContent = !d.available ? (d.detail || t("Umschalten nur im Admin-UI möglich."))
+      : [cur, BR.mode !== "local" && m ? t("{n}: {h} (Eingabe {i}, Ausgabe {o} je 1 Mio. Token)", { n: m.name, h: m.hint || "", i: fmtUsd(m.in), o: fmtUsd(m.out) }) : ""].filter(Boolean).join(" · ");
     $("brApply").disabled = !d.available || (d.mode === BR.mode && (BR.mode === "local" || remembered(BR.mode) === BR.claude));
   }
   // je Modus gemerktes Claude-Modell (nuorb-admin: remote_model / fallback_model)
@@ -1162,7 +1178,7 @@
     return (mode === "auto" ? d.fallback_model || d.fallback : d.remote_model) || d.claude || Object.keys(d.models || {})[0] || "claude-haiku-5-5";
   }
   async function openBrain() {
-    openSheet("brainBackdrop"); $("brNote").textContent = "Lade …";
+    openSheet("brainBackdrop"); $("brNote").textContent = t("Lade …");
     const d = await loadBrain();
     BR.mode = d.mode || d.ui_mode || "local";
     BR.claude = remembered(BR.mode);
@@ -1171,10 +1187,10 @@
   async function switchBrain(mode, claude) {
     const r = await fetch("/api/brain", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode, claude }) });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.detail || "Umschalten fehlgeschlagen.");
+    if (!r.ok) throw new Error(d.detail || t("Umschalten fehlgeschlagen."));
     const label = MODE_DE[mode] + (mode !== "local" ? " · " + modelShort(claude, "remote") : "");
-    card("sys", "Gehirn: " + label + (d.effect ? " – " + d.effect : ""));
-    speech.say(mode === "local" ? "Erledigt. Ich denke jetzt wieder lokal." : `Erledigt. Ich nutze jetzt ${modelShort(claude, "remote")}.`);
+    card("sys", t("Gehirn: {l}", { l: label + (d.effect ? " – " + d.effect : "") }));
+    speech.say(mode === "local" ? t("Erledigt. Ich denke jetzt wieder lokal.") : t("Erledigt. Ich nutze jetzt {m}.", { m: modelShort(claude, "remote") }));
     clog("Gehirn umgeschaltet: " + label);
     S._remote = undefined; pollStatus();
   }
@@ -1183,17 +1199,80 @@
   $("brCancel").addEventListener("click", () => closeSheet("brainBackdrop"));
   $("brainBackdrop").addEventListener("click", (e) => { if (e.target.id === "brainBackdrop") closeSheet("brainBackdrop"); });
   $("brApply").addEventListener("click", async () => {
-    $("brApply").disabled = true; $("brNote").textContent = "Schalte um …";
+    $("brApply").disabled = true; $("brNote").textContent = t("Schalte um …");
     try { await switchBrain(BR.mode, BR.mode === "local" ? null : BR.claude); closeSheet("brainBackdrop"); }
     catch (e) { $("brNote").textContent = String(e.message || e); $("brApply").disabled = false; }
   });
 
   // Sprach-/Textbefehl: „NuOrb, wechsel auf Sonnet“, „zurück auf lokal“, „schalte auf automatisch“ -> Bestätigungskarte
+  // ------------------------------------------------------------------ Name des Assistenten und Begruessung
+  // assistant_name (ui.json, nuorb-admin) = wie der Assistent heisst; Marke/Weckwort bleiben davon unberuehrt.
+  // Umbenennen per Sprache („Ab jetzt heisst du Max“, „Nenn dich Max“, „call yourself Max“) oder Panel-Feld, ohne Karte.
+  const NAME_DE = /\b(?:ab jetzt |von jetzt an |ab sofort )?(?:heißt du|heisst du|nenn(?:e)? dich|dein name (?:ist|lautet|soll)|ich (?:nenne|taufe) dich)\s+(?:jetzt\s+|ab jetzt\s+|einfach\s+)?([a-zäöüß][a-zäöüß0-9-]{0,23})/i;
+  const NAME_EN = /\b(?:call yourself|your name is|from now on you(?:'re| are)|i(?:'ll| will) call you|i name you)\s+([a-z][a-z0-9-]{0,23})/i;
+  const NAME_STOP = /^(sein|werden|heißen|heissen|be|now|du|dich|so|wie|was|jetzt|nicht|not)$/i;
+  const USERNAME_RE = DE ? /\b(ich bin|ich heiße|ich heisse|nenn mich|mein name ist)\b/i : /\b(i am|i'm|call me|my name is)\b/i;
+  const KEEP_RE = DE ? /^(passt( so)?|behalt\w*|bleib\w*( so)?|ok(ay)?|gut so|ist gut|gefällt mir|lass( es)? so|nein danke)\b/i : /^(keep( it)?|that'?s fine|fine|ok(ay)?|it'?s fine|i like it|no thanks?)\b/i;
+  const ONB = { awaiting: false, started: false };
+  async function setAssistantName(n) {
+    n = String(n || "").trim(); n = n.charAt(0).toUpperCase() + n.slice(1);
+    const r = await fetch("/api/assistant", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ assistant_name: n }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.detail || t("Fehler {s}", { s: r.status }));
+    if (window.I18N) { I18N.setName(n); I18N.reapply(); }
+    $("optName").value = n; clog("Assistentenname: " + n);
+    return n;
+  }
+  function nameCommand(text) {
+    const m = String(text).match(DE ? NAME_DE : NAME_EN) || (!DE ? null : String(text).match(NAME_EN));
+    if (!m || NAME_STOP.test(m[1])) return false;
+    card("user", text);
+    setAssistantName(m[1]).then((n) => {
+      ONB.awaiting = false;
+      if (USERNAME_RE.test(text)) { S.busy = false; ask(text, false, true); return; } // Nutzername merkt sich Hermes (Gedaechtnis)
+      speech.say(t("Alles klar, ab jetzt heiße ich {n}.", { n }) + (wakeAvailable() ? " " + t("Wecken kannst du mich weiterhin mit „Hey NuOrb“.") : ""));
+    }).catch((e) => card("err", String(e.message || e)));
+    return true;
+  }
+  function greet(again) {
+    ONB.started = true; ONB.awaiting = true;
+    const n = window.I18N ? I18N.name : "NuOrb";
+    const txt = t("Hallo! Mein Schöpfer hat mich {n} getauft. Falls dir das zu kompliziert ist, sag mir einfach, wie du mich nennen möchtest.", { n })
+      + (wakeAvailable() ? " " + t("Wecken kannst du mich mit „Hey NuOrb“.") : "") + " " + t("Und wie darf ich dich nennen?");
+    card("ai", txt); view("talk");
+    if (opts.follow) { CONV.active = true; CONV.rounds = 0; CONV.lastAt = Date.now(); CONV.prompted = true; }
+    speech.say(txt);
+    if (!again) fetch("/api/assistant", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ onboarded: true }) }).catch(() => {});
+    clog("Begrüßung" + (again ? " (wiederholt)" : ""));
+  }
+  // Antwort auf die Begruessung bzw. Bitte um Vorstellung
+  function onboardCommand(text) {
+    const lc = String(text).toLowerCase().trim();
+    if ((DE ? /\bstell dich (noch ?mal |nochmal |erneut )?vor\b|\bwer bist du\b/ : /\bintroduce yourself( again)?\b|\bwho are you\b/).test(lc)) { card("user", text); greet(true); return true; }
+    if (!ONB.awaiting) return false;
+    if (KEEP_RE.test(lc.replace(/[.!?,]/g, "")) && !USERNAME_RE.test(lc)) {
+      ONB.awaiting = false; card("user", text);
+      speech.say(t("Gut, dann bleibe ich {n}.", { n: window.I18N ? I18N.name : "NuOrb" })); return true;
+    }
+    if (USERNAME_RE.test(lc)) { ONB.awaiting = false; return false; } // geht an Hermes (merkt sich den Namen)
+    ONB.awaiting = false; return false;
+  }
+  function localCommand(text) {
+    return onboardCommand(text) || nameCommand(text) || deviceCommand(text) || brainCommand(text);
+  }
+  $("optName").value = window.I18N ? I18N.name : "";
+  $("optName").addEventListener("change", () => {
+    const el = $("optName"), v = el.value.trim();
+    if (!v || v === (window.I18N ? I18N.name : "")) return;
+    setAssistantName(v).then((n) => toast(t("Ich heiße jetzt {n}.", { n }))).catch((e) => { el.value = window.I18N ? I18N.name : ""; toast(String(e.message || e)); });
+  });
+
   function brainCommand(text) {
-    const t = text.toLowerCase().replace(/[.!?,]/g, " ");
-    const m = t.match(/\b(wechs[el]\w*|schalt\w*|stell\w*|geh\w*|nimm|nutze?|benutze?|zurück)\b.{0,20}?\b(auf|zu|zur|zum)?\s*(lokal\w*|gemma|automatisch\w*|auto|sonnet|haiku|opus|claude|remote)\b/);
+    if (!DE) return false; // deutsche Muster; auf Englisch entscheidet Hermes
+    const lc = text.toLowerCase().replace(/[.!?,]/g, " ");
+    const m = lc.match(/\b(wechs[el]\w*|schalt\w*|stell\w*|geh\w*|nimm|nutze?|benutze?|zurück)\b.{0,20}?\b(auf|zu|zur|zum)?\s*(lokal\w*|gemma|automatisch\w*|auto|sonnet|haiku|opus|claude|remote)\b/);
     if (!m) return false;
-    const named = t.match(/\b(sonnet|haiku|opus)\b/);
+    const named = lc.match(/\b(sonnet|haiku|opus)\b/);
     const w = named ? named[1] : m[3];
     const mode = /^lokal|^gemma/.test(w) ? "local" : /^auto/.test(w) ? "auto" : "remote";
     const known = (BR.data && BR.data.models) || {};
@@ -1203,19 +1282,19 @@
     card("user", text);
     const info = known[claude];
     S.approval = { shownAt: Date.now(), local: async (choice) => {
-      if (choice !== "once") { card("sys", "Gehirn bleibt, wie es ist."); return; }
+      if (choice !== "once") { card("sys", t("Gehirn bleibt, wie es ist.")); return; }
       try { await switchBrain(mode, mode === "local" ? null : claude); }
-      catch (e) { card("err", String(e.message || e)); speech.say("Das hat nicht geklappt. " + String(e.message || "")); }
+      catch (e) { card("err", String(e.message || e)); speech.say(t("Das hat nicht geklappt.") + " " + String(e.message || "")); }
     } };
-    $("apTitle").textContent = "Gehirn wechseln?";
-    $("apDesc").textContent = mode === "local" ? "Alles bleibt im Haus. Braucht den PC mit Gemma."
-      : "Datenschutz: Die Gesprächstexte gehen an Anthropic (USA). Audio bleibt lokal auf nuorb.";
-    setFacts([["Neu", name], info ? ["Preis", `Eingabe ${fmtUsd(info.in)}, Ausgabe ${fmtUsd(info.out)} je 1 Mio. Token`] : null,
-      mode === "auto" ? ["Ablauf", "Gemma, wenn der PC läuft – sonst " + modelShort(claude, "remote")] : null].filter(Boolean));
-    $("apCmd").textContent = ""; $("apYes").textContent = "Ja, wechseln";
+    $("apTitle").textContent = t("Gehirn wechseln?");
+    $("apDesc").textContent = mode === "local" ? t("Alles bleibt im Haus. Braucht den PC mit Gemma.")
+      : t("Datenschutz: Die Gesprächstexte gehen an Anthropic (USA). Audio bleibt lokal auf deinem Server.");
+    setFacts([[t("Neu"), name], info ? [t("Preis"), t("Eingabe {i}, Ausgabe {o} je 1 Mio. Token", { i: fmtUsd(info.in), o: fmtUsd(info.out) })] : null,
+      mode === "auto" ? [t("Ablauf"), t("Gemma, wenn der PC läuft – sonst {m}", { m: modelShort(claude, "remote") })] : null].filter(Boolean));
+    $("apCmd").textContent = ""; $("apYes").textContent = t("Ja, wechseln");
     $("approvalBackdrop").hidden = false; view("talk"); earcon("confirm");
-    speech.say(mode === "local" ? "Soll ich zurück auf das lokale Gehirn wechseln?"
-      : `Soll ich auf ${modelShort(claude, "remote")} wechseln? Die Gesprächstexte gehen dann an Anthropic.`);
+    speech.say(mode === "local" ? t("Soll ich zurück auf das lokale Gehirn wechseln?")
+      : t("Soll ich auf {m} wechseln? Die Gesprächstexte gehen dann an Anthropic.", { m: modelShort(claude, "remote") }));
     loadBrain(); // Preise/Verfügbarkeit nachladen
     return true;
   }
@@ -1226,15 +1305,15 @@
   $("kbdBtn").addEventListener("click", () => { openSheet("kbdBackdrop"); setTimeout(() => $("kbdInput").focus(), 50); });
   $("kbdBackdrop").addEventListener("click", (e) => { if (e.target.id === "kbdBackdrop") closeSheet("kbdBackdrop"); });
   $("kbdForm").addEventListener("submit", (e) => {
-    e.preventDefault(); const t = $("kbdInput").value.trim(); if (!t) return;
+    e.preventDefault(); const txt = $("kbdInput").value.trim(); if (!txt) return;
     $("kbdInput").value = ""; closeSheet("kbdBackdrop"); audio();
-    if (deviceCommand(t) || brainCommand(t)) return;
+    if (localCommand(txt)) return;
     if (S.brain === false) { offlineReply(); return; }
-    interrupt(true); ask(t);
+    interrupt(true); ask(txt);
   });
   $("newBtn").addEventListener("click", () => {
     interrupt(true); S.session = null; store.set("session", null);
-    els.convo.replaceChildren(); view("home"); restingState(); toast("Neues Gespräch.");
+    els.convo.replaceChildren(); view("home"); restingState(); toast(t("Neues Gespräch."));
   });
   const openDev = () => { openSheet("setBackdrop"); pollDevice(); };
   $("clockMini").addEventListener("click", openDev);
@@ -1245,10 +1324,20 @@
   // Schalter: ui.json wake_word (nuorb-admin). Die UI spiegelt ihn an den Dienst (/wake/aktiv) und hoert auf /wake/events.
   // Ein Wake-Ereignis wirkt wie Tippen: Freihand-Aufnahme mit Pausen-Erkennung. Datenschutz liegt beim Dienst (nur RAM-Puffer).
   const WAKE = { on: null, es: null, svc: null, synced: 0, retry: null };
+  // Gibt es hier ueberhaupt ein Weckwort? Kiosk (nuorb-shell mit Wake-Dienst) ja; Android-App laut Bruecke
+  // (wakeVerfuegbar, fehlt bei App < 1.2.0 -> ja); normaler Browser nein.
+  function wakeAvailable() {
+    if (ANDROID) { try { return !!NATIVE && (typeof NATIVE.wakeVerfuegbar !== "function" || !!NATIVE.wakeVerfuegbar()); } catch (e) { return false; } }
+    return DEV.available === true;
+  }
   function renderWake() {
+    const avail = wakeAvailable(), row = $("wakeRow");
+    row.hidden = !avail && !ANDROID; $("wakeInfo").hidden = !avail && !ANDROID;
+    $("optWake").disabled = !avail;
+    if (!avail && ANDROID) { $("optWake").checked = false; $("wakeInfo").firstElementChild.textContent = t("bald"); return; }
     $("optWake").checked = !!WAKE.on;
     const info = $("wakeInfo").firstElementChild;
-    info.textContent = ANDROID ? (NATIVE ? (WAKE.on ? "aktiv (App)" : "") : "nur in der App") : DEV.available === false ? "nur am Handy" : WAKE.on && WAKE.svc === false ? "Wake-Dienst fehlt" : WAKE.on && WAKE.svc ? "aktiv" : "";
+    info.textContent = ANDROID ? (NATIVE ? (WAKE.on ? t("aktiv (App)") : "") : t("nur in der App")) : DEV.available === false ? t("nur am Handy") : WAKE.on && WAKE.svc === false ? t("Wake-Dienst fehlt") : WAKE.on && WAKE.svc ? t("aktiv") : "";
   }
   function wakeApply(on) {
     if (ANDROID) { // Wake gehoert der App, nicht ui.json (sonst schaltet das Xiaomi sein Mikro)
@@ -1276,31 +1365,33 @@
     es.onerror = () => { if (es.readyState === 2) { WAKE.es = null; WAKE.svc = false; renderWake(); clearTimeout(WAKE.retry); WAKE.retry = setTimeout(() => { if (WAKE.on) wakeConnect(); }, 30000); } };
   }
   // Sprachbefehl „Schalte Hey NuOrb ein/aus“, „Hey NuOrb aus“, „Weckwort an“. Einschalten nur mit Karte (Mikro hoert dann staendig).
-  const WAKE_NAME = "(?:hey\\s+nuorb|wake\\s*-?\\s*word|weckwort|weckfunktion|aufwecken)";
+  const WAKE_SELF = String(window.I18N ? I18N.wake : "Hey NuOrb").toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+  const WAKE_NAME = "(?:" + WAKE_SELF + "|hey\\s+nuorb|wake\\s*-?\\s*word|weckwort|weckfunktion|aufwecken)";
   const WAKE_RE1 = new RegExp(`\\b${WAKE_NAME}\\s+(an|ein|aus|ab|einschalten|anschalten|ausschalten|abschalten|aktivieren|deaktivieren)\\s*$`);
   const WAKE_RE2 = new RegExp(`\\b(schalt\\w*|mach\\w*|stell\\w*|aktivier\\w*|deaktivier\\w*)\\b.*\\b${WAKE_NAME}\\b(.*)$`);
-  function wakeCommand(t, text) {
-    let m = t.trim().match(WAKE_RE1), on;
+  function wakeCommand(lc, text) {
+    let m = lc.trim().match(WAKE_RE1), on;
     if (m) on = !/^(aus|ab|ausschalten|abschalten|deaktivieren)$/.test(m[1]);
-    else if ((m = t.match(WAKE_RE2)) && (/\b(an|ein|aus|ab)\b/.test(m[2]) || /aktivier/.test(m[1]))) on = /deaktivier/.test(m[1]) ? false : /aktivier/.test(m[1]) ? true : /\b(an|ein)\b/.test(m[2]);
+    else if ((m = lc.match(WAKE_RE2)) && (/\b(an|ein|aus|ab)\b/.test(m[2]) || /aktivier/.test(m[1]))) on = /deaktivier/.test(m[1]) ? false : /aktivier/.test(m[1]) ? true : /\b(an|ein)\b/.test(m[2]);
     else return false;
     card("user", text);
+    if (!wakeAvailable()) { speech.say(t("Ein Weckwort gibt es hier noch nicht. Tipp einfach auf den Knopf, um mit mir zu sprechen.")); return true; }
     const go = async () => {
       if (ANDROID) {
-        if (!NATIVE || !NATIVE.setWake) { card("err", "„Hey NuOrb“ gibt es hier nur in der NuOrb-App."); return; }
-        try { NATIVE.setWake(on); } catch (e) { card("err", "Umschalten fehlgeschlagen."); return; }
-        WAKE.on = on; renderWake(); speech.say(on ? "Erledigt. Sag einfach Hey NuOrb, wenn du mich brauchst." : "Hey NuOrb ist aus. Zum Sprechen tippen."); return;
+        if (!NATIVE || !NATIVE.setWake) { card("err", t("„Hey NuOrb“ gibt es hier nur in der NuOrb-App.")); return; }
+        try { if (NATIVE.setWake(on) === false) throw new Error("abgelehnt"); } catch (e) { card("err", t("Umschalten fehlgeschlagen.")); return; }
+        WAKE.on = on; renderWake(); speech.say(on ? t("Erledigt. Sag einfach Hey NuOrb, wenn du mich brauchst.") : t("Hey NuOrb ist aus. Zum Sprechen tippen.")); return;
       }
       const r = await fetch("/api/wake", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ an: on }) });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok) { card("err", d.detail || "Umschalten fehlgeschlagen."); return; }
-      wakeApply(on); speech.say(on ? "Erledigt. Sag einfach Hey NuOrb, wenn du mich brauchst." : "Hey NuOrb ist aus. Zum Sprechen tippen.");
+      if (!r.ok) { card("err", d.detail || t("Umschalten fehlgeschlagen.")); return; }
+      wakeApply(on); speech.say(on ? t("Erledigt. Sag einfach Hey NuOrb, wenn du mich brauchst.") : t("Hey NuOrb ist aus. Zum Sprechen tippen."));
     };
     if (!on) { go(); return true; }
-    if (WAKE.on) { speech.say("Hey NuOrb ist schon an."); return true; }
-    confirmLocal({ title: "„Hey NuOrb“ einschalten?", desc: "Das Mikro hört dann ständig mit. Nichts wird gespeichert oder gesendet, bevor „Hey NuOrb“ erkannt ist.",
-      facts: [["Ziel", "Wake-Word auf dem Handy"], ["Aus", "„Hey NuOrb aus“ oder Gerät-Panel"]], yes: "Ja, einschalten",
-      say: "Soll ich Hey NuOrb einschalten? Dann höre ich ständig mit.", run: go });
+    if (WAKE.on) { speech.say(t("Hey NuOrb ist schon an.")); return true; }
+    confirmLocal({ title: t("„Hey NuOrb“ einschalten?"), desc: t("Das Mikro hört dann ständig mit. Nichts wird gespeichert oder gesendet, bevor „Hey NuOrb“ erkannt ist."),
+      facts: [[t("Ziel"), t("Wake-Word auf dem Handy")], [t("Aus"), t("„Hey NuOrb aus“ oder Gerät-Panel")]], yes: t("Ja, einschalten"),
+      say: t("Soll ich Hey NuOrb einschalten? Dann höre ich ständig mit."), run: go });
     return true;
   }
   // Wetter immer von der eigenen Station (deterministisch, ohne Modell): /api/wetter -> fertiger Sprechsatz
@@ -1318,44 +1409,44 @@
       if (!ROOMS.some(([re, n]) => n === name || re.test(" " + String(name).toLowerCase() + " "))) ROOMS.push([new RegExp(`\\b${low}s?\\b`), name]);
     }
   }
-  function homeQuery(t, text) {
-    if (HOME_WRITE.test(t) || /\b(handy|telefon|akku)\b/.test(t)) return false;
-    const room = (ROOMS.find(([re]) => re.test(t)) || [])[1] || "";
+  function homeQuery(lc, text) {
+    if (HOME_WRITE.test(lc) || /\b(handy|telefon|akku)\b/.test(lc)) return false;
+    const room = (ROOMS.find(([re]) => re.test(lc)) || [])[1] || "";
     let w = null, args = {};
     let m;
-    if ((m = t.match(/\bpuffer\s*(eins|zwei|1|2)?\s*(oben|mitte|unten)?/))) {
+    if ((m = lc.match(/\bpuffer\s*(eins|zwei|1|2)?\s*(oben|mitte|unten)?/))) {
       w = "heizung"; const n = { eins: 1, zwei: 2, 1: 1, 2: 2 }[m[1]]; args.was = ["Puffer", n, m[2]].filter(Boolean).join(" ");
-    } else if (/\bladdomat\b/.test(t)) { w = "heizung"; args.was = "Laddomat"; }
-    else if (/\bpumpen?\b/.test(t)) { w = "heizung"; args.was = "Pumpen"; }
-    else if (/\b(holz)?ofen\b/.test(t)) { w = "heizung"; args.was = "Ofen"; }
-    else if (/\bheizkreis\w*\s*(fbh|fußboden\w*)/.test(t)) { w = "heizung"; args.was = "Heizkreis FBH"; }
-    else if (/\bheizung\b/.test(t)) { w = "heizung"; }
-    else if (/\bklima\w*\b/.test(t)) { w = "klima"; if (room) args.geraet = room === "Bad" ? "Badezimmer" : room; }
-    else if (/\b(solar\w*|photovoltaik|pv|batterie|hausspeicher|einspeis\w*|netzbezug|stromverbrauch|strom|energie)\b/.test(t)) w = "energie";
-    else if ((room || /\b(räume|räumen|zimmern|im haus|drinnen)\b/.test(t)) && /\b(warm|kalt|grad|temperatur|wie viel)\b/.test(t)) { w = "raeume"; if (room) args.raum = room; }
+    } else if (/\bladdomat\b/.test(lc)) { w = "heizung"; args.was = "Laddomat"; }
+    else if (/\bpumpen?\b/.test(lc)) { w = "heizung"; args.was = "Pumpen"; }
+    else if (/\b(holz)?ofen\b/.test(lc)) { w = "heizung"; args.was = "Ofen"; }
+    else if (/\bheizkreis\w*\s*(fbh|fußboden\w*)/.test(lc)) { w = "heizung"; args.was = "Heizkreis FBH"; }
+    else if (/\bheizung\b/.test(lc)) { w = "heizung"; }
+    else if (/\bklima\w*\b/.test(lc)) { w = "klima"; if (room) args.geraet = room === "Bad" ? "Badezimmer" : room; }
+    else if (/\b(solar\w*|photovoltaik|pv|batterie|hausspeicher|einspeis\w*|netzbezug|stromverbrauch|strom|energie)\b/.test(lc)) w = "energie";
+    else if ((room || /\b(räume|räumen|zimmern|im haus|drinnen)\b/.test(lc)) && /\b(warm|kalt|grad|temperatur|wie viel)\b/.test(lc)) { w = "raeume"; if (room) args.raum = room; }
     if (!w) return false;
     card("user", text);
-    S.busy = true; setState("thinking", "Haus …");
+    S.busy = true; setState("thinking", t("Haus …"));
     fetch("/api/zuhause", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ werkzeug: w, args }) })
-      .then((r) => r.json()).catch(() => ({ ok: false, satz: "Das Haus ist gerade nicht erreichbar." }))
+      .then((r) => r.json()).catch(() => ({ ok: false, satz: t("Das Haus ist gerade nicht erreichbar.") }))
       .then((d) => {
-        S.busy = false; const satz = d.satz || d.detail || "Das Haus ist gerade nicht erreichbar.";
+        S.busy = false; const satz = d.satz || d.detail || t("Das Haus ist gerade nicht erreichbar.");
         card("ai", satz); clog(`Haus ${w} ${JSON.stringify(args)} lokal: ${d.ok ? "ok" : "Fehler"}`);
         if (opts.voice) speech.say(satz); else { restingState(); convCheck(); }
       });
     return true;
   }
-  function weatherCommand(t, text) {
-    if (!WX_WORDS.test(t) || WX_NOT.test(t)) return false;
-    const zr = /übermorgen|uebermorgen/.test(t) ? "uebermorgen" : /\bmorgen\b/.test(t) ? "morgen"
-      : /wochenende|\bwoche\b|montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag|nächsten tage|kommenden tage/.test(t) ? "woche"
-      : /\bheute\b|heute abend|heute nachmittag|\bnoch\b/.test(t) ? "heute" : "jetzt";
+  function weatherCommand(lc, text) {
+    if (!WX_WORDS.test(lc) || WX_NOT.test(lc)) return false;
+    const zr = /übermorgen|uebermorgen/.test(lc) ? "uebermorgen" : /\bmorgen\b/.test(lc) ? "morgen"
+      : /wochenende|\bwoche\b|montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag|nächsten tage|kommenden tage/.test(lc) ? "woche"
+      : /\bheute\b|heute abend|heute nachmittag|\bnoch\b/.test(lc) ? "heute" : "jetzt";
     card("user", text);
-    S.busy = true; setState("thinking", "Wetterstation …");
+    S.busy = true; setState("thinking", t("Wetterstation …"));
     fetch("/api/zuhause", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ werkzeug: "wetter", args: { zeitraum: zr } }) })
-      .then((r) => r.json()).catch(() => ({ ok: false, satz: "Die Wetterstation ist gerade nicht erreichbar." }))
+      .then((r) => r.json()).catch(() => ({ ok: false, satz: t("Die Wetterstation ist gerade nicht erreichbar.") }))
       .then((d) => {
-        S.busy = false; const satz = d.satz || "Die Wetterstation ist gerade nicht erreichbar.";
+        S.busy = false; const satz = d.satz || t("Die Wetterstation ist gerade nicht erreichbar.");
         card("ai", satz); clog(`Wetter (${zr}) lokal: ${d.ok ? "ok" : "ohne Station"}`);
         if (opts.voice) speech.say(satz); else { restingState(); convCheck(); }
       });
@@ -1377,22 +1468,22 @@
     try {
       const r = await fetch("/api/setting", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ follow_up: an }) });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(d.detail || "Fehler " + r.status);
-      opts.follow = an; if (!an) convEnd("ausgeschaltet"); toast(an ? "NuOrb hört nach jeder Antwort kurz weiter zu." : "Nach der Antwort: wieder Tippen oder „Hey NuOrb“.");
+      if (!r.ok) throw new Error(d.detail || t("Fehler {s}", { s: r.status }));
+      opts.follow = an; if (!an) convEnd("ausgeschaltet"); toast(an ? t("NuOrb hört nach jeder Antwort kurz weiter zu.") : t("Nach der Antwort: wieder Tippen oder „Hey NuOrb“."));
     } catch (e) { el.checked = !an; toast(String(e.message || e)); }
   });
   $("optWake").addEventListener("change", async () => {
     const el = $("optWake"), an = el.checked;
     if (ANDROID) {
-      try { if (!NATIVE || !NATIVE.setWake) throw new Error("Nur in der NuOrb-App."); NATIVE.setWake(an); WAKE.on = an; renderWake(); toast(an ? "„Hey NuOrb“ ist an." : "„Hey NuOrb“ ist aus."); }
+      try { if (!NATIVE || !NATIVE.setWake) throw new Error(t("Nur in der NuOrb-App.")); if (NATIVE.setWake(an) === false) throw new Error(t("Umschalten fehlgeschlagen.")); WAKE.on = an; renderWake(); toast(an ? t("„Hey NuOrb“ ist an.") : t("„Hey NuOrb“ ist aus.")); }
       catch (e) { el.checked = !an; toast(String(e.message || e)); }
       return;
     }
     try {
       const r = await fetch("/api/wake", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ an }) });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(d.detail || "Fehler " + r.status);
-      wakeApply(an); toast(an ? "„Hey NuOrb“ ist an." : "„Hey NuOrb“ ist aus.");
+      if (!r.ok) throw new Error(d.detail || t("Fehler {s}", { s: r.status }));
+      wakeApply(an); toast(an ? t("„Hey NuOrb“ ist an.") : t("„Hey NuOrb“ ist aus."));
     } catch (e) { el.checked = !an; toast(String(e.message || e)); }
   });
 
@@ -1438,13 +1529,13 @@
 
   // Testhaken fuer Screenshots: ?demo=listening|thinking|speaking|offline|approval|talk
   function demo(mode) {
-    const add = () => { card("user", "Wie voll ist die Festplatte auf nuorb?"); const c = toolChip("terminal", "df -h /"); c.classList.add("done");
-      card("ai", "Auf nuorb sind 11 von 32 Gigabyte belegt, also rund ein Drittel. Genug Platz für ein paar Jahrzehnte Notizen."); };
+    const add = () => { card("user", t("Wie voll ist die Festplatte auf dem Server?")); const c = toolChip("terminal", "df -h /"); c.classList.add("done");
+      card("ai", t("Auf dem Server sind 11 von 32 Gigabyte belegt, also rund ein Drittel. Genug Platz für ein paar Jahrzehnte Notizen.")); };
     if (mode === "talk" || mode === "speaking" || mode === "thinking" || mode === "approval") add();
     if (mode === "approval") showApproval("demo", { description: "Hermes will einen Ordner rekursiv löschen.", command: "rm -rf ~/projekte/alt-backup" });
     if (mode === "approval-claude") { add(); showApproval("demo", { title: "MCP server 'claude' is asking", command: "MCP tool 'auftrag' on UNTRUSTED server 'claude' wants to run. Costs 5-100 Cent (Claude Sonnet 5.5, lesen und schreiben).\nArguments: {\"auftrag\": \"Mach die Uhr auf dem Startbildschirm etwas größer.\"}", description: "Server 'claude' is configured 'trust: untrusted'." }); mode = "approval"; }
     if (mode === "approval-klima") { add(); showApproval("demo", { command: "MCP tool 'klima_stellen' on UNTRUSTED server 'zuhause_schalten' wants to run.\nArguments: {\"geraet\": \"Schlafzimmer\", \"an\": true, \"modus\": \"heizen\", \"soll\": 22, \"luefter\": \"auto\"}" }); mode = "approval"; }
-    if (mode === "offline") { S.brain = false; els.chipBrain.dataset.ok = "false"; els.chipBrain.querySelector(".chip-label").textContent = "Gehirn offline"; }
+    if (mode === "offline") { S.brain = false; els.chipBrain.dataset.ok = "false"; els.chipBrain.querySelector(".chip-label").textContent = t("Gehirn offline"); }
     S.demo = mode;
     setState(mode === "talk" || mode === "approval" ? "thinking" : mode, mode === "thinking" ? "Terminal …" : undefined);
     if (mode === "approval") S.busy = true;

@@ -19,6 +19,11 @@ export OLLAMA_URL="${NUORB_INIT_OLLAMA_URL:-http://ollama:11434}"
 export BRAIN_URL="${OLLAMA_URL%/}/api/version"
 NETS="${NUORB_ALLOWED_NETS:-127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,fc00::/7,fe80::/10}"
 export UI_ALLOWED_NETS="$NETS" ADMIN_ALLOWED_NETS="$NETS"
-export NUORB_MODE=live NUORB_FEATURE_ZUHAUSE="${NUORB_FEATURE_ZUHAUSE:-0}" NUORB_FEATURE_GERAET=0
-export PHONE_HOST="" PATH="/opt/hermes/bin:/opt/hermes/.venv/bin:/command:/usr/local/bin:/usr/bin:/bin"
+# Marke/Oberflächensprache (nuorb-ui): BRAND_NAME, UI_LANG=de|en|auto, WAKE_PHRASE; ui.json hat Vorrang
+export BRAND_NAME="${BRAND_NAME:-NuOrb}" UI_LANG="${UI_LANG:-auto}"
+[ -n "${WAKE_PHRASE:-}" ] && export WAKE_PHRASE
+[ -n "${ASSISTANT_NAME:-}" ] && export ASSISTANT_NAME
+export NUORB_ONBOARDING="${NUORB_ONBOARDING:-1}"   # Begrüßung beim ersten Öffnen (nuorb-ui)
+export NUORB_MODE=live NUORB_FEATURE_ZUHAUSE="${NUORB_FEATURE_ZUHAUSE:-0}" NUORB_FEATURE_GERAET=0 NUORB_FEATURE_CLOUD_WEICHE="${NUORB_FEATURE_CLOUD_WEICHE:-0}"
+export PATH="/opt/hermes/bin:/opt/hermes/.venv/bin:/command:/usr/local/bin:/usr/bin:/bin"
 PY=/opt/nuorb/venv/bin/python

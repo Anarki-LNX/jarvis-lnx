@@ -174,7 +174,7 @@ def setup_state() -> dict:
             "remote_model": adm.brain_state()["remote_model"],
             "voice": jc.voice_name(), "voice_choices": jc.VOICE_CHOICES,
             "voices_installed": sorted(p.stem for p in (jc.MODELS / "voices").glob("*.onnx")),
-            "models": models_info()}
+            "models": models_info(), **assistant_state()}
 
 
 def models_info() -> dict:
@@ -358,6 +358,63 @@ async def pairing_revoke(request: Request):
     return {"ok": True}
 
 
+# ------------------------------------------------------------------ Name des Assistenten, Nutzername, Kennenlernen
+NAME_RE = re.compile(r"[\w .'\-]{1,40}")
+USER_MEM_PREFIX = ("Name des Nutzers:", "User's name:")
+
+
+def _remember_user(name: str) -> None:
+    path = adm.FILES["user"][0]
+    old = adm.read_text(path)
+    parts = [x for x in old.split(adm.MEM_SEP) if x.strip() and not x.strip().startswith(USER_MEM_PREFIX)]
+    parts.append(f"{USER_MEM_PREFIX[0 if jc.lang() == 'de' else 1]} {name}")
+    adm.backup("user", old, "Nutzername gemerkt")
+    adm.atomic_write(path, adm.MEM_SEP.join(p.strip() for p in parts) + "\n")
+
+
+def assistant_state() -> dict:
+    import personas
+    return {"assistant_name": jc.assistant_name(), "brand": jc.brand(), "user_name": jc.user_name(),
+            "onboarded": jc.onboarded(), "greeting": personas.GREETING[jc.lang()].replace("{brand}", jc.brand())}
+
+
+def assistant_update(d: dict, who: str) -> dict:
+    fields, notes = {}, []
+    for key in ("assistant_name", "user_name"):
+        if key in d and d[key] is not None:
+            v = re.sub(r"\s+", " ", str(d[key])).strip()
+            if v and not NAME_RE.fullmatch(v):
+                raise HTTPException(400, "Name: 1–40 Zeichen, Buchstaben, Ziffern, Leerzeichen, . ' -")
+            fields[key] = v or None   # leer = zurück auf Standard
+            notes.append(f"{key}={v or '(Standard)'}")
+    if "onboarded" in d:
+        if not isinstance(d["onboarded"], bool):
+            raise HTTPException(400, "onboarded muss true/false sein.")
+        fields["onboarded"] = d["onboarded"]
+        notes.append(f"onboarded={d['onboarded']}")
+    if not fields:
+        raise HTTPException(400, "Nichts zu ändern.")
+    adm.write_ui_fields(fields, "Name/Kennenlernen")
+    if fields.get("user_name"):
+        _remember_user(fields["user_name"])
+    adm.audit(who, "Assistent: " + ", ".join(notes))
+    return {"ok": True, **assistant_state()}
+
+
+async def internal_assistant(request: Request):
+    if request.method == "GET":
+        return assistant_state()
+    d = await adm.body(request)
+    src = re.sub(r"[^a-z0-9\-]", "", str(d.pop("source", "intern")))[:20] or "intern"
+    return assistant_update(d, f"internal:{src}")
+
+
+async def api_assistant(request: Request):
+    if request.method == "GET":
+        return assistant_state()
+    return assistant_update(await adm.body(request), adm.who(request))
+
+
 # ------------------------------------------------------------------ Seiten und Zusatz-Skript
 async def docker_page(request: Request):
     name = request.path_params["name"]
@@ -377,6 +434,8 @@ NEW = [
     APIRoute("/api/services/{name}/restart", service_restart, methods=["POST"]),
     APIRoute("/api/tts-test", tts_test, methods=["POST"]),
     APIRoute("/api/setup", setup_get, methods=["GET"]),
+    APIRoute("/internal/assistant", internal_assistant, methods=["GET", "POST"]),
+    APIRoute("/api/assistant", api_assistant, methods=["GET", "POST"]),
     APIRoute("/api/setup/ollama", setup_ollama_probe, methods=["POST"]),
     APIRoute("/api/setup/apply", setup_apply, methods=["POST"]),
     APIRoute("/api/setup/language", setup_language, methods=["POST"]),

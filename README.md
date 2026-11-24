@@ -1,8 +1,10 @@
-# NuOrb
+# NuOrb · NuOrb
 
 **Your own private voice assistant – self-hosted in one Docker container, used from your phone.**
 
-NuOrb runs a complete voice assistant on your own hardware: an agent ([Hermes Agent](https://github.com/NousResearch/hermes-agent)),
+**NuOrb** (say "Nu-Orb") is the assistant you get: on first start it introduces itself – *"My creator named me NuOrb.
+If that's too complicated, just tell me what you'd like to call me"* – and you can rename it any time ("From now on you're Max").
+NuOrb is the open-source server behind it. It runs a complete voice assistant on your own hardware: an agent ([Hermes Agent](https://github.com/NousResearch/hermes-agent)),
 a web UI with an animated orb, an admin panel, local speech recognition and local speech synthesis.
 The "brain" is your own [Ollama](https://ollama.com) (e.g. a gaming PC), the Claude API, or both with a switch.
 Audio is processed on your server; nothing is sent anywhere unless you choose a cloud model.
@@ -21,7 +23,7 @@ Audio is processed on your server; nothing is sent anywhere unless you choose a 
 |---|---|
 | **1. Server** | Run the Docker container on any Proxmox VM/LXC, home server or PC (amd64 or arm64): **[`docker/README.md`](docker/README.md)** |
 | **2. Brain** | In the setup wizard choose your Ollama (≥ 64k context) and/or enter a Claude API key |
-| **3. App** | Install the Android app (Google Play release coming soon) – or just use any browser in your home network |
+| **3. App** | Install the **NuOrb** Android app (Google Play release coming soon) – or just use any browser in your home network |
 | **4. Pair** | Admin panel → *Pair device* → scan the QR code with the app. Done. |
 
 ```bash
@@ -40,12 +42,12 @@ Phone and server in the same network – or connected via VPN (WireGuard, Tailsc
 
 - **Talk to it** – tap to talk with automatic end-of-speech detection, or hold to talk; answers are spoken back.
 - **Brain switch** – *local* (only your Ollama, nothing leaves your network), *auto* (Ollama, Claude as fallback), *remote* (Claude Haiku/Sonnet/Opus).
-- **German and English** – speech recognition (NVIDIA Parakeet-TDT v3, on CPU), voices (Piper).
+- **German and English** – full UI in both languages, speech recognition (NVIDIA Parakeet-TDT v3, on CPU), voices (Piper).
+- **Your assistant, your name** – NuOrb greets you, learns your name and answers to whatever name you give it.
 - **Safe by design** – confirmation cards before risky actions, pairing with certificate pinning, no telemetry.
 - **Admin panel** – model & fallback, persona, memory, skills, schedules, MCP servers (connect e.g. Home Assistant), keys, logs, backups.
 
-**Status:** first public release. The orb UI is German-first (English UI in progress); a custom wake word for the
-app is in training. See [`docker/README.md`](docker/README.md) for details, security notes and troubleshooting.
+**Status:** early release. A custom wake word "Hey NuOrb" for the app is in training. See [`docker/README.md`](docker/README.md) for details, security notes and troubleshooting.
 
 ---
 
@@ -237,7 +239,8 @@ respective owners.
 **NuOrb** ist ein privater Sprachassistent zum Selbsthosten: **ein Docker-Container** (Proxmox, Heimserver
 oder PC) mit Agent, Orb-Oberfläche, Admin-Panel, lokaler Spracherkennung und Sprachausgabe. Gedacht wird mit dem
 eigenen **Ollama** oder **Claude** (oder beidem, umschaltbar). Bedient wird per **Android-App** (bald im Play Store)
-oder Browser im Heimnetz: Container starten, Einrichtung im Admin-Panel, Handy per QR-Code koppeln – fertig.
+oder Browser im Heimnetz. Der Assistent heißt **NuOrb** („Nu-Orb“), stellt sich beim ersten Start vor
+(„Mein Schöpfer hat mich NuOrb getauft …“) und lässt sich jederzeit umbenennen. Container starten, Einrichtung im Admin-Panel, Handy per QR-Code koppeln – fertig.
 Anleitung: [`docker/README.md`](docker/README.md).
 
 **Für Bastler:** Das Projekt begann mit einem alten **Xiaomi Mi 11 Lite 4G**, auf dem jetzt **NixOS** läuft und
