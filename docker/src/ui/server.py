@@ -175,6 +175,11 @@ async def lan_only(request: Request, call_next):
         ok = False
     if not ok:
         return JSONResponse({"error": "nur im Heimnetz erreichbar"}, status_code=403)
+    # Kopplungspflicht (wie im Docker-Image). Auf nuorb vorerst aus (NUORB_REQUIRE_PAIRING=0): Kiosk und LAN-Browser
+    # haben keinen Token. Eingeschaltet brauchen alle /api/* ausser info/pair einen Geraete-Token.
+    path = request.url.path
+    if pairing_required() and path.startswith("/api/") and path not in PAIR_PUBLIC and device_for_request(request) is None:
+        return JSONResponse({"detail": "pairing_required"}, status_code=401)
     resp = await call_next(request)
     resp.headers.setdefault("X-Content-Type-Options", "nosniff")
     resp.headers.setdefault("Referrer-Policy", "no-referrer")
@@ -275,7 +280,7 @@ def _new_session() -> str:
 DEVICE_WORDS = re.compile(
     r"\b(licht|hell|heller|helligkeit|dunkel|dunkler|display|bildschirm|laut|lauter|lautstärke|leise|leiser|ton|töne|stumm"
     r"|w-?lan|wifi|wi-fi|internet|netz|neu ?start\w*|neustart|ausschalt\w*|abschalt\w*|herunterfahr\w*|runterfahr\w*"
-    r"|handy|telefon"
+    r"|handy|smartphone|telefon"
     # Wetter (eigene Station, Werkzeug mcp__wetter__station) – falls das lokale Muster am Handy nicht greift
     r"|wetter|temperatur|grad|regen\w*|regnet|schnee|schneit|frost|glätte|glatteis|wind|sturm|gewitter|warm|kalt"
     # Haus (Server zuhause/zuhause_schalten): Heizung, Raeume, Klima, Energie – v. a. Schreibsaetze („Stell das Bad auf 22 Grad“)
@@ -544,6 +549,145 @@ async def run_stop(run_id: str):
 # Die Umschalt-Logik liegt in nuorb-admin. Wir rufen dessen interne, nur per Loopback + Token erreichbare
 # Schnittstelle auf (Server zu Server). Token-Datei legt nuorb-admin an; TLS gegen die Heim-CA geprueft.
 ADMIN_URL = os.environ.get("ADMIN_URL", "https://127.0.0.1:8444")
+# --------------------------------------------------------------------------- Kopplung (Einmal-Code -> Geraete-Token)
+# Gleiches Format wie im Docker-Image (docker/app/nuorb_common.py). Codes schreibt nuorb-admin (pairing.json:
+# {sha256(CODE): {exp, by, created}}), Geraete stehen in devices.json ({d_<hex12>: {name, platform, token: sha256,
+# created, last_seen, ip}}). Beide Dateien 0600, atomar (tmp + rename), weil Verwaltung und UI schreiben.
+import hashlib
+import hmac
+
+CONF_DIR = UI_CONFIG.parent
+DEVICES_FILE = CONF_DIR / "devices.json"
+PAIRING_FILE = CONF_DIR / "pairing.json"
+CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+PAIR_PUBLIC = {"/api/info", "/api/pair"}
+DEVICE_COOKIE = "nuorb_device"
+_pair_fails: dict[str, list[float]] = {}
+_seen_cache: dict[str, float] = {}
+
+
+def pairing_required() -> bool:
+    return os.environ.get("NUORB_REQUIRE_PAIRING", "0") != "0"
+
+
+def _sha(s: str) -> str:
+    return hashlib.sha256(s.encode()).hexdigest()
+
+
+def _read_json(p: Path, default):
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except (FileNotFoundError, ValueError):
+        return default
+
+
+def _write_json(p: Path, data) -> None:
+    tmp = p.with_name(f".{p.name}.{secrets.token_hex(4)}")
+    tmp.write_text(json.dumps(data, indent=1, ensure_ascii=False), encoding="utf-8")
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, p)
+
+
+def redeem_pairing_code(code: str) -> bool:
+    c = "".join(ch for ch in str(code).upper() if ch in CODE_ALPHABET)
+    if len(c) != 8:
+        return False
+    data = _read_json(PAIRING_FILE, {})
+    h, hit = _sha(c), None
+    for k, v in data.items():
+        if hmac.compare_digest(k, h) and isinstance(v, dict) and v.get("exp", 0) > time.time():
+            hit = k
+    if not hit:
+        return False
+    data.pop(hit, None)  # nur einmal einloesbar
+    _write_json(PAIRING_FILE, {k: v for k, v in data.items() if isinstance(v, dict) and v.get("exp", 0) > time.time()})
+    return True
+
+
+def device_token(request: Request) -> str:
+    auth = request.headers.get("authorization", "")
+    if auth.lower().startswith("bearer "):
+        return auth[7:].strip()
+    return request.cookies.get(DEVICE_COOKIE, "")
+
+
+def device_for_request(request: Request) -> str | None:
+    token = device_token(request)
+    if not token or len(token) > 200:
+        return None
+    h, devs = _sha(token), _read_json(DEVICES_FILE, {})
+    for did, v in devs.items():
+        if isinstance(v, dict) and hmac.compare_digest(str(v.get("token", "")), h):
+            if time.time() - _seen_cache.get(did, 0) > 300:  # „zuletzt gesehen“ hoechstens alle 5 min schreiben
+                _seen_cache[did] = time.time()
+                v["last_seen"] = datetime.now().astimezone().isoformat(timespec="seconds")
+                v["ip"] = request.client.host if request.client else ""
+                try:
+                    _write_json(DEVICES_FILE, devs)
+                except OSError as exc:
+                    print(f"[pair] devices.json nicht schreibbar: {exc}", flush=True)
+            return did
+    return None
+
+
+def server_name() -> str:
+    """Name des Servers fuer QR/Kopplung – dieselbe Quelle wie nuorb-admin: NUORB_NAME, sonst die Marke."""
+    n = re.sub(r"[^\w .äöüÄÖÜß-]", "", os.environ.get("NUORB_NAME", "")).strip()[:24]
+    return n or ui_cfg()["brand"]
+
+
+@app.get("/api/info")
+async def api_info(request: Request):
+    uc = ui_cfg()
+    return {"product": "nuorb-ui", "api": 1, "name": server_name(), "brand": uc["brand"],
+            "assistant_name": uc["assistant_name"], "ui_lang": uc["ui_lang"], "lang": "en" if uc["ui_lang"] == "en" else "de",
+            "pairing_required": pairing_required(), "paired": device_for_request(request) is not None, "build": build_id()}
+
+
+@app.post("/api/pair")
+async def api_pair(request: Request):
+    ip = request.client.host if request.client else ""
+    fails = [t for t in _pair_fails.get(ip, []) if time.time() - t < 600]
+    _pair_fails[ip] = fails
+    if len(fails) >= 8:
+        return JSONResponse({"detail": "too_many_attempts"}, status_code=429)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict) or not redeem_pairing_code(str(body.get("code", ""))):
+        fails.append(time.time())
+        print(f"[pair] falscher oder abgelaufener Code von {ip}", flush=True)
+        return JSONResponse({"detail": "invalid_or_expired_code"}, status_code=403)
+    name = re.sub(r"[\x00-\x1f<>]", "", str(body.get("device") or "Smartphone"))[:60]
+    platform = re.sub(r"[^a-z0-9_-]", "", str(body.get("platform") or "web").lower())[:20]
+    token, did = secrets.token_urlsafe(32), "d_" + secrets.token_hex(6)
+    devs = _read_json(DEVICES_FILE, {})
+    now = datetime.now().astimezone().isoformat(timespec="seconds")
+    devs[did] = {"name": name, "platform": platform, "token": _sha(token), "created": now, "last_seen": now, "ip": ip}
+    _write_json(DEVICES_FILE, devs)
+    print(f"[pair] Geraet gekoppelt: {did} {name!r} ({platform}) von {ip}", flush=True)
+    uc = ui_cfg()
+    resp = JSONResponse({"token": token, "device_id": did, "name": server_name(), "api": 1,
+                         "lang": "en" if uc["ui_lang"] == "en" else "de"})
+    if body.get("cookie") is True:
+        resp.set_cookie(DEVICE_COOKIE, token, max_age=10 * 365 * 86400, httponly=True, secure=True, samesite="strict", path="/")
+    return resp
+
+
+@app.post("/api/unpair")
+async def api_unpair(request: Request):
+    did = device_for_request(request)
+    if did:
+        devs = _read_json(DEVICES_FILE, {})
+        devs.pop(did, None)
+        _write_json(DEVICES_FILE, devs)
+        print(f"[pair] Geraet entkoppelt: {did}", flush=True)
+    resp = JSONResponse({"ok": True, "removed": bool(did)})
+    resp.delete_cookie(DEVICE_COOKIE, path="/")
+    return resp
+
+
 ADMIN_TOKEN_FILE = Path(os.environ.get("ADMIN_TOKEN_FILE", str(HOME / ".config/nuorb/internal.token")))
 
 
@@ -775,6 +919,7 @@ class PiperTTS:
         self.voice = None
         self.ready = False
         self._lock = asyncio.Lock()
+        self._extra = (None, None)  # (Pfad, PiperVoice): hoechstens EINE Probehoer-Stimme zusaetzlich im Speicher
 
     def load(self):
         want = cur_voice()
@@ -793,12 +938,20 @@ class PiperTTS:
             self.ready = True
         return self.voice
 
-    def synth(self, text: str) -> bytes:
+    def synth(self, text: str, path: str | None = None, length_scale: float | None = None) -> bytes:
+        """path/length_scale nur fuer diesen Aufruf (Probehoeren in der Verwaltung); Standard-Stimme bleibt geladen."""
         from piper import SynthesisConfig
         voice = self.load()
+        if path and path != self.path:
+            if self._extra[0] != path:
+                from piper import PiperVoice
+                print(f"Piper: Probehoer-Stimme {Path(path).stem}", flush=True)
+                self._extra = (path, PiperVoice.load(path))
+            voice = self._extra[1]
         buf = io.BytesIO()
         with wave.open(buf, "wb") as wf:
-            voice.synthesize_wav(text, wf, syn_config=SynthesisConfig(length_scale=cur_length_scale()))
+            voice.synthesize_wav(text, wf, syn_config=SynthesisConfig(
+                length_scale=length_scale if length_scale is not None else cur_length_scale()))
         return buf.getvalue()
 
 
@@ -827,10 +980,27 @@ def speakable(text: str) -> str:
 async def tts(request: Request):
     body = await request.json()
     text = speakable(str(body.get("text") or ""))
+    # Optional (Probehoeren aus nuorb-admin): voice = Name in ~/.hermes/cache/piper-voices, length_scale 0.6–1.6
+    path = ls = None
+    if body.get("voice") is not None:
+        v = str(body["voice"])
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", v):
+            raise HTTPException(400, "Stimme ungültig.")
+        cand = HOME / ".hermes/cache/piper-voices" / f"{v}.onnx"
+        if not (cand.is_file() and Path(str(cand) + ".json").is_file()):
+            raise HTTPException(404, "Stimme nicht gefunden.")
+        path = str(cand)
+    if body.get("length_scale") is not None:
+        try:
+            ls = float(body["length_scale"])
+        except (TypeError, ValueError):
+            raise HTTPException(400, "Tempo ungültig.")
+        if not 0.6 <= ls <= 1.6:
+            raise HTTPException(400, "Tempo muss zwischen 0,6 und 1,6 liegen.")
     if not text:
         return Response(status_code=204)
     async with tts_engine._lock:  # ein Synthese-Job zur Zeit; Saetze kommen ohnehin nacheinander
-        wav = await asyncio.get_running_loop().run_in_executor(None, tts_engine.synth, text)
+        wav = await asyncio.get_running_loop().run_in_executor(None, tts_engine.synth, text, path, ls)
     return Response(wav, media_type="audio/wav", headers={"Cache-Control": "no-store"})
 
 

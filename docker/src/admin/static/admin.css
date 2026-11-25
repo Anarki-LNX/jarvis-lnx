@@ -239,3 +239,16 @@ input[type=range] { width: 100%; accent-color: var(--cyan); }
 .small-choice .c-title { font-size: 14.5px; }
 .c-sub { font-size: 13px; color: var(--text-2); }
 @media (max-width: 920px) { .choices { grid-template-columns: 1fr; } }
+\nimg.qr { display: block; width: 100%; max-width: 300px; height: auto; margin: 8px auto 0; border-radius: 8px; image-rendering: pixelated; }\n.server-name { width: 100%; opacity: .6; font-size: 11px; }
+.side-foot { flex-wrap: wrap; gap: 6px; }
+
+/* Sprachumschalter DE | EN (Segment) */
+.brand-row { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.lang-toggle { display: inline-flex; align-items: stretch; height: 26px; padding: 2px; gap: 2px; border: 1px solid var(--line); border-radius: 13px; background: var(--panel); }
+.lang-toggle button { min-width: 30px; padding: 0 8px; border: 0; border-radius: 11px; background: none; color: var(--text-3); cursor: pointer;
+  font-family: "Space Grotesk"; font-size: 11px; font-weight: 600; letter-spacing: .1em; transition: color .2s, background .2s, box-shadow .2s; }
+.lang-toggle button:hover { color: var(--text); }
+.lang-toggle button[aria-pressed="true"] { color: var(--cyan-soft); background: rgba(56, 217, 255, .12); box-shadow: inset 0 0 0 1px rgba(56, 217, 255, .35), 0 0 10px rgba(56, 217, 255, .12); }
+.lang-toggle button:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(56, 217, 255, .45); }
+.login-lang { position: absolute; top: 14px; right: 14px; z-index: 1; }
+@media (max-width: 920px) { .server-name { display: none; } .brand-row { justify-content: flex-start; } .side-brand .lang-toggle { height: 22px; } .side-brand .lang-toggle button { border-radius: 9px; } }

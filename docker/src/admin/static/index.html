@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#040507">
-<title>NuOrb Verwaltung</title>
+<title>Admin</title>
 <link rel="icon" href="/ui/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/ui/tokens.css">
 <link rel="stylesheet" href="/ui/orb.css">
@@ -22,15 +22,16 @@
         <canvas id="orb" aria-hidden="true"></canvas>
       </div>
       <div class="side-brand">
-        <div class="brand"><span class="brand-mark"></span><span class="brand-word">NuOrb</span></div>
+        <div class="brand"><span class="brand-mark"></span><span class="brand-word" data-brand data-noi18n></span></div>
         <div class="brand-sub">Verwaltung</div>
-        <div class="chip" id="chipBrain" data-ok=""><span class="dot"></span><span>Prüfe …</span></div>
+        <div class="brand-row"><div class="chip" id="chipBrain" data-ok=""><span class="dot"></span><span>Prüfe …</span></div><div class="lang-toggle" role="group" aria-label="Sprache · Language" data-langtoggle data-noi18n><button type="button" data-lang="de">DE</button><button type="button" data-lang="en">EN</button></div></div>
       </div>
     </div>
     <nav class="nav" id="nav" aria-label="Bereiche"></nav>
     <div class="side-foot">
       <button class="btn ghost small" id="btnLogout" type="button">Abmelden</button>
       <span class="muted mono" id="clock"></span>
+      <div class="muted small server-name" data-server data-noi18n></div>
     </div>
   </aside>
 
@@ -50,8 +51,9 @@
   <!-- Login / Ersteinrichtung -->
   <div class="login" id="login" hidden>
     <div class="login-card panel">
+      <div class="lang-toggle login-lang" role="group" aria-label="Sprache · Language" data-langtoggle data-noi18n><button type="button" data-lang="de">DE</button><button type="button" data-lang="en">EN</button></div>
       <div class="orb-slot" id="loginOrbSlot"></div>
-      <div class="brand center"><span class="brand-mark"></span><span class="brand-word">NuOrb</span></div>
+      <div class="brand center"><span class="brand-mark"></span><span class="brand-word" data-brand data-noi18n></span></div>
       <p class="brand-sub center">Verwaltung</p>
       <form id="loginForm" autocomplete="on">
         <div id="setupFields" hidden>
@@ -59,13 +61,13 @@
           <pre class="code mono" id="setupHint"></pre>
           <label class="field"><span>Einrichtungscode</span><input name="code" class="mono" autocomplete="one-time-code" spellcheck="false" placeholder="XXXX-XXXX-XXXX"></label>
         </div>
-        <input type="text" name="username" value="nuorb" autocomplete="username" hidden>
+        <input type="text" name="username" value="admin" autocomplete="username" hidden>
         <label class="field"><span id="pwLabel">Passwort</span><input name="password" type="password" autocomplete="current-password" required></label>
         <label class="field" id="pw2Field" hidden><span>Passwort wiederholen</span><input name="password2" type="password" autocomplete="new-password"></label>
         <p class="err" id="loginErr" role="alert"></p>
         <button class="btn primary wide" type="submit" id="loginBtn">Anmelden</button>
       </form>
-      <p class="muted small center">Nur im Heimnetz · HTTPS mit NuOrb Heim-CA</p>
+      <p class="muted small center">Nur im Heimnetz · HTTPS mit eigener Heim-CA</p>
     </div>
   </div>
 </div>
@@ -88,6 +90,8 @@
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
 <script src="/ui/orb.js"></script>
+<script src="/static/i18n.js"></script>
+<script src="/static/i18n-en.js"></script>
 <script src="/static/admin.js"></script>
 </body>
 </html>

@@ -103,6 +103,9 @@ def main() -> int:
     check("Admin-Startseite lädt Zusatz-Skript", st == 200 and b"admin-extra.js" in html)
     st, dev = adm.req("GET", "/api/services")
     check("Dienste-Status über s6", st == 200, ", ".join(f"{u['id']}={u['active']}" for u in dev.get("units", [])))
+    st, ast = adm.req("GET", "/api/status")
+    check("Admin sieht die Oberfläche (interner Aufruf)", st == 200 and (ast.get("ui") or {}).get("online") is True,
+          str((ast.get("ui") or {}).get("info"))[:80])
     st, pc = adm.req("POST", "/api/pairing/new", {})
     check("Kopplungscode erzeugt", st == 200 and len(pc.get("code", "")) == 9, pc.get("uri", "")[:90])
     q = dict(urllib.parse.parse_qsl(urllib.parse.urlparse(pc.get("uri", "")).query))

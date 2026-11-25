@@ -1,54 +1,55 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NuOrb · Gerät koppeln</title>
+<title>NuOrb · Pair device</title>
 <link rel="icon" href="/favicon.ico">
 <link rel="stylesheet" href="/ui/tokens.css">
 <link rel="stylesheet" href="/static/docker/docker.css">
 </head>
 <body>
 <main>
-  <a class="back" href="/" data-t="back">← Zur Verwaltung</a>
-  <h1 data-t="title">Gerät koppeln</h1>
-  <p class="lead" data-t="lead">Verbinde die NuOrb-App oder einen Browser mit diesem Server. Der Code gilt 10 Minuten und nur einmal.</p>
+  <div class="top"><a class="back" href="/" data-t="back">← Back to admin</a><div class="lang-toggle" role="group" aria-label="Language" id="langSwitch" data-langtoggle data-noi18n></div></div>
+  <h1 data-t="title">Pair device</h1>
+  <p class="lead" data-t="lead">Connect the NuOrb app or a browser to this server. The code is valid for 10 minutes and only once.</p>
 
   <section class="panel">
-    <button class="btn primary" id="new" type="button" data-t="new">Neuen Kopplungscode erzeugen</button>
+    <button class="btn primary" id="new" type="button" data-t="new">Create new pairing code</button>
     <div id="out" hidden>
       <p class="warn" id="certWarn" hidden></p>
       <div class="qr">
-        <figure><img id="qr" alt="QR-Code für die App"><figcaption class="muted" data-t="cap_app">App: QR-Code scannen</figcaption></figure>
+        <figure><img id="qr" alt="QR code for the app" data-t-alt="alt_app"><figcaption class="muted" data-t="cap_app">App: scan the QR code</figcaption></figure>
         <div>
           <div class="muted" data-t="code_lbl">Code</div>
           <div class="code" id="code"></div>
           <div class="muted" id="left"></div>
-          <p class="muted" data-t="manual">Oder in der App von Hand eingeben:</p>
+          <p class="muted" data-t="manual">Or enter manually in the app:</p>
           <div class="mono" id="url"></div>
-          <div class="muted" data-t="fp_lbl">Zertifikats-Fingerabdruck (SHA-256 der Heim-CA)</div>
+          <div class="muted" data-t="fp_lbl">Certificate fingerprint (SHA-256 of the home CA)</div>
           <div class="mono" id="fp"></div>
         </div>
       </div>
       <details>
-        <summary class="muted" data-t="browser">Browser statt App koppeln</summary>
-        <div class="qr"><img id="qrb" alt="QR-Code für den Browser"><div class="mono" id="burl"></div></div>
+        <summary class="muted" data-t="browser">Pair a browser instead of the app</summary>
+        <div class="qr"><img id="qrb" alt="QR code for the browser" data-t-alt="alt_browser"><div class="mono" id="burl"></div></div>
       </details>
     </div>
   </section>
 
   <section class="panel">
-    <h2 data-t="h_dev">Gekoppelte Geräte</h2>
-    <table><thead><tr><th data-t="th_name">Name</th><th data-t="th_kind">Art</th><th data-t="th_seen">Zuletzt</th><th></th></tr></thead>
+    <h2 data-t="h_dev">Paired devices</h2>
+    <table><thead><tr><th data-t="th_name">Name</th><th data-t="th_kind">Type</th><th data-t="th_seen">Last seen</th><th></th></tr></thead>
       <tbody id="devs"></tbody></table>
-    <p class="muted" id="pairingOff" hidden data-t="off">Kopplungspflicht ist aus (NUORB_REQUIRE_PAIRING=0): Die Oberfläche ist im ganzen Heimnetz ohne Kopplung erreichbar.</p>
+    <p class="muted" id="pairingOff" hidden data-t="off">Pairing is not required (NUORB_REQUIRE_PAIRING=0): the UI is reachable from the whole home network without pairing.</p>
   </section>
 
   <section class="panel">
-    <h2 data-t="h_sec">Sicherheit</h2>
-    <p class="muted" data-t="sec">Öffne die Ports 8443/8444 nicht ins Internet. Für unterwegs: VPN (z. B. WireGuard oder Tailscale) ins Heimnetz. Ein Gerät, das du verlierst, hier entkoppeln.</p>
+    <h2 data-t="h_sec">Security</h2>
+    <p class="muted" data-t="sec">Do not expose ports 8443/8444 to the internet. When away: use a VPN (e.g. WireGuard or Tailscale) into your home network. Unpair a device here if you lose it.</p>
   </section>
 </main>
+<script src="/static/docker/nuorb-lang.js"></script>
 <script src="/static/docker/koppeln.js"></script>
 </body>
 </html>

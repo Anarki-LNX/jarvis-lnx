@@ -106,6 +106,17 @@ def _internal(request: Request) -> bool:
     return bool(tok) and hmac.compare_digest(given.strip(), tok)
 
 
+# nuorb-ui prüft die Kopplung inzwischen auch selbst (lan_only -> device_for_request). Interne Aufrufe des Admin-Panels
+# (Loopback + internes Token) zählen dort als gekoppelt, sonst sieht die Übersicht die Oberfläche als „aus“.
+_orig_device_for_request = getattr(ui, "device_for_request", None)
+if _orig_device_for_request:
+    def _device_for_request(request: Request):
+        if _internal(request):
+            return {"id": "internal", "name": "admin", "platform": "internal"}
+        return _orig_device_for_request(request)
+    ui.device_for_request = _device_for_request
+
+
 def _set_cookie(resp: Response, token: str) -> None:
     resp.set_cookie(COOKIE, token, max_age=10 * 365 * 86400, httponly=True, secure=True,
                     samesite="strict", path="/")
@@ -127,7 +138,7 @@ async def pairing_guard(request: Request, call_next):
     except ValueError:
         lan = False
     if not lan:
-        return JSONResponse({"error": "nur im Heimnetz/VPN erreichbar"}, status_code=403)
+        return JSONResponse({"error": "only reachable from the home network/VPN", "detail": "home_network_only"}, status_code=403)
     if jc.pairing_required() and not _internal(request):
         authed = _device(request) is not None
         if path.startswith("/api/") and path not in PUBLIC_API and not authed:
@@ -145,7 +156,7 @@ async def pairing_guard(request: Request, call_next):
 async def info(request: Request):
     return {"product": jc.PRODUCT, "api": jc.API_VERSION, "name": jc.server_name(), "lang": jc.lang(),
             "assistant_name": jc.assistant_name(), "brand": jc.brand(),
-            "pairing_required": jc.pairing_required(), "build": ui.build_id(),
+            "ui_lang": jc.env("UI_LANG", "auto").lower() or "auto", "pairing_required": jc.pairing_required(), "build": ui.build_id(),
             "paired": _device(request) is not None}
 
 
@@ -159,12 +170,12 @@ async def pair(request: Request):
         body = {}
     if not isinstance(body, dict) or not jc.redeem_pairing_code(str(body.get("code", ""))):
         _fails.setdefault(ip, []).append(time.time())
-        print(f"[pair] falscher oder abgelaufener Code von {ip}", flush=True)
+        print(f"[pair] wrong or expired code from {ip}", flush=True)
         return JSONResponse({"detail": "invalid_or_expired_code"}, status_code=403)
-    name = re.sub(r"[\x00-\x1f<>]", "", str(body.get("device") or "Gerät"))[:60]
+    name = re.sub(r"[\x00-\x1f<>]", "", str(body.get("device") or "Device"))[:60]
     platform = re.sub(r"[^a-z0-9_-]", "", str(body.get("platform") or "web").lower())[:20]
     did, token = jc.add_device(name, platform, ip)
-    print(f"[pair] Gerät gekoppelt: {did} {name!r} ({platform}) von {ip}", flush=True)
+    print(f"[pair] device paired: {did} {name!r} ({platform}) from {ip}", flush=True)
     resp = JSONResponse({"token": token, "device_id": did, "name": jc.server_name(), "api": jc.API_VERSION,
                          "lang": jc.lang()})
     if body.get("cookie") is True:  # Browser-Kopplung über /pair
@@ -215,7 +226,7 @@ def _sync_brain_url() -> None:
         if api:
             ui.BRAIN_URL = api.rstrip("/").removesuffix("/v1") + "/api/version"
     except Exception as exc:
-        print(f"config.yaml unlesbar für Gehirn-Probe: {exc}", flush=True)
+        print(f"config.yaml unreadable for brain probe: {exc}", flush=True)
 
 
 async def status_plus(request: Request):
@@ -245,8 +256,8 @@ async def index_plus(request: Request):
 SETUP_DONE = jc.CONF / "setup-done.json"
 WAKE_DIR = jc.J / "wakeword"
 WAKE_FILES = {"melspectrogram.tflite", "embedding_model.tflite", "hey_nuorb_v0.1.tflite"}
-NO_BRAIN = {"de": "NuOrb hat noch kein Gehirn. Bitte im Admin-Panel unter „Einrichtung“ Ollama oder einen Claude-Schlüssel eintragen.",
-            "en": "NuOrb has no brain yet. Please set up Ollama or a Claude key under “Setup” in the admin panel."}
+NO_BRAIN = {"de": "{brand} hat noch kein Gehirn. Bitte im Admin-Panel unter „Einrichtung“ Ollama oder einen Claude-Schlüssel eintragen.",
+            "en": "{brand} has no brain yet. Please set up Ollama or a Claude key under “Setup” in the admin panel."}
 
 
 async def wakeword(request: Request):
@@ -266,7 +277,7 @@ for r in app.router.routes:
 
 async def ask_guard(request: Request):
     if not SETUP_DONE.exists() and ui.cur_mode() == "live":
-        return JSONResponse({"detail": NO_BRAIN[jc.lang()], "code": "no_brain"}, status_code=503)
+        return JSONResponse({"detail": NO_BRAIN[jc.lang()].replace("{brand}", jc.brand()), "code": "no_brain"}, status_code=503)
     return await _orig_ask(request)
 
 
@@ -315,9 +326,9 @@ def mdns_start() -> None:
                            server=f"{socket.gethostname()}.local.")
         zc = Zeroconf()
         zc.register_service(info, allow_name_change=True)
-        print(f"[mdns] _nuorb._tcp angekündigt: {name} Port {port}", flush=True)
+        print(f"[mdns] _nuorb._tcp announced: {name} port {port}", flush=True)
     except Exception as exc:
-        print(f"[mdns] Ankündigung fehlgeschlagen: {exc}", flush=True)
+        print(f"[mdns] announcement failed: {exc}", flush=True)
 
 
 if __name__ == "__main__":

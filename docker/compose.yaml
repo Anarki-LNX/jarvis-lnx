@@ -8,6 +8,8 @@ services:
     image: ghcr.io/anarki-lnx/nuorb:${NUORB_VERSION:-latest}
     build:
       context: .
+      args:
+        NUORB_BUILD: ${NUORB_BUILD:-dev}
     pull_policy: missing
     restart: unless-stopped
     healthcheck:
