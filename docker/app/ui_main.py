@@ -229,7 +229,8 @@ def _sync_brain_url() -> None:
     try:
         from ruamel.yaml import YAML
         cfg = YAML(typ="safe").load(p.read_text(encoding="utf-8")) or {}
-        api = ((cfg.get("providers") or {}).get("lan-ollama") or {}).get("api") or ""
+        provs = cfg.get("providers") or {}
+        api = (provs.get("pc-ollama") or provs.get("lan-ollama") or {}).get("api") or ""   # lan-ollama: Installationen bis v0.3.0
         if api:
             ui.BRAIN_URL = api.rstrip("/").removesuffix("/v1") + "/api/version"
     except Exception as exc:

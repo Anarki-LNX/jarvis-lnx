@@ -252,3 +252,4 @@ input[type=range] { width: 100%; accent-color: var(--cyan); }
 .lang-toggle button:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(56, 217, 255, .45); }
 .login-lang { position: absolute; top: 14px; right: 14px; z-index: 1; }
 @media (max-width: 920px) { .server-name { display: none; } .brand-row { justify-content: flex-start; } .side-brand .lang-toggle { height: 22px; } .side-brand .lang-toggle button { border-radius: 9px; } }
+#oRes:not(:empty) { display: flex; flex-direction: column; gap: 8px; margin: -4px 0 12px; } #oRes .note .dot { margin-right: 6px; }

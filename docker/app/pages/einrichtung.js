@@ -85,7 +85,9 @@
       $("model").replaceChildren();
       for (const n of d.models) { const o = document.createElement("option"); o.value = o.textContent = n; $("model").append(o); }
       if (cur && d.models.includes(cur)) $("model").value = cur;
-      $("probeMsg").textContent = m.found(d.version, d.models.length); $("probeMsg").className = "ok";
+      if (d.url) $("url").value = d.url;   // vom Server vervollständigt (Schema, Port 11434, ohne /v1)
+      $("probeMsg").textContent = m.found(d.version, d.models.length) + (d.warn ? " ⚠ " + d.warn : "");
+      $("probeMsg").className = d.warn ? "warn" : "ok";
     } catch (e) { $("probeMsg").textContent = m.err + e.message; $("probeMsg").className = "err"; }
   }
   $("probe").addEventListener("click", probe);

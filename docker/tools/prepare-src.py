@@ -32,7 +32,8 @@ REGELN: list[tuple[str, str, str, int]] = [
     ("stt/stt_router.py", r"XIAOMI REBIRTH / NuOrb", "NuOrb", 0),
 ]
 # generisch: private Netze im Code (außer CIDR-Listen), API-Schlüssel, SSH-Schlüsselnamen
-VERBOTEN = [r"\b192\.168\.\d+\.\d+\b(?!/)", r"\b10\.\d+\.\d+\.\d+\b(?!/)", r"sk-ant-[A-Za-z0-9]", r"id_ed25519\w*",
+VERBOTEN = [r"\b192\.168\.(?!1\.50\b)\d+\.\d+\b(?!/)",  # 192.168.1.50 = dokumentierte Beispieladresse (wie in der CI)
+            r"\b10\.\d+\.\d+\.\d+\b(?!/)", r"sk-ant-[A-Za-z0-9]", r"id_ed25519\w*",
             r"-----BEGIN [A-Z ]*PRIVATE KEY"]
 try:
     sys.path.insert(0, str(HIER))

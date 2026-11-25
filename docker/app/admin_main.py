@@ -171,7 +171,7 @@ async def auth_state(request: Request):
 
 # ------------------------------------------------------------------ Ersteinrichtung (LLM + Schlüssel)
 SETUP_DONE = jc.CONF / "setup-done.json"
-OLLAMA_PROVIDER = "lan-ollama"
+OLLAMA_PROVIDER = getattr(adm, "OLLAMA_PROVIDER", "pc-ollama")  # derselbe Eintrag wie „Model & Fallback“ der NuOrb-Verwaltung
 
 
 def setup_state() -> dict:
@@ -179,7 +179,8 @@ def setup_state() -> dict:
     model = cfg.get("model") or {}
     prov = (cfg.get("providers") or {}).get(OLLAMA_PROVIDER) or {}
     return {"done": SETUP_DONE.exists(), "lang": jc.lang(), "ui_lang": jc.ui_lang_setting(), "name": jc.server_name(),
-            "ollama_url": (prov.get("api") or jc.env("NUORB_INIT_OLLAMA_URL")).removesuffix("/v1"),
+            "ollama_url": (adm.ollama_base(cfg) if hasattr(adm, "ollama_base") else (prov.get("api") or "").removesuffix("/v1"))
+            or jc.env("NUORB_INIT_OLLAMA_URL").removesuffix("/v1"),
             "ollama_model": (model.get("default") if str(model.get("provider", "")).startswith("custom:") else "")
             or jc.env("NUORB_INIT_OLLAMA_MODEL"),
             "anthropic_key": adm.mask(adm.env_value("ANTHROPIC_API_KEY")),
@@ -234,16 +235,25 @@ async def setup_get(request: Request):
 
 async def setup_ollama_probe(request: Request):
     d = await adm.body(request)
-    url = str(d.get("url", "")).strip().rstrip("/").removesuffix("/v1")
-    if not re.fullmatch(r"https?://[A-Za-z0-9.\-\[\]:]{1,200}(:\d{1,5})?", url):
-        raise HTTPException(400, jc.tr("Ungültige Adresse (z. B. http://192.0.2.30:11434).", "Invalid address (e.g. http://192.0.2.30:11434)."))
+    url, warn = _normalize_ollama(str(d.get("url", "")))
     try:
         async with httpx.AsyncClient(timeout=5) as c:
             v = (await c.get(f"{url}/api/version")).json()
             tags = (await c.get(f"{url}/api/tags")).json()
     except Exception as exc:
         raise HTTPException(502, jc.tr(f"Ollama unter {url} nicht erreichbar", f"Ollama at {url} not reachable") + f" ({exc.__class__.__name__}).")
-    return {"ok": True, "version": v.get("version"), "models": sorted(m.get("name") for m in tags.get("models", []))}
+    return {"ok": True, "url": url, "warn": warn, "version": v.get("version"),
+            "models": sorted(m.get("name") for m in tags.get("models", []))}
+
+
+def _normalize_ollama(raw: str) -> tuple[str, str]:
+    """Gleiche Prüfung wie die NuOrb-Verwaltung (ollama_normalize): Schema/Port ergänzen, /v1 weg, Warnung bei localhost."""
+    if hasattr(adm, "ollama_normalize"):
+        return adm.ollama_normalize(raw)
+    url = raw.strip().rstrip("/").removesuffix("/v1")
+    if not re.fullmatch(r"https?://[A-Za-z0-9.\-\[\]:]{1,200}(:\d{1,5})?", url):
+        raise HTTPException(400, jc.tr("Ungültige Adresse (z. B. http://192.0.2.30:11434).", "Invalid address (e.g. http://192.0.2.30:11434)."))
+    return url, ""
 
 
 def _env_set(name: str, value: str | None) -> None:
@@ -268,7 +278,7 @@ async def setup_apply(request: Request):
     mode = d.get("mode")
     if mode not in ("local", "auto", "remote"):
         raise HTTPException(400, jc.tr("Modus fehlt (local, auto oder remote).", "Mode missing (local, auto or remote)."))
-    url = str(d.get("ollama_url") or "").strip().rstrip("/").removesuffix("/v1")
+    url = _normalize_ollama(str(d.get("ollama_url")))[0] if str(d.get("ollama_url") or "").strip() else ""
     model = str(d.get("ollama_model") or "").strip()
     key = str(d.get("anthropic_key") or "").strip()
     ctx = int(d.get("context") or 65536)
