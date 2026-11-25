@@ -6,7 +6,7 @@
   const DE = !window.I18N || window.I18N.lang === "de"; // lokale Sprachbefehle (deutsche Muster) nur auf Deutsch
   const LOC = DE ? "de-DE" : "en-GB";
   const $ = (id) => document.getElementById(id);
-  const VERSION = "2026-11-25.53";
+  const VERSION = "2026-11-25.55";
   // Kurzes Client-Log ins Server-Journal (Kiosk hat keine JS-Konsole)
   function clog(msg) {
     try { fetch("/api/clientlog", { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
@@ -35,10 +35,11 @@
   };
   const opts = { voice: store.get("voice", true), calm: store.get("calm", false), earcons: store.get("earcons", true), micviz: store.get("micviz", true),
     follow: true, followTimeout: 8 }; // follow/followTimeout kommen aus ui.json (follow_up, follow_up_timeout_s) ueber /api/status
-  // Android-App (Sitzung android-app): WebView laedt jarvis direkt, Bruecke window.JarvisAndroid.
+  // Android-App NuOrb (Sitzung android-app): WebView laedt den Server direkt, Bruecke window.NuOrbAndroid
+  // (ab App 1.3.3; aeltere Fassungen: window.JarvisAndroid, dasselbe Objekt).
   // Vertrag: Wake lokal (getWake/setWake, Ereignis „jarvis-wake“), Zustand an native (state), kein /api/wake, kein Vollbild.
-  const ANDROID = !!window.JarvisAndroid || new URLSearchParams(location.search).get("client") === "android"; // qp kommt erst weiter unten
-  const NATIVE = window.JarvisAndroid || null;
+  const ANDROID = !!(window.NuOrbAndroid || window.JarvisAndroid) || new URLSearchParams(location.search).get("client") === "android"; // qp kommt erst weiter unten
+  const NATIVE = window.NuOrbAndroid || window.JarvisAndroid || null;
   let lastNative = "";
   function nativeState() {
     if (!NATIVE || typeof NATIVE.state !== "function") return;
@@ -1237,7 +1238,7 @@
   }
   function greet(again) {
     ONB.started = true; ONB.awaiting = true;
-    const n = window.I18N ? I18N.name : "JARVIS";
+    const n = window.I18N ? I18N.name : "NuOrb";
     const txt = t("Hallo! Mein Schöpfer hat mich {n} getauft. Falls dir das zu kompliziert ist, sag mir einfach, wie du mich nennen möchtest.", { n })
       + (wakeAvailable() ? " " + t("Wecken kannst du mich mit „Hey Jarvis“.") : "") + " " + t("Und wie darf ich dich nennen?");
     card("ai", txt); view("talk");
@@ -1253,7 +1254,7 @@
     if (!ONB.awaiting) return false;
     if (KEEP_RE.test(lc.replace(/[.!?,]/g, "")) && !USERNAME_RE.test(lc)) {
       ONB.awaiting = false; card("user", text);
-      speech.say(t("Gut, dann bleibe ich {n}.", { n: window.I18N ? I18N.name : "JARVIS" })); return true;
+      speech.say(t("Gut, dann bleibe ich {n}.", { n: window.I18N ? I18N.name : "NuOrb" })); return true;
     }
     if (USERNAME_RE.test(lc)) { ONB.awaiting = false; return false; } // geht an Hermes (merkt sich den Namen)
     ONB.awaiting = false; return false;
@@ -1375,7 +1376,7 @@
     es.onerror = () => { if (es.readyState === 2) { WAKE.es = null; WAKE.svc = false; renderWake(); clearTimeout(WAKE.retry); WAKE.retry = setTimeout(() => { if (WAKE.on) wakeConnect(); }, 30000); } };
   }
   // Sprachbefehl „Schalte Hey Jarvis ein/aus“, „Hey Jarvis aus“, „Weckwort an“. Einschalten nur mit Karte (Mikro hoert dann staendig).
-  const WAKE_SELF = String(window.I18N ? I18N.wake : "Hey Jarvis").toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+  const WAKE_SELF = String(window.I18N ? I18N.wake : "Hey NuOrb").toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
   const WAKE_NAME = "(?:" + WAKE_SELF + "|hey\\s+jarvis|wake\\s*-?\\s*word|weckwort|weckfunktion|aufwecken)";
   const WAKE_RE1 = new RegExp(`\\b${WAKE_NAME}\\s+(an|ein|aus|ab|einschalten|anschalten|ausschalten|abschalten|aktivieren|deaktivieren)\\s*$`);
   const WAKE_RE2 = new RegExp(`\\b(schalt\\w*|mach\\w*|stell\\w*|aktivier\\w*|deaktivier\\w*)\\b.*\\b${WAKE_NAME}\\b(.*)$`);
@@ -1471,7 +1472,7 @@
     if (S.busy) return; // Antwort laeuft noch
     CONV.active = false;
     if (DEV.st && DEV.st.screen && DEV.st.screen.on === false) devCall("screen", { on: true }).catch(() => {});
-    handsFree("Hey Jarvis");
+    handsFree("Weckwort");
   }
   $("optFollow").addEventListener("change", async () => {
     const el = $("optFollow"), an = el.checked;
@@ -1482,6 +1483,11 @@
       opts.follow = an; if (!an) convEnd("ausgeschaltet"); toast(an ? t("JARVIS hört nach jeder Antwort kurz weiter zu.") : t("Nach der Antwort: wieder Tippen oder „Hey Jarvis“."));
     } catch (e) { el.checked = !an; toast(String(e.message || e)); }
   });
+  // NuOrb-App: native Einstellungen (Entkoppeln, Neu koppeln, Sprache, Updates) – Bruecke einstellungen(), seit App 1.0
+  if (NATIVE && typeof NATIVE.einstellungen === "function") {
+    $("appSettings").hidden = false;
+    $("appSettings").addEventListener("click", () => { try { NATIVE.einstellungen(); } catch (e) { toast(t("Umschalten fehlgeschlagen.")); } });
+  }
   $("wakeRow").addEventListener("click", () => { if (!wakeAvailable()) toast(t("Weckwort kommt mit einem Update. Bis dahin: Orb antippen.")); });
   $("optWake").addEventListener("change", async () => {
     const el = $("optWake"), an = el.checked;

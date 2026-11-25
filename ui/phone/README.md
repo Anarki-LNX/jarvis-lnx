@@ -1,4 +1,4 @@
-# JARVIS auf dem Handy: Shell + Gerätedienst
+# NuOrb auf dem Smartphone: Shell + Gerätedienst
 
 **Stand 24.11. nachmittags:** Der Gerätedienst von handy-linux läuft auf 127.0.0.1:**8765** mit eigenem Schema (`/api/status` mit
 `akku_prozent`, `wlan_an` …; POST `/api/wlan {an}`, `/api/helligkeit {wert}` …). Die UI versteht beide Schemas. Die Shell läuft deshalb
@@ -10,13 +10,13 @@ HTTPS-Seite zu `http://127.0.0.1`/`localhost` (TypeError: Load failed, GET und P
 
 ```
 cage + WebKit (Kiosk)  ──▶  http://127.0.0.1:8765  jarvis-shell.py  (diese Datei, Python nur stdlib)
-                               ├─ /            lokale Kopie der UI (synct von jarvis /api/manifest)
-                               ├─ /api/*   ──▶ https://JARVIS_HOST:8443 (jarvis-ui, SSE/Upload gestreamt)
+                               ├─ /            lokale Kopie der UI (synct vom Server /api/manifest)
+                               ├─ /api/*   ──▶ https://JARVIS_HOST:8443 (NuOrb-Oberfläche, SSE/Upload gestreamt)
                                └─ /device/* ─▶ http://127.0.0.1:8766  Gerätedienst (handy-linux), Header X-Jarvis-Device: 1
 ```
 
 - 127.0.0.1 ist ein sicherer Kontext: Mikrofon geht, in WebKitGTK 2.54 geprüft (isSecureContext, getUserMedia, MediaRecorder).
-- Offline: UI kommt aus der lokalen Kopie, `/api/*` antwortet 503 → UI zeigt „WLAN einschalten“ bzw. „jarvis nicht erreichbar“.
+- Offline: UI kommt aus der lokalen Kopie, `/api/*` antwortet 503 → UI zeigt „WLAN einschalten“ bzw. „NuOrb nicht erreichbar“.
 - Ohne jemals erfolgreichen Sync: eingebaute Notseite mit WLAN-Knopf.
 - Self-Update: Die Shell synct alle 60 s; `/api/version` liefert den Build der LOKALEN Kopie, die UI lädt dann in Ruhe neu.
 - POST-Anfragen an /api und /device nur mit Origin http://127.0.0.1:8765 bzw. localhost:8765 (sonst 403).

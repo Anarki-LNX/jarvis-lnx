@@ -1,10 +1,10 @@
-# Jarvis LNX · NuOrb
+# NuOrb
 
 **Your own private voice assistant – self-hosted in one Docker container, used from your phone.**
 
 **NuOrb** (say "Nu-Orb") is the assistant you get: on first start it introduces itself – *"My creator named me NuOrb.
 If that's too complicated, just tell me what you'd like to call me"* – and you can rename it any time ("From now on you're Max").
-Jarvis LNX is the open-source server behind it. It runs a complete voice assistant on your own hardware: an agent ([Hermes Agent](https://github.com/NousResearch/hermes-agent)),
+The NuOrb server is open source. It runs a complete voice assistant on your own hardware: an agent ([Hermes Agent](https://github.com/NousResearch/hermes-agent)),
 a web UI with an animated orb, an admin panel, local speech recognition and local speech synthesis.
 The "brain" is your own [Ollama](https://ollama.com) (e.g. a gaming PC), the Claude API, or both with a switch.
 Audio is processed on your server; nothing is sent anywhere unless you choose a cloud model.
@@ -27,10 +27,10 @@ Audio is processed on your server; nothing is sent anywhere unless you choose a 
 | **4. Pair** | Admin panel → *Pair device* → scan the QR code with the app. Done. |
 
 ```bash
-git clone https://github.com/Anarki-LNX/jarvis-lnx && cd jarvis-lnx/docker
+git clone https://github.com/Anarki-LNX/nuorb && cd nuorb/docker
 cp .env.example .env && nano .env        # at least JARVIS_HOSTS (your server IP), JARVIS_LANG, TZ
-docker compose up -d                      # pulls ghcr.io/anarki-lnx/jarvis-lnx
-docker compose logs jarvis | grep -iE "einrichtungscode|setup code"
+docker compose up -d                      # pulls ghcr.io/anarki-lnx/nuorb
+docker compose logs jarvis | grep -i "setup code"
 # then open https://<server-ip>:8444
 ```
 
@@ -47,15 +47,19 @@ Phone and server in the same network – or connected via VPN (WireGuard, Tailsc
 - **Safe by design** – confirmation cards before risky actions, pairing with certificate pinning, no telemetry.
 - **Admin panel** – model & fallback, persona, memory, skills, schedules, MCP servers (connect e.g. Home Assistant), keys, logs, backups.
 
+**Coming from the `jarvis-lnx` image?** Change the `image:` line to `ghcr.io/anarki-lnx/nuorb` (or take the new
+`docker/compose.yaml`), then `docker compose pull && docker compose up -d` – volumes and paired devices stay. See
+[`docker/README.md`](docker/README.md#umstieg-vom-image-jarvis-lnx).
+
 **Status:** early release. A custom wake word "Hey NuOrb" for the app is in training. See [`docker/README.md`](docker/README.md) for details, security notes and troubleshooting.
 
 ---
 
-# Bonus for tinkerers: a Xiaomi Mi 11 Lite as a dedicated JARVIS device
+# NuOrb on an old Xiaomi phone (bonus for tinkerers)
 
 Where this project started: an old **Xiaomi Mi 11 Lite 4G (`courbet`)**, wiped and reborn with
-**NixOS and a mainline Linux 7.3 kernel** – no Android left. A `cage` kiosk shows only the JARVIS orb UI, it listens
-for **"Hey Jarvis"** (openWakeWord, on-device) and executes device commands (Wi-Fi, reboot, brightness, volume)
+**NixOS and a mainline Linux 7.3 kernel** – no Android left. A `cage` kiosk shows only the NuOrb orb UI, it listens
+for a **wake word** (openWakeWord, on-device) and executes device commands (Wi-Fi, reboot, brightness, volume)
 only after a confirmation tap. **This part is specific to that phone model and wipes it – read the safety notes.**
 
 <p align="center">
@@ -70,7 +74,7 @@ only after a confirmation tap. **This part is specific to that phone model and w
   [Ollama](https://ollama.com) on the gaming PC (Gemma 4 26B-A4B QAT, 64k context, on an RX 7800 XT 16 GB).
 - **Brain switch: local / auto / remote.** *Local* = only Gemma, everything stays in the house. *Auto* = Gemma while
   the PC is on, otherwise Claude. *Remote* = Claude only (Haiku / Sonnet / Opus), the PC's GPU is freed. Switch from
-  the phone (tap the badge, or say "Jarvis, wechsel auf Sonnet") or the admin panel – effective from the next question.
+  the phone (tap the badge, or say "NuOrb, wechsel auf Sonnet") or the admin panel – effective from the next question.
 - **Device control with confirmation.** Wi-Fi on/off, reboot, power off, brightness, volume, screen on/off – via an
   MCP tool on the backend that only expresses the *intent*; the phone executes it locally after you tap "Ja" on a
   confirmation card (real touch required, synthetic clicks are ignored). Simple commands like "heller" / "Lautstärke
@@ -78,21 +82,21 @@ only after a confirmation tap. **This part is specific to that phone model and w
 - **Admin web panel** (desktop/tablet): model & fallback, persona, memory, skills, schedules, MCP servers,
   approvals, API keys (masked), voice, phone status, services, logs, backups/undo for every change.
 - **Survives being offline.** The phone keeps a local copy of the UI (`jarvis-shell`); without Wi-Fi it shows a
-  "Wi-Fi on / reboot" emergency page and returns to JARVIS automatically.
+  "Wi-Fi on / reboot" emergency page and returns to NuOrb automatically.
 
 ### Architecture
 
 ```mermaid
 flowchart LR
   subgraph Phone["Phone – Xiaomi Mi 11 Lite 4G (courbet), NixOS, kernel 7.3"]
-    K["cage kiosk<br/>Epiphany web-app mode"] --> S["jarvis-shell :8770<br/>local UI copy + proxy"]
+    K["cage kiosk<br/>Epiphany web-app mode"] --> S["NuOrb shell :8770<br/>local UI copy + proxy"]
     S --> G["device service :8765<br/>Wi-Fi · reboot · brightness · volume · screen"]
     P["power key handler"] --> G
   end
 
-  subgraph LXC["Debian LXC 'jarvis' (Proxmox)"]
-    UI["jarvis-ui :8443<br/>FastAPI · Piper TTS"]
-    AD["jarvis-admin :8444<br/>admin panel"]
+  subgraph LXC["Debian LXC (Proxmox)"]
+    UI["NuOrb UI :8443<br/>FastAPI · Piper TTS"]
+    AD["NuOrb admin :8444<br/>admin panel"]
     H["Hermes Agent<br/>gateway + MCP tools"]
     STT["STT router 127.0.0.1:8178<br/>Parakeet-TDT v3 (sherpa-onnx)"]
     UI --> H
@@ -135,10 +139,10 @@ Audio never leaves your network: recording happens on the phone, STT and TTS run
 **Works (tested on the device):**
 - NixOS boots from `boot` + `userdata`; display, touch, buttons, speaker + microphone, GPU (with the zap shader),
   Wi-Fi, battery with a 60–80 % charge limit for 24/7 operation on a USB power supply.
-- Kiosk comes up full-screen after every reboot (~55 s), JARVIS is the only UI.
+- Kiosk comes up full-screen after every reboot (~55 s), NuOrb is the only UI.
 - Voice loop speaker → mic → STT → Hermes → TTS, about 3 s for simple questions in local mode.
 - Brain switch from phone and admin panel; Claude fallback when the PC is off.
-- **"Hey Jarvis"** wake word on the phone ([openWakeWord](https://github.com/dscripka/openWakeWord), RAM ring buffer only, nothing stored or sent before detection), tap-to-talk and a conversation mode (keeps listening after an answer).
+- **Wake word** on the phone ([openWakeWord](https://github.com/dscripka/openWakeWord), RAM ring buffer only, nothing stored or sent before detection), tap-to-talk and a conversation mode (keeps listening after an answer).
 - Confirmation cards for device actions (local patterns and the decline path tested on the device; the full
   reboot-through-the-card path is still in final testing).
 
@@ -152,8 +156,8 @@ Audio never leaves your network: recording happens on the phone, STT and TTS run
 ```
 docker/    the self-hosted server as one container (start here)  → docker/README.md
 nixos/     phone NixOS configuration (flake, kiosk, device service, restricted SSH entry)  → nixos/README.md
-ui/        jarvis-ui: FastAPI server + orb web UI (static/), phone shell (phone/), test tools
-admin/     jarvis-admin: admin panel server + UI, privileged helper (ctl/) for service restarts
+ui/        NuOrb UI: FastAPI server + orb web UI (static/), phone shell (phone/), test tools
+admin/     NuOrb admin: admin panel server + UI, privileged helper (ctl/) for service restarts
 scripts/   setup, build, deploy and test scripts (backend-*, handy-* = phone, sprache-* = voice, steuerung-* = control/MCP)
 voice/     own-voice recording tools + sentence corpus (WIP)
 docs/      screenshots
@@ -228,22 +232,23 @@ Code: [MIT](LICENSE) © 2026 Anarki-LNX. Third-party files keep their own licens
 
 ## Disclaimer
 
-"JARVIS" is just a hobby name for this assistant. This project is not affiliated with, endorsed by or connected to
-Marvel, Disney or any of their properties. Xiaomi, Snapdragon, Claude, Gemma and other names are trademarks of their
-respective owners.
+The project was renamed to NuOrb. Old repository URLs redirect here; technical names such as the `JARVIS_*`
+settings, `/opt/jarvis` paths and the `jarvis-lnx` compose project are kept so existing installations keep working.
+Xiaomi, Snapdragon, Claude, Gemma and other names are trademarks of their respective owners.
 
 ---
 
 ## Kurzfassung (Deutsch)
 
-**Jarvis LNX** ist ein privater Sprachassistent zum Selbsthosten: **ein Docker-Container** (Proxmox, Heimserver
+**NuOrb** ist ein privater Sprachassistent zum Selbsthosten: **ein Docker-Container** (Proxmox, Heimserver
 oder PC) mit Agent, Orb-Oberfläche, Admin-Panel, lokaler Spracherkennung und Sprachausgabe. Gedacht wird mit dem
 eigenen **Ollama** oder **Claude** (oder beidem, umschaltbar). Bedient wird per **Android-App** (bald im Play Store)
 oder Browser im Heimnetz. Der Assistent heißt **NuOrb** („Nu-Orb“), stellt sich beim ersten Start vor
-(„Mein Schöpfer hat mich NuOrb getauft …“) und lässt sich jederzeit umbenennen. Container starten, Einrichtung im Admin-Panel, Handy per QR-Code koppeln – fertig.
+(„Mein Schöpfer hat mich NuOrb getauft …“) und lässt sich jederzeit umbenennen. Container starten, Einrichtung im Admin-Panel, Smartphone per QR-Code koppeln – fertig.
+Wer noch das Image `jarvis-lnx` nutzt: in der `compose.yaml` die `image:`-Zeile auf `ghcr.io/anarki-lnx/nuorb` ändern, Volumes bleiben.
 Anleitung: [`docker/README.md`](docker/README.md).
 
 **Für Bastler:** Das Projekt begann mit einem alten **Xiaomi Mi 11 Lite 4G**, auf dem jetzt **NixOS** läuft und
-JARVIS die einzige Oberfläche ist (mit „Hey Jarvis“ und Gerätesteuerung). Das ist gerätespezifisch und löscht das
-Handy: Bootloader-Entsperrung nötig, **niemals MIUI mit niedrigerem Anti-Rollback-Index flashen**. Alle privaten
+NuOrb die einzige Oberfläche ist (mit Weckwort und Gerätesteuerung). Das ist gerätespezifisch und löscht das
+Smartphone: Bootloader-Entsperrung nötig, **niemals MIUI mit niedrigerem Anti-Rollback-Index flashen**. Alle privaten
 Adressen sind durch Platzhalter ersetzt (`config.env.example`).

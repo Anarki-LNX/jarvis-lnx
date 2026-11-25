@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""JARVIS LNX (Docker): Start des Admin-Panels (jarvis-admin) im Container.
+"""NuOrb-Server (Docker): Start des Admin-Panels (NuOrb-Admin) im Container.
 
 Lädt jarvis-admin/server.py unverändert als Modul und passt es an den Container an:
   * Dienste: s6 statt systemd (Status über s6-svstat, Neustart über s6-svc), Protokolle aus Dateien.
@@ -160,7 +160,7 @@ async def auth_state(request: Request):
     st = dict(await st if asyncio.iscoroutine(st) else st)
     st["setupHint"] = None if adm.auth_configured() else \
         f"docker compose exec jarvis cat {adm.SETUP_FILE}\n# {jc.tr('oder', 'or')}: docker compose logs jarvis | grep -i 'setup code'"
-    # Marke/Sprache für Login und Fußzeile (Feld „ui“ von jarvis-admin): Sprache nach ADMIN_LANG, Servername ohne „Jarvis LNX“
+    # Marke/Sprache für Login und Fußzeile (Feld „ui“ von NuOrb-Admin): Sprache nach ADMIN_LANG, Servername nur mit der Marke
     ui = dict(st.get("ui") or {})
     ui.update(brand=ui.get("brand") or jc.brand(), ui_lang=jc.ui_lang_setting(), server=jc.server_label())
     st["ui"] = ui

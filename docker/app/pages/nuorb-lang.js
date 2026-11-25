@@ -1,5 +1,5 @@
 // NuOrb (Docker): gemeinsame Sprachwahl der Zusatzseiten. Englisch ist Grundtext im HTML, Deutsch die Alternative.
-// Reihenfolge wie im Admin-Panel (jarvis-admin i18n.js): ?lang=, Wahl im Browser (localStorage nuorb-admin-lang),
+// Reihenfolge wie im Admin-Panel (NuOrb-Admin i18n.js): ?lang=, Wahl im Browser (localStorage nuorb-admin-lang),
 // Server-Einstellung ui_lang (de|en), bei „auto“ die Browsersprache.
 window.NuI18n = (function () {
   const KEY = "nuorb-admin-lang";

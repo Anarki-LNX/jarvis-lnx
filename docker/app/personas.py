@@ -1,4 +1,4 @@
-"""NuOrb (JARVIS LNX): Persona-Vorlagen je Sprache.
+"""NuOrb: Persona-Vorlagen je Sprache.
 
 Die Vorlage landet beim ersten Start in ui.json („persona“) und ist im Admin unter „Persönlichkeit“ änderbar.
 Platzhalter, die bei jeder Anfrage ersetzt werden: {assistant_name}, {brand}, {user_name}.

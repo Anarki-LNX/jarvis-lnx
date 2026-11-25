@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""JARVIS LNX (Docker): Vorbereitung bei jedem Containerstart, Grundkonfiguration nur beim ersten Start.
+"""NuOrb-Server (Docker): Vorbereitung bei jedem Containerstart, Grundkonfiguration nur beim ersten Start.
 
 Läuft als Benutzer hermes, bevor Oberfläche, Admin und Spracherkennung starten. Idempotent:
   * Ordner und Symlinks (Stimmen im Modell-Volume, Hermes-Cache zeigt darauf)
@@ -132,7 +132,7 @@ def first_config() -> None:
     ctx = int(jc.env("JARVIS_INIT_CONTEXT", "65536") or 65536)
     os.environ.setdefault("JARVIS_HOME", "/opt/jarvis/home")
     sys.path.insert(0, "/opt/jarvis/admin")
-    import server as adm  # jarvis-admin: dieselbe Logik wie im Panel
+    import server as adm  # NuOrb-Admin: dieselbe Logik wie im Panel
     path = adm.FILES["config"][0]
     if url and model:
         data = adm.load_config_rt()

@@ -1,4 +1,4 @@
-# JARVIS LNX: gemeinsame Umgebung aller JARVIS-Dienste im Container (wird von den s6-run-Skripten eingelesen).
+# NuOrb-Server: gemeinsame Umgebung aller NuOrb-Dienste im Container (wird von den s6-run-Skripten eingelesen).
 export HOME=/opt/jarvis/home JARVIS_HOME=/opt/jarvis/home
 export HERMES_HOME=/opt/data HERMES_BIN=/opt/hermes/bin/hermes
 export JARVIS_MODELS=/opt/models
@@ -19,12 +19,12 @@ export OLLAMA_URL="${JARVIS_INIT_OLLAMA_URL:-http://ollama:11434}"
 export BRAIN_URL="${OLLAMA_URL%/}/api/version"
 NETS="${JARVIS_ALLOWED_NETS:-127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,fc00::/7,fe80::/10}"
 export UI_ALLOWED_NETS="$NETS" ADMIN_ALLOWED_NETS="$NETS"
-# Marke/Oberflächensprache (jarvis-ui): BRAND_NAME, UI_LANG=de|en|auto, WAKE_PHRASE; ui.json hat Vorrang
+# Marke/Oberflächensprache (NuOrb-Oberfläche): BRAND_NAME, UI_LANG=de|en|auto, WAKE_PHRASE; ui.json hat Vorrang
 export BRAND_NAME="${BRAND_NAME:-NuOrb}" UI_LANG="${UI_LANG:-auto}"
 [ -n "${WAKE_PHRASE:-}" ] && export WAKE_PHRASE
 [ -n "${ASSISTANT_NAME:-}" ] && export ASSISTANT_NAME
 export ADMIN_LANG="${ADMIN_LANG:-en}"   # Admin-Webinterface: en (Standard) oder de
-export JARVIS_ONBOARDING="${JARVIS_ONBOARDING:-1}"   # Begrüßung beim ersten Öffnen (jarvis-ui)
+export JARVIS_ONBOARDING="${JARVIS_ONBOARDING:-1}"   # Begrüßung beim ersten Öffnen (NuOrb-Oberfläche)
 export JARVIS_MODE=live JARVIS_FEATURE_ZUHAUSE="${JARVIS_FEATURE_ZUHAUSE:-0}" JARVIS_FEATURE_GERAET=0 JARVIS_FEATURE_CLOUD_WEICHE="${JARVIS_FEATURE_CLOUD_WEICHE:-0}"
 export PATH="/opt/hermes/bin:/opt/hermes/.venv/bin:/command:/usr/local/bin:/usr/bin:/bin"
 PY=/opt/jarvis/venv/bin/python

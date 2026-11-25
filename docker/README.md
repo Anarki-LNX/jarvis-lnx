@@ -1,10 +1,10 @@
-# NuOrb (Jarvis LNX) – Server als Docker-Container
+# NuOrb – Server als Docker-Container
 
-Dein eigener Sprachassistent in **einem** Container: Hermes Agent als Gehirn-Framework, die JARVIS-Oberfläche mit Orb,
+Dein eigener Sprachassistent in **einem** Container: Hermes Agent als Gehirn-Framework, die NuOrb-Oberfläche mit Orb,
 ein Admin-Panel, Spracherkennung (Parakeet, läuft auf der CPU) und Sprachausgabe (Piper). Denken lässt du entweder
 dein eigenes **Ollama** (z. B. Gaming-PC), **Claude** über die Anthropic-API oder **beides** mit automatischem Wechsel.
 
-Die **JARVIS-App für Android** und jeder Browser im Heimnetz verbinden sich damit, nachdem sie einmal gekoppelt
+Die **NuOrb-App für Android** und jeder Browser im Heimnetz verbinden sich damit, nachdem sie einmal gekoppelt
 wurden (QR-Code oder Code im Admin-Panel).
 
 > **Kurzfassung:** `.env` anlegen → `docker compose up -d` → `https://<server>:8444` öffnen → Einrichtungscode aus
@@ -30,7 +30,7 @@ die Sprachverarbeitung ohne Internet.
 
 **Ollama:** Hermes verlangt mindestens **64k Token Kontext** und lehnt kleinere Modelle ab. Am Ollama-Server
 `OLLAMA_CONTEXT_LENGTH=65536` setzen (oder eine Modellvariante mit `PARAMETER num_ctx 65536` anlegen) und Ollama im
-LAN erreichbar machen (`OLLAMA_HOST=0.0.0.0`, Port 11434 nur für den JARVIS-Server freigeben). Geeignet sind Modelle
+LAN erreichbar machen (`OLLAMA_HOST=0.0.0.0`, Port 11434 nur für den NuOrb-Server freigeben). Geeignet sind Modelle
 mit Werkzeugnutzung, z. B. Gemma 4 26B oder gpt-oss 20B (16 GB VRAM).
 
 **Claude:** Schlüssel unter <https://console.anthropic.com>, dort ein Ausgabenlimit setzen. Eine kurze Sprachfrage
@@ -50,7 +50,7 @@ kostet mit Haiku etwa 0,1–0,5 Cent.
 
 ```bash
 # 1. Dateien holen
-git clone https://github.com/Anarki-LNX/jarvis-lnx && cd jarvis-lnx/docker
+git clone https://github.com/Anarki-LNX/nuorb && cd nuorb/docker
 
 # 2. Einstellungen: mindestens JARVIS_HOSTS (IP/Name des Servers), Sprache, Zeitzone
 cp .env.example .env && nano .env
@@ -59,7 +59,7 @@ cp .env.example .env && nano .env
 docker compose up -d
 
 # 4. Einrichtungscode anzeigen
-docker compose logs jarvis | grep -i einrichtungscode
+docker compose logs jarvis | grep -i "setup code"
 ```
 
 5. Im Browser **`https://<server-ip>:8444`** öffnen. Beim ersten Mal warnt der Browser vor dem Zertifikat
@@ -72,7 +72,7 @@ docker compose logs jarvis | grep -i einrichtungscode
 ### Smartphone koppeln
 
 1. Im Admin-Panel **Gerät koppeln → Neuen Kopplungscode erzeugen**.
-2. **App:** JARVIS-App öffnen → „Server hinzufügen“ → **QR-Code scannen**. Ohne Kamera: Adresse
+2. **App:** NuOrb-App öffnen → „Server hinzufügen“ → **QR-Code scannen**. Ohne Kamera: Adresse
    (`https://<server-ip>:8443`) und Code von Hand eingeben; die App zeigt dann den Zertifikats-Fingerabdruck, der
    mit dem im Admin-Panel übereinstimmen muss.
 3. **Browser** (PC, Tablet): `https://<server-ip>:8443` öffnen und den Code eintippen.
@@ -83,8 +83,20 @@ Ein Code gilt 10 Minuten und nur einmal. Gekoppelte Geräte stehen im Admin-Pane
 
 ```bash
 docker compose pull && docker compose up -d        # neues Image, Daten bleiben
-docker run --rm -v jarvis-lnx_data:/d -v "$PWD":/b debian tar czf /b/jarvis-data.tgz -C /d .   # Sicherung
+docker run --rm -v jarvis-lnx_data:/d -v "$PWD":/b debian tar czf /b/nuorb-data.tgz -C /d .   # Sicherung
 ```
+
+### Umstieg vom Image `jarvis-lnx`
+
+Das Image heißt seit v0.3.0 `ghcr.io/anarki-lnx/nuorb`. Wer noch `ghcr.io/anarki-lnx/jarvis-lnx` nutzt, ändert in
+seiner `compose.yaml` nur die `image:`-Zeile (oder holt die neue `compose.yaml` aus dem Repo) und startet neu:
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+Volumes, `.env`, Zertifikate und gekoppelte Geräte bleiben, weil der Compose-Projektname `jarvis-lnx` gleich bleibt.
+Das alte Image bekommt keine Updates mehr.
 
 ## Was wo liegt
 
@@ -104,7 +116,7 @@ docker run --rm -v jarvis-lnx_data:/d -v "$PWD":/b debian tar czf /b/jarvis-data
   Fritzbox-VPN). Zugriffe sind nur aus privaten Netzen und Tailscale (100.64.0.0/10) erlaubt.
 * **Kopplung:** Ohne gekoppeltes Gerät liefert der Server nichts außer der Kopplungsseite. Auf dem Server liegen nur
   Hashes der Gerätetoken.
-* **Bestätigungskarten:** Vor gefährlichen Aktionen fragt JARVIS nach (`approvals.mode: manual`). Der Agent hat ein
+* **Bestätigungskarten:** Vor gefährlichen Aktionen fragt NuOrb nach (`approvals.mode: manual`). Der Agent hat ein
   Terminal *im Container*; der Container ist seine Sandbox.
 * **Keine Telemetrie**, keine Update-Checks. Nach außen geht nur: Claude (Gesprächstext, wenn gewählt) und die
   einmaligen Modell-Downloads.
@@ -115,14 +127,14 @@ docker run --rm -v jarvis-lnx_data:/d -v "$PWD":/b debian tar czf /b/jarvis-data
 Standard (`JARVIS_TLS=selfsigned`): Der Container erzeugt eine eigene kleine Zertifizierungsstelle und ein
 Zertifikat für die Namen in `JARVIS_HOSTS`. Die App bekommt den **Fingerabdruck dieser CA im QR-Code** und vertraut
 genau diesem Server, ohne Warnung. Browser warnen einmal; wer das nicht will, importiert die CA
-(`https://<server-ip>:8443/jarvis-ca.crt`) und vergleicht den Fingerabdruck mit dem im Admin-Panel.
+(`https://<server-ip>:8443/nuorb-ca.crt`) und vergleicht den Fingerabdruck mit dem im Admin-Panel.
 
 Eigenes Zertifikat (z. B. `tailscale cert`, eigene CA, Let's Encrypt per DNS): `JARVIS_TLS=custom` und den Ordner
 mit `fullchain.pem`/`privkey.pem` in `compose.yaml` unter `/certs` einbinden. Hinter einem Reverse-Proxy (z. B.
 Caddy): `JARVIS_TLS=off`, `JARVIS_BIND=127.0.0.1`, `JARVIS_PUBLIC_URL` auf die Proxy-Adresse.
 
 **Server automatisch finden (mDNS):** Mit `network_mode: host` und `JARVIS_MDNS=1` kündigt sich der Server als
-`_jarvislnx._tcp` im Heimnetz an, und die App listet ihn. Im normalen Bridge-Netz geht das nicht; dann IP eintragen.
+`_nuorb._tcp` (und für ältere Apps `_jarvislnx._tcp`) im Heimnetz an, und die App listet ihn. Im normalen Bridge-Netz geht das nicht; dann IP eintragen.
 
 ## Gehirn und Sprache
 
@@ -142,7 +154,7 @@ sich vor und fragt auch nach deinem Namen.
 Sprache **Deutsch oder Englisch** wählst du in der Einrichtung (Oberfläche: `UI_LANG=auto` folgt der Gerätesprache; Admin-Webinterface: `ADMIN_LANG=en` oder `de`, im Browser umschaltbar); dazu passende Stimmen (Thorsten, Kerstin; Alan, Ryan,
 Amy). Stimmen-Lizenzen: <https://huggingface.co/rhasspy/piper-voices> (Thorsten: CC0). 
 
-Optional „Hey Jarvis“ in der App: Die openWakeWord-Dateien (`melspectrogram.tflite`, `embedding_model.tflite`,
+Optionales Weckwort in der App: Die openWakeWord-Dateien (`melspectrogram.tflite`, `embedding_model.tflite`,
 `hey_jarvis_v0.1.tflite`) können im Volume unter `jarvis/wakeword/` liegen; die App fragt sonst selbst beim
 offiziellen Projekt an.
 
@@ -155,7 +167,7 @@ du im Admin unter „MCP-Server“ an (z. B. Home Assistant).
 
 ```bash
 docker compose ps                    # läuft er? (healthy)
-docker compose logs -f jarvis        # alles; Zeilen [jarvis-init], [jarvis-models], [pair], Hermes
+docker compose logs -f jarvis        # alles; Zeilen [nuorb-init], [nuorb-models], [nuorb-admin], [pair], Hermes
 docker compose exec jarvis /command/s6-svstat /run/service/jarvis-ui    # einzelner Dienst
 ```
 
@@ -165,7 +177,7 @@ docker compose exec jarvis /command/s6-svstat /run/service/jarvis-ui    # einzel
 | Einrichtungscode nicht im Log | `docker compose exec jarvis cat /opt/data/jarvis/admin/setup-code.txt` |
 | „Nur im Heimnetz erreichbar“ | Zugriff kommt aus einem nicht erlaubten Netz → `JARVIS_ALLOWED_NETS` ergänzen. |
 | Spracherkennung offline nach dem Start | Modelle laden noch (Fortschritt in der Einrichtung). Ohne Internet: Meldung dort, Container versucht es weiter. |
-| JARVIS antwortet „hat noch kein Gehirn“ | Einrichtung im Admin abschließen. |
+| NuOrb antwortet „hat noch kein Gehirn“ | Einrichtung im Admin abschließen. |
 | Antworten leer oder Fehler „context window … below 64,000“ | Ollama-Kontext zu klein, siehe oben. |
 | App: Zertifikatsfehler | Server-IP fehlt in `JARVIS_HOSTS` → eintragen, `docker compose up -d`, neu koppeln. |
 | Ollama „nicht erreichbar“ | Vom Server aus testen: `curl http://<ollama-ip>:11434/api/version`; Ollama auf `0.0.0.0` lauschen lassen, Firewall. |
@@ -174,7 +186,7 @@ docker compose exec jarvis /command/s6-svstat /run/service/jarvis-ui    # einzel
 
 ## Für Entwickler
 
-* `docker/src/` ist eine bereinigte Kopie von jarvis-ui, jarvis-admin und dem STT-Router
+* `docker/src/` ist eine bereinigte Kopie der NuOrb-Oberfläche, des NuOrb-Admin-Panels und des STT-Routers
   (`python3 docker/tools/prepare-src.py`; bricht ab, wenn private Werte übrig bleiben).
 * `app/` lädt die Originalserver unverändert als Modul und ergänzt Kopplung, s6-Dienste, Einrichtung.
 * Image bauen: `docker compose build`. Veröffentlichung per GitHub Actions bei Tag `v*` (`github/workflows/docker.yml`).
@@ -186,16 +198,20 @@ docker compose exec jarvis /command/s6-svstat /run/service/jarvis-ui    # einzel
 
 ## English summary
 
-JARVIS LNX runs as one Docker container (amd64/arm64): Hermes Agent, the JARVIS web UI, admin panel, local speech
+The NuOrb server runs as one Docker container (amd64/arm64): Hermes Agent, the NuOrb web UI, admin panel, local speech
 recognition (Parakeet, CPU) and speech synthesis (Piper). The LLM is your own Ollama (≥ 64k context required), the
 Claude API, or both with automatic fallback.
 
-1. `git clone https://github.com/Anarki-LNX/jarvis-lnx && cd jarvis-lnx/docker`
+1. `git clone https://github.com/Anarki-LNX/nuorb && cd nuorb/docker`
 2. `cp .env.example .env` – set `JARVIS_HOSTS` (server IP), `JARVIS_LANG=en`, `TZ`
 3. `docker compose up -d` (first start downloads ~530 MB of speech models)
 4. `docker compose logs jarvis | grep -i "setup code"`
 5. Open `https://<server-ip>:8444`, enter the code, set a password, follow the setup (language, brain), then
-   “Pair device” → scan the QR code with the JARVIS app or enter the code at `https://<server-ip>:8443`.
+   “Pair device” → scan the QR code with the NuOrb app or enter the code at `https://<server-ip>:8443`.
+
+**Migrating from the jarvis-lnx image:** since v0.3.0 the image is `ghcr.io/anarki-lnx/nuorb`. Change the `image:`
+line in your `compose.yaml` (or take the new one from the repo), then `docker compose pull && docker compose up -d`.
+Volumes, `.env`, certificates and paired devices stay, because the compose project name `jarvis-lnx` is unchanged.
 
 Never expose the ports to the internet; use a VPN. The QR code carries the fingerprint of the server's own CA, so the
 app trusts exactly this server.

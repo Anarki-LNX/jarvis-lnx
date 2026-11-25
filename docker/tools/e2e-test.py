@@ -116,6 +116,8 @@ def main() -> int:
     der = ssl.PEM_cert_to_DER_cert(ca_pem.decode())
     fp = hashlib.sha256(der).hexdigest().upper()
     check("CA-Fingerabdruck passt zum QR-Code", fp == q.get("fp"), fp[:16] + "…")
+    st2, ca_new = Client(a.ui, insecure).req("GET", "/nuorb-ca.crt")
+    check("CA auch unter neuem Namen /nuorb-ca.crt", st2 == 200 and ca_new == ca_pem)
     pinned = ssl.create_default_context(cadata=ca_pem.decode())
     pinned.check_hostname = True
     app = Client(a.ui, pinned)
@@ -201,9 +203,14 @@ def main() -> int:
     check("Dateien der Oberfläche nur gekoppelt (401)", st == 401)
     st, _ = br.req("GET", "/tokens.css")
     check("Kopplungsseite lädt ihr Design (tokens.css frei)", st == 200)
+    br.cookies["nuorb_device"] = token     # neuer Cookie-Name der App ab 1.3.3
+    st, page = br.req("GET", "/")
+    st2, _ = br.req("GET", "/app.js")
+    check("Browser mit Cookie nuorb_device sieht die Oberfläche", st == 200 and b"app.js" in page and st2 == 200)
+    br.cookies.pop("nuorb_device")
     br.cookies["jarvis_device"] = token
     st, page = br.req("GET", "/")
-    check("Browser mit Cookie sieht JARVIS-Oberfläche", st == 200 and b"app.js" in page and b"data-build" in page)
+    check("Browser mit altem Cookie sieht die Oberfläche", st == 200 and b"app.js" in page and b"data-build" in page)
 
     # ---------------------------------------------------------------- Entkoppeln
     st, devs = adm.req("GET", "/api/pairing/devices")

@@ -8,7 +8,7 @@ and ElXreno's mainline kernel branch `courbet-7.3`.
 | `flake.nix`, `flake.lock` | builds `toplevel`, `boot-img`, `rootfs` (ext4, label `jarvis-root`) |
 | `site.nix` | **edit first**: address of the backend (`jarvisHost`) |
 | `configuration.nix` | base system: charge limit 60–80 %, rootfs on `userdata`, NetworkManager, nftables firewall, SSH (keys only), PipeWire (mic forced to S16LE), German locale |
-| `oberflaeche.nix` | UI switch `jarvis.oberflaeche = "cage"` (default, JARVIS is the only UI) or `"phosh"` (fallback) |
+| `oberflaeche.nix` | UI switch `jarvis.oberflaeche = "cage"` (default, NuOrb is the only UI) or `"phosh"` (fallback) |
 | `kiosk.nix` | Phosh-variant kiosk (Epiphany web-app mode), home CA, Firefox policies as reserve |
 | `geraet.nix`, `geraet/` | local device service on 127.0.0.1:8765 (Wi-Fi, reboot, power-off, brightness, volume, screen; origin-checked, logged), power-key handler, `jarvis-shell` user service on 127.0.0.1:8770 (local UI copy + proxy), emergency page |
 | `admin-ctl.nix` | restricted SSH entry for the admin panel: own user, forced command, key only accepted from `jarvisHost` |

@@ -1,5 +1,5 @@
 #!/command/with-contenv sh
-# JARVIS LNX: einmal pro Containerstart (root) – Ordner für hermes, dann Vorbereitung als hermes.
+# NuOrb-Server: einmal pro Containerstart (root) – Ordner für hermes, dann Vorbereitung als hermes.
 . /opt/jarvis/bin/jarvis-env
 set -e
 for d in /opt/models /opt/data/jarvis /opt/data/jarvis/logs /opt/data/jarvis/logs/ui /opt/data/jarvis/logs/admin /opt/data/jarvis/logs/stt; do

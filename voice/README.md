@@ -1,4 +1,4 @@
-# Eigene Stimme für Jarvis – Vorbereitung (Stand 2026-11-24)
+# Eigene Stimme für NuOrb – Vorbereitung (Stand 2026-11-24)
 
 Status: vorbereitet, **noch nichts installiert oder trainiert**.
 - Das früher genutzte Projekt ist nicht erreichbar (liegt auf einem entfernten PC).
@@ -11,11 +11,11 @@ Status: vorbereitet, **noch nichts installiert oder trainiert**.
 |---|---|
 | `aufnahme.py` | Aufnahmewerkzeug für den PC: Satz anzeigen, aufnehmen, anhören, weiter. Pegelanzeige, Qualitätsprüfung, Export |
 | `saetze.tsv` | 1000 Sätze, nach Nutzen sortiert (geschätzt: 250 ≈ 18 min, 500 ≈ 36 min, 750 ≈ 54 min, 1000 ≈ 73 min) |
-| `saetze-eigene.txt` | 89 Jarvis-typische Sätze (Uhrzeiten, Zahlen, Wetter, Rückfragen), jeder 8. Satz im Korpus |
+| `saetze-eigene.txt` | 89 NuOrb-typische Sätze (Uhrzeiten, Zahlen, Wetter, Rückfragen), jeder 8. Satz im Korpus |
 | `frei-aufnehmen.sh` | freies Erzählen am AT2020USB+ aufnehmen → `frei/` |
-| `frei-verarbeiten.py` | freie Aufnahmen prüfen, an Pausen schneiden, auf jarvis transkribieren → `frei-clips/` |
-| `frei-transkribieren-jarvis.py` | Hilfsskript, läuft per ssh auf jarvis (Parakeet, CPU) |
-| `korpus-auswahl.py` | Erzeugt `saetze.tsv` (läuft auf jarvis, nutzt den espeak-Phonemizer von Piper) |
+| `frei-verarbeiten.py` | freie Aufnahmen prüfen, an Pausen schneiden, auf dem Server transkribieren → `frei-clips/` |
+| `frei-transkribieren-jarvis.py` | Hilfsskript, läuft per ssh auf dem Server (Parakeet, CPU) |
+| `korpus-auswahl.py` | Erzeugt `saetze.tsv` (läuft auf dem Server, nutzt den espeak-Phonemizer von Piper) |
 | `aufnahmen/` | entsteht beim Aufnehmen: Roh-WAVs 48 kHz/24 Bit mono, `<id>.wav` |
 | `export-22050/` | entsteht beim Export: `wavs/`, `metadata.csv` (`id|text`, Piper/LJSpeech), `liste.txt` (`wavs/id.wav|text`) |
 
@@ -51,7 +51,7 @@ cd voice && python3 aufnahme.py
   - Lüfter und Heizungsrauschen möglichst weg; Handy stumm.
   - Den PC-Lüfter nicht neben das Mikro.
 - **Sprechen:**
-  - Natürlich und ruhig, so wie Jarvis klingen soll; nicht vorlesen-monoton, nicht schauspielern.
+  - Natürlich und ruhig, so wie NuOrb klingen soll; nicht vorlesen-monoton, nicht schauspielern.
   - Gleiche Stimmung und Lautstärke über alle Sitzungen.
   - Satz erst lesen, dann Leertaste, 0,5 s still, sprechen, 0,5 s still, Leertaste.
   - Versprecher → einfach neu aufnehmen.
@@ -82,7 +82,7 @@ python3 frei-verarbeiten.py pruefe        # Feedback zur neuesten Aufnahme: Pege
 ```
 
 ```bash
-python3 frei-verarbeiten.py alles         # an Pausen in 3–12-s-Clips schneiden + auf jarvis transkribieren
+python3 frei-verarbeiten.py alles         # an Pausen in 3–12-s-Clips schneiden + auf dem Server transkribieren
 ```
 
 ```bash
@@ -95,8 +95,8 @@ Was dabei passiert:
   - 0,2 s Rand bleibt dran, nichts wird über 12 s lang.
   - Hat ein Stück über 12 s gar keine Pause, wird es an der leisesten Stelle geteilt. Der Clip bekommt `_h` im Namen und landet nicht im Export.
 - **Transkription:**
-  - Mit Parakeet (sherpa-onnx), dem Modell, das auf jarvis schon läuft. Nur CPU, ~0,1–0,3 × Echtzeit.
-  - Das Audio geht nur ins LAN und wird auf jarvis danach sofort gelöscht.
+  - Mit Parakeet (sherpa-onnx), dem Modell, das auf dem Server schon läuft. Nur CPU, ~0,1–0,3 × Echtzeit.
+  - Das Audio geht nur ins LAN und wird auf dem Server danach sofort gelöscht.
   - Clips mit Auffälligkeiten (harter Schnitt, kein Text, unplausibles Tempo, Ende evtl. abgeschnitten) kommen nach `frei-clips/transkript-ausgeschlossen.tsv`.
 - **Wichtig – einmal durchlesen:** Der Text in `frei-clips/transkript.tsv` muss **exakt** dem Gesagten entsprechen.
   - Parakeet lässt „äh“ und Wiederholungen meist weg und schreibt Zahlen als Ziffern („14.30 Uhr“, „Dr.“).
@@ -136,8 +136,8 @@ Alle Werte sind Erfahrungswerte aus der Community, keine Herstellerangaben.
 | VRAM | ~2–4 GB (unbestätigt): neben Gemma (3,1 GiB frei) zu knapp, Ruckelgefahr → **nur im Modus Remote** | ähnlich |
 
 **Lohnt sich die Brücke? Ehrlich gesagt nur begrenzt.**
-- **Ja, als Hörprobe:** Schon nach der ersten Aufnahme hört man, wie „Jarvis mit deiner Stimme“ klingen könnte. Kostet einen Abend Einrichtung plus ~6 GB Download.
-- **Nicht als Alltagsstimme:** Sie braucht die GPU (Gemma muss weichen) und kann nicht auf jarvis laufen.
+- **Ja, als Hörprobe:** Schon nach der ersten Aufnahme hört man, wie „NuOrb mit deiner Stimme“ klingen könnte. Kostet einen Abend Einrichtung plus ~6 GB Download.
+- **Nicht als Alltagsstimme:** Sie braucht die GPU (Gemma muss weichen) und kann nicht auf dem Server laufen.
 - **Als Datenquelle** (synthetische Sätze für das Piper/Kokoro-Training):
   - Nur mit **Qwen3-TTS** (Apache). Bei F5 wären die Trainingsdaten aus einem Nicht-kommerziell-Modell abgeleitet. Privat unkritisch, aber unsauber.
   - Hilft nur, wenn echte Aufnahmen knapp bleiben (< 20 min nutzbar). Fehler des Klons werden mitgelernt.
@@ -163,17 +163,17 @@ Die Rohdaten bleiben unverändert.
 
 ## Ziel (präzisiert vom Nutzer)
 
-Training auf der PC-GPU, danach spricht das Modell **Text in der Stimme des Nutzers**, möglichst **auf der CPU von jarvis in Echtzeit**.
+Training auf der PC-GPU, danach spricht das Modell **Text in der Stimme des Nutzers**, möglichst **auf der CPU des Servers in Echtzeit**.
 - Eine GPU-Ausgabe kommt nur infrage, wenn sie hörbar deutlich besser ist.
 - VRAM spielt nur während des Trainings eine Rolle.
 - Das frühere Projekt ist nicht erreichbar. Laut Erinnerung war es „StyleTTS2 oder etwas Deutsches“ und brauchte eine GPU fürs Training.
 
 ## Modellvergleich (Primärquellen geprüft 2026-11-24, ohne Hörtest)
 
-| Kandidat | Lizenz Code / Gewichte | Training (Daten / VRAM / ROCm) | Ausgabe auf jarvis-CPU | Deutsch |
+| Kandidat | Lizenz Code / Gewichte | Training (Daten / VRAM / ROCm) | Ausgabe auf dem Server-CPU | Deutsch |
 |---|---|---|---|---|
 | **Piper-Fine-Tune** (piper1-gpl, Basis thorsten medium) | GPL-3.0 / thorsten CC0 (Checkpoints MIT-getaggt) | `wav\|Text`, 22050 Hz. Bei < 5 h laut Doku ~2000 Epochen. Ab ~8 GB VRAM (Batch 16–64). AMD: „Erfolg mit RX 7600“ gemeldet. | **Ja**, ONNX eingebaut. Gemessen thorsten medium: RTF 0,08, ~45 ms bis Audio. Läuft heute schon in Hermes. | gut verständlich, Prosodie eher flach |
-| **Kokoro-82M-Fine-Tune** (StyleTTS2-Familie, Rezept kikiri-tts, Basis „kokoro-deutsch-hui-base“) | Apache-2.0 / Apache-2.0, HUI-Basis CC0 | Zwei StyleTTS2-Stufen (Akustik, dann GAN + WavLM). Beispielstimmen mit nur **455–627 Clips** (~0,5–1 h). VRAM „10 GB+“, Batch 4 auf 12 GB. ROCm laut kikiri **nur fp32**, fp16 hängt; erste MIOpen-Kompilierung 10–30 min. | **wahrscheinlich ja**: „Echtzeit oder schneller“ laut Modellkarte, Fremd-Benchmark ONNX RTF ~0,64. Auf jarvis noch zu messen. ONNX-Export des deutschen Fine-Tunes unbestätigt. | **natürlicher als Piper** (Thorsten-Kokoro) |
+| **Kokoro-82M-Fine-Tune** (StyleTTS2-Familie, Rezept kikiri-tts, Basis „kokoro-deutsch-hui-base“) | Apache-2.0 / Apache-2.0, HUI-Basis CC0 | Zwei StyleTTS2-Stufen (Akustik, dann GAN + WavLM). Beispielstimmen mit nur **455–627 Clips** (~0,5–1 h). VRAM „10 GB+“, Batch 4 auf 12 GB. ROCm laut kikiri **nur fp32**, fp16 hängt; erste MIOpen-Kompilierung 10–30 min. | **wahrscheinlich ja**: „Echtzeit oder schneller“ laut Modellkarte, Fremd-Benchmark ONNX RTF ~0,64. Auf dem Server noch zu messen. ONNX-Export des deutschen Fine-Tunes unbestätigt. | **natürlicher als Piper** (Thorsten-Kokoro) |
 | **StyleTTS2** pur (Columbia) | MIT / Pretrained mit Auflage: Hörer informieren, dass die Stimme synthetisch ist (außer mit Zustimmung des Sprechers) | Fine-Tune ~1 h Daten, Beispiel 4 h auf 4× A100. Deutsch nur über multilingualen PL-BERT oder Umbau. | ja, aber Diffusion in PyTorch, langsamer als Kokoro | kein fertiges deutsches Modell. **Kokoro ist der praktische deutsche StyleTTS2-Weg** |
 | **IMS-Toucan** (Uni Stuttgart) | Apache-2.0 / Apache-2.0 | `--finetune` vorhanden. Paper: 30 min reichen für neuen Sprecher und neue Sprache. VRAM, ROCm und Zeit nicht dokumentiert. Seit v3.0 (2024) kein neues Release. | laut README „keine GPU nötig“, RTF unbestätigt | ja (Mehrsprachen-Modell), Qualität gegenüber Kokoro unbekannt |
 | F5-TTS German (HPI) | MIT / **CC-BY-NC-4.0** | Zero-Shot ab 5–15 s | **nein**, GPU | gut |
@@ -190,7 +190,7 @@ Training auf der PC-GPU, danach spricht das Modell **Text in der Stimme des Nutz
 
 ## Entscheidung
 
-Beide Wege bauen auf denselben Aufnahmen auf und enden mit einer Stimme, die auf jarvis ohne GPU spricht.
+Beide Wege bauen auf denselben Aufnahmen auf und enden mit einer Stimme, die auf dem Server ohne GPU spricht.
 
 1. **Hauptweg: Kokoro-Fine-Tune** (StyleTTS2-Familie, passt zur Erinnerung „StyleTTS2“)
    - Klingt natürlicher als Piper.
@@ -203,9 +203,9 @@ Beide Wege bauen auf denselben Aufnahmen auf und enden mit einer Stimme, die auf
    - Wird zuerst trainiert, weil es kürzer und risikoärmer ist. Dann gibt es schnell ein erstes Ergebnis zum Anhören.
 3. **IMS-Toucan** nur, falls beide nicht überzeugen.
 
-Danach entscheidet ein **Hörtest**: Piper-eigen gegen Kokoro-eigen gegen thorsten. Gemessen wird auf jarvis die Zeit bis zum ersten Audio und die RTF.
+Danach entscheidet ein **Hörtest**: Piper-eigen gegen Kokoro-eigen gegen thorsten. Gemessen wird auf dem Server die Zeit bis zum ersten Audio und die RTF.
 
-- Wenn Kokoro auf jarvis schnell genug ist (RTF < 0,5), wird es die Standardstimme.
+- Wenn Kokoro auf dem Server schnell genug ist (RTF < 0,5), wird es die Standardstimme.
 - Sonst Kokoro für längere Antworten und Piper für kurze. Oder einfach Piper.
 
 **Einwilligung:** Es ist die eigene Stimme des Nutzers. StyleTTS2-Auflage (Hinweis auf synthetische Stimme) gilt damit als erfüllt, solange die Stimme nur für Jarvis genutzt wird.
@@ -218,13 +218,13 @@ Gemma belegt mit dem Desktop bis 12,9 GiB, frei bleiben ~3,1 GiB.
 |---|---|---|
 | Piper-Training (Batch 16–32) | ~8–10 GB | **nein** |
 | Kokoro-Training (fp32, Batch 2–4) | ~10–12 GB | **nein** |
-| Ausgabe Piper / Kokoro | 0 (läuft auf jarvis-CPU) | egal |
+| Ausgabe Piper / Kokoro | 0 (läuft auf dem Server-CPU) | egal |
 
 **Training also nur im Wechselbetrieb, Ablauf:**
 1. **Der Nutzer stimmt dem Training zu.**
 2. **Gehirn-Modus auf „Remote“.**
-   - Das macht der Nutzer selbst (Admin-Panel oder Handy) oder es geschieht mit seiner Zustimmung über jarvis-admin `/internal/brain`.
-   - Gemma wird dabei sofort aus dem PC-VRAM entladen. JARVIS antwortet in der Zeit über Claude.
+   - Das macht der Nutzer selbst (Admin-Panel oder Handy) oder es geschieht mit seiner Zustimmung über das NuOrb-Admin-Panel (`/internal/brain`).
+   - Gemma wird dabei sofort aus dem PC-VRAM entladen. NuOrb antwortet in der Zeit über Claude.
 3. **Mit `rocm-smi --showmeminfo vram` prüfen,** dass das VRAM frei ist (nur noch der Desktop belegt ~1–2 GiB). Sonst nicht starten.
 4. **Training mit VRAM-Deckel 0,75** (Details siehe unten).
 5. **Danach den Modus zurück auf die vorherige Wahl des Nutzers stellen.** Diese Wahl wird in Schritt 2 notiert.
@@ -250,7 +250,7 @@ Gemma belegt mit dem Desktop bis 12,9 GiB, frei bleiben ~3,1 GiB.
    - Erst ein kurzer Probelauf, dann über Nacht.
 4. **Kokoro-Fine-Tune** über kikiri-tts.
    - Download: Repo, Kokoro-82M, HUI-Basis, WavLM, zusammen grob 2–3 GB (unbestätigt, wird vorher genau geprüft).
-5. **Auf jarvis messen und Hörtest,** dann in Hermes eintragen.
+5. **Auf dem Server messen und Hörtest,** dann in Hermes eintragen.
    - Piper: `tts.piper.voice`.
    - Kokoro: über einen kleinen lokalen TTS-Dienst wie beim STT-Router (Hermes-Anbindung prüfen).
 

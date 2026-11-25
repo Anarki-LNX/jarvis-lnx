@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Kopiert jarvis-ui, jarvis-admin und den STT-Router in docker/src/ (Build-Kontext des Images).
+"""Kopiert NuOrb-Oberfläche, NuOrb-Admin und den STT-Router in docker/src/ (Build-Kontext des Images).
 
 Dabei werden nutzerspezifische Werte (LAN-Adressen, Unit-IDs, Namen) durch neutrale Platzhalter ersetzt.
 Danach prüft ein Wächter den ganzen Ordner: Findet er noch etwas Privates, bricht er mit Exit 1 ab, und es

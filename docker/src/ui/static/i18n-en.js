@@ -374,4 +374,6 @@ window.I18N_EN = {
   "am stärksten, denkt immer": "strongest, always thinks",
   "bald verfügbar": "coming soon",
   "Weckwort kommt mit einem Update. Bis dahin: Orb antippen.": "The wake word is coming in an update. Until then, tap the orb.",
+  "App-Einstellungen": "App settings",
+  "Server, Kopplung, Sprache, Updates": "Server, pairing, language, updates",
 };

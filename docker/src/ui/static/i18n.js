@@ -1,4 +1,6 @@
 // Oberflaechen-Sprache und Marke (vor app.js geladen).
+// Hinweis: „JARVIS“ in den deutschen Schluesseln ist nur ein interner Platzhalter fuer den Assistentennamen und wird
+// immer ersetzt (sichtbar ist der konfigurierte Name, Standard NuOrb).
 // Schluessel = der deutsche Originaltext. Deutsch bleibt also immer exakt wie im Code; Englisch kommt aus I18N_EN
 // (i18n-en.js). Platzhalter {name} werden mit vars gefuellt. Danach wird die Marke ersetzt: „JARVIS“ -> brand,
 // „Hey Jarvis“ -> wake (Weckwort). Konfiguration: window.JARVIS_CFG (vom Server in index.html gerendert:
@@ -12,10 +14,10 @@
   if (lang !== "en") lang = "de";
   const clean = (x) => String(x || "").replace(/[^\p{L}\p{N} .\-]/gu, "").trim().slice(0, 24);
   // brand = Produkt (Titel, Manifest, Weckwort), name = wie der Assistent heisst und angesprochen wird
-  const brand = clean(qp.get("brand")) || clean(cfg.brand) || "JARVIS";
+  const brand = clean(qp.get("brand")) || clean(cfg.brand) || "NuOrb";
   let name = clean(qp.get("name")) || (clean(qp.get("brand")) ? brand : "") || clean(cfg.assistant_name) || brand;
   const cap = (b) => (b === b.toUpperCase() ? b.charAt(0) + b.slice(1).toLowerCase() : b);
-  let appWake = ""; try { const A = window.JarvisAndroid; if (A && typeof A.wakePhrase === "function") appWake = clean(A.wakePhrase()); } catch (e) { /* alte App */ }
+  let appWake = ""; try { const A = window.NuOrbAndroid || window.JarvisAndroid; if (A && typeof A.wakePhrase === "function") appWake = clean(A.wakePhrase()); } catch (e) { /* alte App */ }
   const wake = clean(qp.get("wake")) || appWake || clean(cfg.wake_phrase) || "Hey " + cap(brand);
   const EN = () => window.I18N_EN || {};
 

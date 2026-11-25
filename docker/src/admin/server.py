@@ -1,4 +1,4 @@
-"""JARVIS-Verwaltung: Einstellungs-Web-UI für Hermes/JARVIS (HTTPS :8444, nur LAN, Login).
+"""NuOrb-Verwaltung: Einstellungs-Web-UI für Hermes/NuOrb (HTTPS :8444, nur LAN, Login).
 
 Grundsaetze
 - Jede Dateiaenderung läuft über denselben Weg: Vorschau (Diff) -> Bestätigung -> Sicherung -> atomar schreiben

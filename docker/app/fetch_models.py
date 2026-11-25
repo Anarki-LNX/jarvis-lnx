@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""JARVIS LNX (Docker): lädt beim ersten Start die Sprachmodelle ins Modell-Volume (nicht ins Image gebacken).
+"""NuOrb-Server (Docker): lädt beim ersten Start die Sprachmodelle ins Modell-Volume (nicht ins Image gebacken).
 
   * Piper-Stimme(n): rhasspy/piper-voices auf Hugging Face (Standard: de_DE-thorsten-medium bzw. en_GB-alan-medium)
   * Spracherkennung: Parakeet-TDT-0.6B-v3 int8 für sherpa-onnx (GitHub-Release k2-fsa/sherpa-onnx, ~465 MB)

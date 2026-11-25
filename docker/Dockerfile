@@ -1,6 +1,6 @@
-# JARVIS LNX – selbst gehosteter Sprachassistent als ein Container.
+# NuOrb-Server – selbst gehosteter Sprachassistent als ein Container.
 # Basis: offizielles Hermes-Agent-Image (s6-überwacht, Benutzer hermes, Daten unter /opt/data).
-# Darauf: JARVIS-Oberfläche (:8443), Admin-Panel (:8444), STT-Router mit Parakeet (CPU) und Piper-TTS.
+# Darauf: NuOrb-Oberfläche (:8443), Admin-Panel (:8444), STT-Router mit Parakeet (CPU) und Piper-TTS.
 # Modelle und Stimmen werden beim ersten Start ins Volume /opt/models geladen, nicht ins Image gebacken.
 ARG HERMES_IMAGE=nousresearch/hermes-agent:v0.23.4
 
@@ -33,7 +33,7 @@ RUN ln -sfn /opt/data /opt/jarvis/home/.hermes \
 EXPOSE 8443 8444
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 CMD ["/opt/jarvis/bin/healthcheck"]
 
-# Hermes-Gateway (Agent + API auf 127.0.0.1:8642) als Hauptprozess; JARVIS-Dienste laufen daneben unter s6.
+# Hermes-Gateway (Agent + API auf 127.0.0.1:8642) als Hauptprozess; die NuOrb-Dienste laufen daneben unter s6.
 # Version für die Anzeige im Admin („NuOrb Server v…“); im Release setzt der GitHub-Workflow den Tag ein
 ARG JARVIS_LNX_VERSION=dev
 ENV JARVIS_LNX_VERSION=${JARVIS_LNX_VERSION}

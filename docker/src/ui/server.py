@@ -561,7 +561,8 @@ DEVICES_FILE = CONF_DIR / "devices.json"
 PAIRING_FILE = CONF_DIR / "pairing.json"
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 PAIR_PUBLIC = {"/api/info", "/api/pair"}
-DEVICE_COOKIE = "jarvis_device"
+DEVICE_COOKIE = "nuorb_device"
+DEVICE_COOKIE_OLD = "jarvis_device"  # NuOrb-App < 1.3.3 und Docker-Image setzen noch diesen Namen
 _pair_fails: dict[str, list[float]] = {}
 _seen_cache: dict[str, float] = {}
 
@@ -608,9 +609,11 @@ def device_token(request: Request) -> str:
     auth = request.headers.get("authorization", "")
     if auth.lower().startswith("bearer "):
         return auth[7:].strip()
-    return request.cookies.get(DEVICE_COOKIE, "")
+    return request.cookies.get(DEVICE_COOKIE, "") or request.cookies.get(DEVICE_COOKIE_OLD, "")
 
 
+# ACHTUNG: Name und Aufruf ueber das Modul-Global stabil lassen – das Docker-Image ersetzt device_for_request
+# (Loopback mit internem Token gilt dort als gekoppelt); lan_only ruft es zur Laufzeit ueber den Modulnamen auf.
 def device_for_request(request: Request) -> str | None:
     token = device_token(request)
     if not token or len(token) > 200:
@@ -639,7 +642,7 @@ def server_name() -> str:
 @app.get("/api/info")
 async def api_info(request: Request):
     uc = ui_cfg()
-    return {"product": "jarvis-ui", "api": 1, "name": server_name(), "brand": uc["brand"],
+    return {"product": "jarvis-lnx", "api": 1, "name": server_name(), "brand": uc["brand"],
             "assistant_name": uc["assistant_name"], "ui_lang": uc["ui_lang"], "lang": "en" if uc["ui_lang"] == "en" else "de",
             "pairing_required": pairing_required(), "paired": device_for_request(request) is not None, "build": build_id()}
 
@@ -671,7 +674,8 @@ async def api_pair(request: Request):
     resp = JSONResponse({"token": token, "device_id": did, "name": server_name(), "api": 1,
                          "lang": "en" if uc["ui_lang"] == "en" else "de"})
     if body.get("cookie") is True:
-        resp.set_cookie(DEVICE_COOKIE, token, max_age=10 * 365 * 86400, httponly=True, secure=True, samesite="strict", path="/")
+        for ck in (DEVICE_COOKIE, DEVICE_COOKIE_OLD):
+            resp.set_cookie(ck, token, max_age=10 * 365 * 86400, httponly=True, secure=True, samesite="strict", path="/")
     return resp
 
 
@@ -685,6 +689,7 @@ async def api_unpair(request: Request):
         print(f"[pair] Geraet entkoppelt: {did}", flush=True)
     resp = JSONResponse({"ok": True, "removed": bool(did)})
     resp.delete_cookie(DEVICE_COOKIE, path="/")
+    resp.delete_cookie(DEVICE_COOKIE_OLD, path="/")
     return resp
 
 
@@ -1005,12 +1010,14 @@ async def tts(request: Request):
 
 
 # --------------------------------------------------------------------------- Statisch
+@app.get("/nuorb-ca.crt")
 @app.get("/jarvis-ca.crt")
-async def ca_cert():
+async def ca_cert(request: Request):
     p = CERT_DIR / "jarvis-ca.crt"
     if not p.exists():
         raise HTTPException(404)
-    return FileResponse(p, media_type="application/x-x509-ca-cert", filename="jarvis-ca.crt")
+    name = "nuorb-ca.crt" if request.url.path.startswith("/nuorb") else "jarvis-ca.crt"
+    return FileResponse(p, media_type="application/x-x509-ca-cert", filename=name)
 
 
 # Build-Kennung = Hash ueber die ausgelieferten Dateien. index.html bekommt sie als data-build und als ?v= an
@@ -1026,7 +1033,7 @@ def ui_cfg() -> dict:
         v = v if isinstance(v, str) and v.strip() else os.environ.get(env, default)
         return re.sub(r"[^\w .äöüÄÖÜß-]", "", str(v)).strip()[:24] or default
     lang = pick("ui_lang", "UI_LANG", "de").lower()
-    brand = pick("brand_name", "BRAND_NAME", "JARVIS")
+    brand = pick("brand_name", "BRAND_NAME", "NuOrb")
     wake = pick("wake_phrase", "WAKE_PHRASE", "")
     name = pick("assistant_name", "ASSISTANT_NAME", brand)  # wie der Assistent heisst (Standard = Produkt)
     return {"brand": brand, "assistant_name": name, "wake_phrase": wake or None,
