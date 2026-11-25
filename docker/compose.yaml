@@ -1,5 +1,6 @@
-# NuOrb – Installation: .env.example nach .env kopieren, anpassen, dann `docker compose up -d`.
+# NuOrb-Server – Installation: .env.example nach .env kopieren, anpassen, dann `docker compose up -d`.
 # Details: README.md
+# Projektname bleibt „nuorb“: Daran hängen die Volume-Namen (nuorb_data, nuorb_models) bestehender Installationen.
 name: nuorb
 
 services:

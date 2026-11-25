@@ -1,5 +1,5 @@
 #!/command/with-contenv sh
-# NuOrb: einmal pro Containerstart (root) – Ordner für hermes, dann Vorbereitung als hermes.
+# NuOrb-Server: einmal pro Containerstart (root) – Ordner für hermes, dann Vorbereitung als hermes.
 . /opt/nuorb/bin/nuorb-env
 set -e
 for d in /opt/models /opt/data/nuorb /opt/data/nuorb/logs /opt/data/nuorb/logs/ui /opt/data/nuorb/logs/admin /opt/data/nuorb/logs/stt; do

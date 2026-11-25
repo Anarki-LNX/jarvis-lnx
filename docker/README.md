@@ -1,4 +1,4 @@
-# NuOrb (NuOrb) – Server als Docker-Container
+# NuOrb – Server als Docker-Container
 
 Dein eigener Sprachassistent in **einem** Container: Hermes Agent als Gehirn-Framework, die NuOrb-Oberfläche mit Orb,
 ein Admin-Panel, Spracherkennung (Parakeet, läuft auf der CPU) und Sprachausgabe (Piper). Denken lässt du entweder
@@ -59,7 +59,7 @@ cp .env.example .env && nano .env
 docker compose up -d
 
 # 4. Einrichtungscode anzeigen
-docker compose logs nuorb | grep -i einrichtungscode
+docker compose logs nuorb | grep -i "setup code"
 ```
 
 5. Im Browser **`https://<server-ip>:8444`** öffnen. Beim ersten Mal warnt der Browser vor dem Zertifikat
@@ -85,6 +85,18 @@ Ein Code gilt 10 Minuten und nur einmal. Gekoppelte Geräte stehen im Admin-Pane
 docker compose pull && docker compose up -d        # neues Image, Daten bleiben
 docker run --rm -v nuorb_data:/d -v "$PWD":/b debian tar czf /b/nuorb-data.tgz -C /d .   # Sicherung
 ```
+
+### Umstieg vom Image `nuorb`
+
+Das Image heißt seit v0.3.0 `ghcr.io/anarki-lnx/nuorb`. Wer noch `ghcr.io/anarki-lnx/nuorb` nutzt, ändert in
+seiner `compose.yaml` nur die `image:`-Zeile (oder holt die neue `compose.yaml` aus dem Repo) und startet neu:
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+Volumes, `.env`, Zertifikate und gekoppelte Geräte bleiben, weil der Compose-Projektname `nuorb` gleich bleibt.
+Das alte Image bekommt keine Updates mehr.
 
 ## Was wo liegt
 
@@ -122,7 +134,7 @@ mit `fullchain.pem`/`privkey.pem` in `compose.yaml` unter `/certs` einbinden. Hi
 Caddy): `NUORB_TLS=off`, `NUORB_BIND=127.0.0.1`, `NUORB_PUBLIC_URL` auf die Proxy-Adresse.
 
 **Server automatisch finden (mDNS):** Mit `network_mode: host` und `NUORB_MDNS=1` kündigt sich der Server als
-`_nuorb._tcp` im Heimnetz an, und die App listet ihn. Im normalen Bridge-Netz geht das nicht; dann IP eintragen.
+`_nuorb._tcp` (und für ältere Apps `_nuorb._tcp`) im Heimnetz an, und die App listet ihn. Im normalen Bridge-Netz geht das nicht; dann IP eintragen.
 
 ## Gehirn und Sprache
 
@@ -142,7 +154,7 @@ sich vor und fragt auch nach deinem Namen.
 Sprache **Deutsch oder Englisch** wählst du in der Einrichtung (Oberfläche: `UI_LANG=auto` folgt der Gerätesprache; Admin-Webinterface: `ADMIN_LANG=en` oder `de`, im Browser umschaltbar); dazu passende Stimmen (Thorsten, Kerstin; Alan, Ryan,
 Amy). Stimmen-Lizenzen: <https://huggingface.co/rhasspy/piper-voices> (Thorsten: CC0). 
 
-Optional „Hey NuOrb“ in der App: Die openWakeWord-Dateien (`melspectrogram.tflite`, `embedding_model.tflite`,
+Optionales Weckwort in der App: Die openWakeWord-Dateien (`melspectrogram.tflite`, `embedding_model.tflite`,
 `hey_nuorb_v0.1.tflite`) können im Volume unter `nuorb/wakeword/` liegen; die App fragt sonst selbst beim
 offiziellen Projekt an.
 
@@ -155,7 +167,7 @@ du im Admin unter „MCP-Server“ an (z. B. Home Assistant).
 
 ```bash
 docker compose ps                    # läuft er? (healthy)
-docker compose logs -f nuorb        # alles; Zeilen [nuorb-init], [nuorb-models], [pair], Hermes
+docker compose logs -f nuorb        # alles; Zeilen [nuorb-init], [nuorb-models], [nuorb-admin], [pair], Hermes
 docker compose exec nuorb /command/s6-svstat /run/service/nuorb-ui    # einzelner Dienst
 ```
 
@@ -174,7 +186,7 @@ docker compose exec nuorb /command/s6-svstat /run/service/nuorb-ui    # einzelne
 
 ## Für Entwickler
 
-* `docker/src/` ist eine bereinigte Kopie von nuorb-ui, nuorb-admin und dem STT-Router
+* `docker/src/` ist eine bereinigte Kopie der NuOrb-Oberfläche, des NuOrb-Admin-Panels und des STT-Routers
   (`python3 docker/tools/prepare-src.py`; bricht ab, wenn private Werte übrig bleiben).
 * `app/` lädt die Originalserver unverändert als Modul und ergänzt Kopplung, s6-Dienste, Einrichtung.
 * Image bauen: `docker compose build`. Veröffentlichung per GitHub Actions bei Tag `v*` (`github/workflows/docker.yml`).
@@ -186,7 +198,7 @@ docker compose exec nuorb /command/s6-svstat /run/service/nuorb-ui    # einzelne
 
 ## English summary
 
-NuOrb runs as one Docker container (amd64/arm64): Hermes Agent, the NuOrb web UI, admin panel, local speech
+The NuOrb server runs as one Docker container (amd64/arm64): Hermes Agent, the NuOrb web UI, admin panel, local speech
 recognition (Parakeet, CPU) and speech synthesis (Piper). The LLM is your own Ollama (≥ 64k context required), the
 Claude API, or both with automatic fallback.
 
@@ -196,6 +208,10 @@ Claude API, or both with automatic fallback.
 4. `docker compose logs nuorb | grep -i "setup code"`
 5. Open `https://<server-ip>:8444`, enter the code, set a password, follow the setup (language, brain), then
    “Pair device” → scan the QR code with the NuOrb app or enter the code at `https://<server-ip>:8443`.
+
+**Migrating from the nuorb image:** since v0.3.0 the image is `ghcr.io/anarki-lnx/nuorb`. Change the `image:`
+line in your `compose.yaml` (or take the new one from the repo), then `docker compose pull && docker compose up -d`.
+Volumes, `.env`, certificates and paired devices stay, because the compose project name `nuorb` is unchanged.
 
 Never expose the ports to the internet; use a VPN. The QR code carries the fingerprint of the server's own CA, so the
 app trusts exactly this server.

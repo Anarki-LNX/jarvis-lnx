@@ -1,4 +1,4 @@
-"""NuOrb (Docker): gemeinsame Bausteine für UI- und Admin-Hülle.
+"""NuOrb-Server (Docker): gemeinsame Bausteine für UI- und Admin-Hülle.
 
 - Pfade im Container
 - Zertifikate (eigene Heim-CA + Server-Zertifikat, oder eigene Dateien)
@@ -22,7 +22,7 @@ from pathlib import Path
 
 # ------------------------------------------------------------------ Pfade
 DATA = Path(os.environ.get("HERMES_HOME", "/opt/data"))          # Hermes-Daten (Volume)
-J = DATA / "nuorb"                                              # alles von NuOrb
+J = DATA / "nuorb"                                              # alles von NuOrb-Server
 CONF = J / "config"                                              # ui.json, internal.token, devices.json, pairing.json
 CERTS = J / "certs"
 MODELS = Path(os.environ.get("NUORB_MODELS", "/opt/models"))    # Stimmen + STT-Modelle (Volume)
@@ -70,7 +70,7 @@ def ui_lang_setting() -> str:
 
 
 def server_label() -> str:
-    """Sichtbarer Servername mit Version, z. B. „NuOrb Server v0.2.1“ (kein „NuOrb“ in der Oberfläche)."""
+    """Sichtbarer Servername mit Version, z. B. „NuOrb Server v0.2.1“ (nur mit der Marke)."""
     ver = env("NUORB_BUILD").lstrip("v")
     return f"{brand()} Server" + (f" v{ver}" if ver and ver != "dev" else (" (dev)" if ver else ""))
 

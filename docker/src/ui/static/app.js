@@ -6,7 +6,7 @@
   const DE = !window.I18N || window.I18N.lang === "de"; // lokale Sprachbefehle (deutsche Muster) nur auf Deutsch
   const LOC = DE ? "de-DE" : "en-GB";
   const $ = (id) => document.getElementById(id);
-  const VERSION = "2026-11-25.53";
+  const VERSION = "2026-11-25.55";
   // Kurzes Client-Log ins Server-Journal (Kiosk hat keine JS-Konsole)
   function clog(msg) {
     try { fetch("/api/clientlog", { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
@@ -35,10 +35,11 @@
   };
   const opts = { voice: store.get("voice", true), calm: store.get("calm", false), earcons: store.get("earcons", true), micviz: store.get("micviz", true),
     follow: true, followTimeout: 8 }; // follow/followTimeout kommen aus ui.json (follow_up, follow_up_timeout_s) ueber /api/status
-  // Android-App (Sitzung android-app): WebView laedt nuorb direkt, Bruecke window.NuOrbAndroid.
+  // Android-App NuOrb (Sitzung android-app): WebView laedt den Server direkt, Bruecke window.NuOrbAndroid
+  // (ab App 1.3.3; aeltere Fassungen: window.NuOrbAndroid, dasselbe Objekt).
   // Vertrag: Wake lokal (getWake/setWake, Ereignis „nuorb-wake“), Zustand an native (state), kein /api/wake, kein Vollbild.
-  const ANDROID = !!window.NuOrbAndroid || new URLSearchParams(location.search).get("client") === "android"; // qp kommt erst weiter unten
-  const NATIVE = window.NuOrbAndroid || null;
+  const ANDROID = !!(window.NuOrbAndroid || window.NuOrbAndroid) || new URLSearchParams(location.search).get("client") === "android"; // qp kommt erst weiter unten
+  const NATIVE = window.NuOrbAndroid || window.NuOrbAndroid || null;
   let lastNative = "";
   function nativeState() {
     if (!NATIVE || typeof NATIVE.state !== "function") return;
@@ -1471,7 +1472,7 @@
     if (S.busy) return; // Antwort laeuft noch
     CONV.active = false;
     if (DEV.st && DEV.st.screen && DEV.st.screen.on === false) devCall("screen", { on: true }).catch(() => {});
-    handsFree("Hey NuOrb");
+    handsFree("Weckwort");
   }
   $("optFollow").addEventListener("change", async () => {
     const el = $("optFollow"), an = el.checked;
@@ -1482,6 +1483,11 @@
       opts.follow = an; if (!an) convEnd("ausgeschaltet"); toast(an ? t("NuOrb hört nach jeder Antwort kurz weiter zu.") : t("Nach der Antwort: wieder Tippen oder „Hey NuOrb“."));
     } catch (e) { el.checked = !an; toast(String(e.message || e)); }
   });
+  // NuOrb-App: native Einstellungen (Entkoppeln, Neu koppeln, Sprache, Updates) – Bruecke einstellungen(), seit App 1.0
+  if (NATIVE && typeof NATIVE.einstellungen === "function") {
+    $("appSettings").hidden = false;
+    $("appSettings").addEventListener("click", () => { try { NATIVE.einstellungen(); } catch (e) { toast(t("Umschalten fehlgeschlagen.")); } });
+  }
   $("wakeRow").addEventListener("click", () => { if (!wakeAvailable()) toast(t("Weckwort kommt mit einem Update. Bis dahin: Orb antippen.")); });
   $("optWake").addEventListener("change", async () => {
     const el = $("optWake"), an = el.checked;

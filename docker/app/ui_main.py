@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""NuOrb (Docker): Start der Web-Oberfläche (nuorb-ui) mit Kopplung.
+"""NuOrb-Server (Docker): Start der Web-Oberfläche (NuOrb-Oberfläche) mit Kopplung.
 
 Lädt nuorb-ui/server.py unverändert als Modul und ergänzt nur:
   * Kopplung: GET /api/info, POST /api/pair, POST /api/unpair, Seite /pair
   * Pflicht-Token für alle übrigen /api/*-Aufrufe (Bearer-Header oder Cookie nuorb_device);
-    Aufrufe aus dem Container selbst (Loopback, z. B. nuorb-admin) brauchen keinen.
+    Aufrufe aus dem Container selbst (Loopback, z. B. NuOrb-Admin) brauchen keinen.
   * Generisch: keine Haus-/Geräte-Weiche zu Claude, solange die Plugins aus sind (sonst gingen Sätze trotz
     „Lokal“ an die Cloud), Status mit Sprache und Servername.
 """
@@ -16,7 +16,7 @@ import sys
 import time
 from pathlib import Path
 
-from fastapi import Request
+from fastapi import HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.routing import APIRoute
 from starlette.routing import Route
@@ -28,9 +28,11 @@ import server as ui  # noqa: E402  (nuorb-ui/server.py)
 
 app = ui.app
 COOKIE = "nuorb_device"
+# Neue Namen der NuOrb-App ab 1.3.3; die alten bleiben gültig (Play-Version 1.3.2 kennt nur sie)
+COOKIES = ("nuorb_device", COOKIE)
 PAGES = jc.APP / "pages"
 
-# Generisch: Haus-, Geräte- und Cloud-Weiche sind über Feature-Flags von nuorb-ui aus (nuorb-env:
+# Generisch: Haus-, Geräte- und Cloud-Weiche sind über Feature-Flags der NuOrb-Oberfläche aus (nuorb-env:
 # NUORB_FEATURE_ZUHAUSE=0, NUORB_FEATURE_GERAET=0, NUORB_FEATURE_CLOUD_WEICHE=0) – im Modus „Lokal“ geht nichts an Claude.
 
 # Persona als Vorlage: {assistant_name}, {brand}, {user_name}; vor dem Kennenlernen mit Begrüßungsregel
@@ -85,7 +87,7 @@ def _token(request: Request) -> str:
     h = request.headers.get("authorization", "")
     if h.lower().startswith("bearer "):
         return h[7:].strip()
-    return request.cookies.get(COOKIE, "")
+    return next((request.cookies[c] for c in COOKIES if request.cookies.get(c)), "")
 
 
 def _device(request: Request) -> str | None:
@@ -93,7 +95,7 @@ def _device(request: Request) -> str | None:
 
 
 def _internal(request: Request) -> bool:
-    """Server-zu-Server im Container (nuorb-admin): nur Loopback UND gemeinsames internes Token.
+    """Server-zu-Server im Container (NuOrb-Admin): nur Loopback UND gemeinsames internes Token.
     Loopback allein reicht nicht – ein Reverse-Proxy auf demselben Host sähe sonst aus wie „intern“."""
     given = request.headers.get("x-nuorb-internal", "")
     if not given or not jc.is_loopback(_ip(request)):
@@ -106,26 +108,30 @@ def _internal(request: Request) -> bool:
     return bool(tok) and hmac.compare_digest(given.strip(), tok)
 
 
-# nuorb-ui prüft die Kopplung inzwischen auch selbst (lan_only -> device_for_request). Interne Aufrufe des Admin-Panels
+# NuOrb-Oberfläche prüft die Kopplung inzwischen auch selbst (lan_only -> device_for_request). Interne Aufrufe des Admin-Panels
 # (Loopback + internes Token) zählen dort als gekoppelt, sonst sieht die Übersicht die Oberfläche als „aus“.
 _orig_device_for_request = getattr(ui, "device_for_request", None)
 if _orig_device_for_request:
     def _device_for_request(request: Request):
         if _internal(request):
             return {"id": "internal", "name": "admin", "platform": "internal"}
+        did = _device(request)   # kennt auch Bearer und das Cookie nuorb_device
+        if did:
+            return {"id": did}
         return _orig_device_for_request(request)
     ui.device_for_request = _device_for_request
 
 
 def _set_cookie(resp: Response, token: str) -> None:
-    resp.set_cookie(COOKIE, token, max_age=10 * 365 * 86400, httponly=True, secure=True,
-                    samesite="strict", path="/")
+    for c in COOKIES:
+        resp.set_cookie(c, token, max_age=10 * 365 * 86400, httponly=True, secure=True,
+                        samesite="strict", path="/")
 
 
 NETS = jc.allowed_nets()
 PUBLIC_API = {"/api/info", "/api/pair"}
 # Für die Kopplungsseite nötig (ohne Inhalt über den Nutzer)
-PUBLIC_PAGES = {"/pair", "/pair.js", "/nuorb-ca.crt", "/tokens.css", "/icon.svg", "/favicon.ico"}
+PUBLIC_PAGES = {"/pair", "/pair.js", "/nuorb-ca.crt", "/nuorb-ca.crt", "/tokens.css", "/icon.svg", "/favicon.ico"}
 
 
 @app.middleware("http")
@@ -188,7 +194,8 @@ async def unpair(request: Request):
     if did:
         jc.revoke_device(did)
     resp = JSONResponse({"ok": True})
-    resp.delete_cookie(COOKIE, path="/")
+    for c in COOKIES:
+        resp.delete_cookie(c, path="/")
     return resp
 
 
@@ -297,7 +304,16 @@ async def assistant(request: Request):
     return JSONResponse(data, status_code=code)
 
 
+async def ca_alias(request: Request):
+    """/nuorb-ca.crt: neuer Name der Heim-CA für die NuOrb-App (alt /nuorb-ca.crt bleibt)."""
+    p = jc.CERTS / "nuorb-ca.crt"
+    if jc.tls_mode() != "selfsigned" or not p.is_file():
+        raise HTTPException(404)
+    return FileResponse(p, media_type="application/x-x509-ca-cert", filename="nuorb-ca.crt")
+
+
 NEW = [
+    APIRoute("/nuorb-ca.crt", ca_alias, methods=["GET"]),
     APIRoute("/api/assistant", assistant, methods=["GET", "POST"]),
     APIRoute("/api/ask", ask_guard, methods=["POST"]),
     APIRoute("/api/wakeword/{name}", wakeword, methods=["GET"]),
@@ -313,7 +329,7 @@ app.router.routes[0:0] = NEW  # zuerst passend gewinnt -> vor den Originalen und
 
 
 def mdns_start() -> None:
-    """mDNS-Ankündigung _nuorb._tcp (nur sinnvoll mit network_mode: host; im Bridge-Netz kommt Multicast nicht ins LAN)."""
+    """mDNS-Ankündigung _nuorb._tcp und _nuorb._tcp (nur sinnvoll mit network_mode: host; im Bridge-Netz kommt Multicast nicht ins LAN)."""
     if jc.env("NUORB_MDNS", "0") != "1":
         return
     try:
@@ -321,12 +337,13 @@ def mdns_start() -> None:
         from zeroconf import ServiceInfo, Zeroconf
         port = int(jc.env("NUORB_UI_PORT_PUBLIC", jc.env("UI_PORT", "8443")))
         name = jc.server_name()
-        info = ServiceInfo("_nuorb._tcp.local.", f"{name}._nuorb._tcp.local.", port=port,
-                           properties={"v": "1", "api": str(jc.API_VERSION), "name": name, "fp": jc.ca_fingerprint()},
-                           server=f"{socket.gethostname()}.local.")
         zc = Zeroconf()
-        zc.register_service(info, allow_name_change=True)
-        print(f"[mdns] _nuorb._tcp announced: {name} port {port}", flush=True)
+        props = {"v": "1", "api": str(jc.API_VERSION), "name": name, "fp": jc.ca_fingerprint()}
+        for typ in ("_nuorb._tcp", "_nuorb._tcp"):   # neuer Typ ab App 1.3.3, alter bleibt für 1.3.2
+            info = ServiceInfo(f"{typ}.local.", f"{name}.{typ}.local.", port=port, properties=props,
+                               server=f"{socket.gethostname()}.local.")
+            zc.register_service(info, allow_name_change=True)
+            print(f"[mdns] {typ} announced: {name} port {port}", flush=True)
     except Exception as exc:
         print(f"[mdns] announcement failed: {exc}", flush=True)
 

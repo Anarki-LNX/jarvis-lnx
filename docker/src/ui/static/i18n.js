@@ -1,4 +1,6 @@
 // Oberflaechen-Sprache und Marke (vor app.js geladen).
+// Hinweis: „NuOrb“ in den deutschen Schluesseln ist nur ein interner Platzhalter fuer den Assistentennamen und wird
+// immer ersetzt (sichtbar ist der konfigurierte Name, Standard NuOrb).
 // Schluessel = der deutsche Originaltext. Deutsch bleibt also immer exakt wie im Code; Englisch kommt aus I18N_EN
 // (i18n-en.js). Platzhalter {name} werden mit vars gefuellt. Danach wird die Marke ersetzt: „NuOrb“ -> brand,
 // „Hey NuOrb“ -> wake (Weckwort). Konfiguration: window.NUORB_CFG (vom Server in index.html gerendert:
@@ -15,7 +17,7 @@
   const brand = clean(qp.get("brand")) || clean(cfg.brand) || "NuOrb";
   let name = clean(qp.get("name")) || (clean(qp.get("brand")) ? brand : "") || clean(cfg.assistant_name) || brand;
   const cap = (b) => (b === b.toUpperCase() ? b.charAt(0) + b.slice(1).toLowerCase() : b);
-  let appWake = ""; try { const A = window.NuOrbAndroid; if (A && typeof A.wakePhrase === "function") appWake = clean(A.wakePhrase()); } catch (e) { /* alte App */ }
+  let appWake = ""; try { const A = window.NuOrbAndroid || window.NuOrbAndroid; if (A && typeof A.wakePhrase === "function") appWake = clean(A.wakePhrase()); } catch (e) { /* alte App */ }
   const wake = clean(qp.get("wake")) || appWake || clean(cfg.wake_phrase) || "Hey " + cap(brand);
   const EN = () => window.I18N_EN || {};
 
