@@ -261,7 +261,10 @@ async function viewModel(view) {
       <pre class="out mt" id="fbOut" hidden></pre></div>
     <div class="panel span-7"><h3>Lokales Modell (PC-Ollama)</h3>
       ${br.mode === "remote" ? `<div class="note">Im Modus Remote ruht das lokale Modell. Diese Auswahl gilt wieder, sobald du auf Lokal oder Automatisch stellst.</div><br>` : ""}
-      <label class="field"><span>Modell auf dem PC (Ollama ${m.online ? "erreichbar" : "nicht erreichbar"})</span><select id="mDefault" ${br.mode === "remote" ? "disabled" : ""}>${opts}</select></label>
+      <label class="field"><span>Ollama-Adresse</span><span class="inline"><input id="oUrl" class="mono grow" value="${esc(m.ollama_url || "")}" placeholder="http://192.168.1.50:11434" spellcheck="false"><button class="btn ghost" id="oTest" type="button">Verbindung testen</button></span>
+        <small>Adresse des PCs mit Ollama im Heimnetz. Ohne Port wird 11434 angenommen.</small></label>
+      <div id="oRes" class="small"></div>
+      <label class="field"><span>Modell auf dem PC (Ollama <span id="oState">${m.online ? "erreichbar" : "nicht erreichbar"}</span>)</span><select id="mDefault" ${br.mode === "remote" ? "disabled" : ""}>${opts}</select></label>
       <div class="grid2">
         <label class="field"><span>Kontextlänge (Token)</span><input id="mCtx" type="number" min="2048" step="1024" value="${esc(m.model.context_length || "")}"><small>64k = 65536. Mehr Kontext braucht mehr VRAM.</small></label>
         <label class="field"><span>Denktiefe (global)</span><select id="mReason">${["none", "low", "medium", "high"].map((r) => `<option ${r === m.reasoning ? "selected" : ""} value="${r}">${{ none: "aus", low: "niedrig", medium: "mittel", high: "hoch" }[r]}</option>`).join("")}</select>
@@ -274,7 +277,18 @@ async function viewModel(view) {
   const upd = () => { const md = $("input[name=bmode]:checked", view)?.value; $("#pickRemote").hidden = md !== "remote"; $("#pickFallback").hidden = md !== "auto"; $("#privacyNote").hidden = md === "local"; };
   $$("input[name=bmode]", view).forEach((r) => r.onchange = upd); upd();
   $("#brainSave").onclick = () => change(() => api("/api/brain/save", { method: "POST", body: { mode: $("input[name=bmode]:checked", view).value, remote_model: $("input[name=bremote]:checked", view)?.value, fallback_model: $("input[name=bfallback]:checked", view)?.value } }), () => { show("modell"); pollStatus(); });
-  $("#saveModel").onclick = () => change(() => api("/api/models/save", { method: "POST", body: { ...(br.mode === "remote" ? {} : { default: $("#mDefault").value }), context_length: $("#mCtx").value ? +$("#mCtx").value : null, reasoning: $("#mReason").value } }), () => show("modell"));
+  $("#oTest").onclick = (e) => busy(e.target, async () => {
+    const res = $("#oRes");
+    try {
+      const r = await api("/api/ollama/test", { method: "POST", body: { url: $("#oUrl").value } });
+      $("#oUrl").value = r.url;
+      setHTML(res, `<div class="note">${dot(true)} ${esc(T("Erreichbar: Ollama {0} · {1} Modelle", [r.version, r.count]))}</div>${r.warn ? `<div class="note warn">${esc(r.warn)}</div>` : ""}`);
+      const keep = $("#mDefault").value;
+      setHTML($("#mDefault"), [...new Set([keep, ...r.models].filter(Boolean))].map((n) => `<option ${n === keep ? "selected" : ""} value="${esc(n)}">${esc(n)}${r.sizes[n] ? ` (${fmtBytes(r.sizes[n])})` : ""}</option>`).join(""));
+      $("#oState").textContent = T("erreichbar");
+    } catch (ex) { setHTML(res, `<div class="note danger">${esc(ex.message)}</div>`); $("#oState").textContent = T("nicht erreichbar"); }
+  });
+  $("#saveModel").onclick = () => change(() => api("/api/models/save", { method: "POST", body: { ollama_url: $("#oUrl").value, ...(br.mode === "remote" ? {} : { default: $("#mDefault").value }), context_length: $("#mCtx").value ? +$("#mCtx").value : null, reasoning: $("#mReason").value } }), () => show("modell"));
   if ($("#pcSave")) $("#pcSave").onclick = () => change(() => api("/api/brain/projekt", { method: "POST", body: { model: $("input[name=pclaude]:checked", view).value } }), () => show("modell"));
   const check = (live) => (e) => busy(e.target, async () => { const o = $("#fbOut"); o.hidden = false; o.textContent = T("Prüfe …"); const r = await api("/api/models/check", { method: "POST", body: { live } }); o.textContent = (r.ok ? T("✓ Nutzbar") : T("✗ Probleme gefunden")) + "\n\n" + r.output; });
   $("#fbCheck").onclick = check(false); $("#fbLive").onclick = check(true);

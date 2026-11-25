@@ -39,7 +39,29 @@ import demo_runs  # noqa: E402
 HOME = Path.home()
 HERMES_URL = os.environ.get("HERMES_URL", "http://127.0.0.1:8642")
 STT_URL = os.environ.get("STT_URL", "http://127.0.0.1:8178/v1/audio/transcriptions")
+# Startwert (Env BRAIN_URL); massgeblich ist providers.pc-ollama.api in der Hermes-Konfiguration (siehe brain_url())
 BRAIN_URL = os.environ.get("BRAIN_URL", "http://ollama:11434/api/version")
+HERMES_CONFIG = Path(os.environ.get("HERMES_CONFIG", str(Path.home() / ".hermes/config.yaml")))
+_brain_cache = {"mtime": None, "url": BRAIN_URL}
+
+
+def brain_url() -> str:
+    """Ollama-Pruefadresse: providers.pc-ollama.api aus der Hermes-Konfiguration (die NuOrb-Verwaltung stellt sie ein),
+    ohne /v1, plus /api/version. Bei jeder Pruefung frisch (mtime) – kein Neustart noetig. Fehlt der Eintrag oder die
+    Datei, gilt der Startwert BRAIN_URL bzw. die zuletzt gelesene Adresse."""
+    try:
+        mt = HERMES_CONFIG.stat().st_mtime_ns
+        if mt != _brain_cache["mtime"]:
+            import yaml
+            data = yaml.safe_load(HERMES_CONFIG.read_text(encoding="utf-8")) or {}
+            api = (((data.get("providers") or {}).get("pc-ollama") or {}).get("api") or "").strip()
+            if re.fullmatch(r"https?://[\w.\-\[\]:]+(/[\w.\-/]*)?", api):
+                base = re.sub(r"/v1/?$", "", api.rstrip("/"))
+                _brain_cache["url"] = base + "/api/version"
+            _brain_cache["mtime"] = mt
+    except Exception as exc:  # Datei fehlt/kaputt: letzte bekannte Adresse behalten
+        print(f"config.yaml nicht lesbar ({exc.__class__.__name__}), Gehirn-Pruefung bleibt bei {_brain_cache['url']}", flush=True)
+    return _brain_cache["url"]
 PIPER_VOICE = os.environ.get(
     "PIPER_VOICE", str(HOME / ".hermes/cache/piper-voices/de_DE-thorsten-medium.onnx"))
 HOST = os.environ.get("UI_HOST", "0.0.0.0")
@@ -224,7 +246,7 @@ async def status():
         return _status_cache["data"]
     await discover_rooms()
     (brain, bdata), (hermes, _), (stt, sdata) = await asyncio.gather(
-        _probe(BRAIN_URL), _probe(f"{HERMES_URL}/health"),
+        _probe(brain_url()), _probe(f"{HERMES_URL}/health"),
         _probe(STT_URL.replace("/v1/audio/transcriptions", "/health")))
     # Gehirn-Schalter aus jarvis-admin (ui.json): local | auto | remote; fehlt er, gilt „local“ (bisheriges Verhalten)
     bm = str(cfg().get("brain_mode", "local")).strip().lower()

@@ -17,6 +17,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from pathlib import Path
+import tempfile
+import subprocess
 import os
 import secrets
 import ssl
@@ -73,6 +76,37 @@ def multipart(field: str, filename: str, data: bytes, ctype: str) -> tuple[bytes
     return body, f"multipart/form-data; boundary={bd}"
 
 
+def ask(app, text: str) -> tuple[str, list, dict]:
+    """Frage über die Oberfläche stellen und auf die Antwort warten (SSE)."""
+    st, r = app.req("POST", "/api/ask", {"text": text, "client": "android"})
+    answer, events = "", []
+    if st == 200 and r.get("run_id"):
+        resp = app.req("GET", f"/api/runs/{r['run_id']}/events", stream=True, timeout=180)
+        for line in resp:
+            line = line.decode("utf-8", "replace").strip()
+            if not line.startswith("data:"):
+                continue
+            ev = json.loads(line[5:])
+            events.append(ev.get("event"))
+            if ev.get("event") == "run.completed":
+                answer = ev.get("output") or ""
+                break
+            if ev.get("event") in ("run.failed", "run.cancelled"):
+                answer = "FEHLER " + str(ev)[:300]
+                break
+    return answer, events, r if isinstance(r, dict) else {}
+
+
+def wait_brain(app, want: bool, tries: int = 30) -> dict:
+    s = {}
+    for _ in range(tries):
+        st, s = app.req("GET", "/api/status")
+        if st == 200 and s.get("hermes") and bool(s.get("brain_ok")) == want:
+            break
+        time.sleep(3)
+    return s
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--ui", default="https://127.0.0.1:19443")
@@ -99,6 +133,9 @@ def main() -> int:
         check("Admin-Anmeldung", st == 200, str(d)[:80])
     st, s = adm.req("GET", "/api/setup")
     check("Einrichtung abrufbar", st == 200, f"done={s.get('done')} brain={s.get('brain')} lang={s.get('lang')}")
+    st, pr = adm.req("POST", "/api/setup/ollama", {"url": "127.0.0.1:18434/v1"})
+    check("Ollama-Adresse wie in der Verwaltung normalisiert", st == 200 and pr.get("url") == "http://127.0.0.1:18434" and bool(pr.get("warn")),
+          f"{pr.get('url')} warn={bool(pr.get('warn'))}")
     st, html = adm.req("GET", "/")
     check("Admin-Startseite lädt Zusatz-Skript", st == 200 and b"admin-extra.js" in html)
     st, dev = adm.req("GET", "/api/services")
@@ -165,25 +202,37 @@ def main() -> int:
 
     # ---------------------------------------------------------------- Frage
     t0 = time.time()
-    st, r = app.req("POST", "/api/ask", {"text": a.question, "client": "android"})
-    check("Frage gestartet", st == 200 and bool(r.get("run_id")), str(r)[:100])
-    answer, events = "", []
-    if r.get("run_id"):
-        resp = app.req("GET", f"/api/runs/{r['run_id']}/events", stream=True, timeout=180)
-        for line in resp:
-            line = line.decode("utf-8", "replace").strip()
-            if not line.startswith("data:"):
-                continue
-            ev = json.loads(line[5:])
-            events.append(ev.get("event"))
-            if ev.get("event") == "run.completed":
-                answer = ev.get("output") or ""
-                break
-            if ev.get("event") in ("run.failed", "run.cancelled"):
-                answer = "FEHLER " + str(ev)[:300]
-                break
+    answer, events, r = ask(app, a.question)
+    check("Frage gestartet", bool(r.get("run_id")), str(r)[:100])
     check("Antwort vom Gehirn", bool(answer) and not answer.startswith("FEHLER"),
           f"{time.time() - t0:.1f} s: {answer[:120]!r} (Ereignisse: {', '.join(dict.fromkeys(e for e in events if e))})")
+
+    # ---------------------------------------------------------------- Ollama-Adresse ändern -> Gehirn nutzt sie
+    st0, setup0 = adm.req("GET", "/api/setup")
+    old_url, model = setup0.get("ollama_url", ""), setup0.get("ollama_model", "")
+    port2 = 18435
+    log2 = Path(tempfile.mkdtemp(prefix="e2e-mock-", dir=str(Path(__file__).resolve().parent.parent / ".work"))) / "mock2.log"
+    mock2 = subprocess.Popen([sys.executable, str(Path(__file__).with_name("mock-llm.py")), str(port2)],
+                             stdout=open(log2, "w"), stderr=subprocess.STDOUT)
+    try:
+        time.sleep(1.5)
+        st, d = adm.req("POST", "/api/setup/apply", {"mode": "local", "ollama_url": f"127.0.0.1:{port2}", "ollama_model": model,
+                                                    "context": 65536, "remote_model": ""}, timeout=150)
+        st1, setup1 = adm.req("GET", "/api/setup")
+        check("Neue Ollama-Adresse gespeichert (eine Quelle für Einrichtung und Verwaltung)",
+              st == 200 and setup1.get("ollama_url") == f"http://127.0.0.1:{port2}", f"{st} {setup1.get('ollama_url')} {str(d)[:80]}")
+        s = wait_brain(app, True)
+        n0 = log2.read_text().count("POST")
+        ans2, ev2, _ = ask(app, "Wie spät ist es?")
+        n1 = log2.read_text().count("POST")
+        check("Gehirn nutzt die neue Adresse", bool(ans2) and not ans2.startswith("FEHLER") and n1 > n0,
+              f"brain_ok={s.get('brain_ok')} Anfragen an :{port2}: {n1 - n0} Antwort={ans2[:60]!r}")
+    finally:
+        mock2.terminate()
+        st, d = adm.req("POST", "/api/setup/apply", {"mode": "local", "ollama_url": old_url, "ollama_model": model,
+                                                    "context": 65536, "remote_model": ""}, timeout=150)
+        s = wait_brain(app, True)
+        check("Zurück auf die alte Ollama-Adresse", st == 200 and bool(s.get("brain_ok")), f"{st} {old_url}")
 
     # ---------------------------------------------------------------- Sprache
     st, wav = app.req("POST", "/api/tts", {"text": "Guten Abend. Alle Systeme laufen."}, timeout=60)

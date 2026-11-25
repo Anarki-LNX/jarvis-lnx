@@ -9,8 +9,10 @@ Läuft als Benutzer hermes, bevor Oberfläche, Admin und Spracherkennung starten
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import os
+import re
 import secrets
 import subprocess
 import sys
@@ -136,14 +138,15 @@ def first_config() -> None:
     path = adm.FILES["config"][0]
     if url and model:
         data = adm.load_config_rt()
-        adm.cfg_set(data, "providers.lan-ollama.api", f"{url}/v1")
-        adm.cfg_set(data, "providers.lan-ollama.name", "Ollama")
-        adm.cfg_set(data, "providers.lan-ollama.models", {model: {"context_length": ctx}})
-        for k, v in (("provider", "custom:lan-ollama"), ("base_url", f"{url}/v1"), ("default", model),
+        prov = getattr(adm, "OLLAMA_PROVIDER", "pc-ollama")
+        adm.cfg_set(data, f"providers.{prov}.api", f"{url}/v1")
+        adm.cfg_set(data, f"providers.{prov}.name", "Ollama")
+        adm.cfg_set(data, f"providers.{prov}.models", {model: {"context_length": ctx}})
+        for k, v in (("provider", f"custom:{prov}"), ("base_url", f"{url}/v1"), ("default", model),
                      ("context_length", ctx), ("ollama_num_ctx", ctx)):
             adm.cfg_set(data, f"model.{k}", v)
         adm.atomic_write(path, adm.dump_rt(data))
-        adm.save_brain_saved({"local": {"provider": "custom:lan-ollama", "base_url": f"{url}/v1", "default": model}})
+        adm.save_brain_saved({"local": {"provider": f"custom:{prov}", "base_url": f"{url}/v1", "default": model}})
     has_key = bool(env_get("ANTHROPIC_API_KEY"))
     mode = jc.env("JARVIS_INIT_BRAIN") or ("auto" if (url and model and has_key) else "remote" if has_key else "local")
     ui = {"mode": "live", "persona": personas.PERSONA[lg], "piper_voice": voice_name(), "length_scale": 0.95,
@@ -182,10 +185,36 @@ def ensure_mcp() -> None:
         log("MCP tool \"nuorb\" (name, onboarding) registered.")
 
 
+def migrate_ollama_provider() -> None:
+    """Bis v0.3.0 hieß der Ollama-Eintrag „lan-ollama“; die NuOrb-Verwaltung nutzt „pc-ollama“ (eine Quelle der Wahrheit).
+    Einmalig umbenennen, in config.yaml und in den gemerkten Gehirn-Einstellungen. Eigene Einträge bleiben unberührt."""
+    cfg = DATA / "config.yaml"
+    try:
+        text = cfg.read_text(encoding="utf-8")
+    except OSError:
+        return
+    if "lan-ollama" not in text or re.search(r"^\s+pc-ollama:", text, re.M):
+        return
+    tmp = cfg.with_name(".config.yaml.migrate")
+    tmp.write_text(text.replace("lan-ollama", "pc-ollama"), encoding="utf-8")
+    os.chmod(tmp, cfg.stat().st_mode & 0o777)
+    os.replace(tmp, cfg)
+    for p in (jc.J / "admin").glob("brain*.json"):
+        with contextlib.suppress(OSError):
+            t = p.read_text(encoding="utf-8")
+            if "lan-ollama" in t:
+                p.write_text(t.replace("lan-ollama", "pc-ollama"), encoding="utf-8")
+    log("Ollama entry renamed lan-ollama -> pc-ollama (same as Model & Fallback in the admin panel).")
+
+
 def main() -> None:
     dirs()
     jc.ensure_certs()
     api_key()
+    try:
+        migrate_ollama_provider()
+    except Exception as exc:
+        log(f"Ollama entry not migrated: {exc}")
     if not MARK.exists():
         first_config()
     try:

@@ -51,7 +51,8 @@ UI_URL = os.environ.get("JARVIS_UI_URL", "https://127.0.0.1:8443")
 UI_STATIC = Path(os.environ.get("JARVIS_UI_STATIC", str(HOME / "jarvis-ui/static")))
 UI_CERTS = Path(os.environ.get("ADMIN_CERTS", str(HOME / "certs/jarvis-admin")))  # eigenes Zertifikat (von jarvis-ui ausgestellt)
 UI_SETTINGS = Path(os.environ.get("JARVIS_UI_SETTINGS", str(HOME / ".config/jarvis/ui.json")))
-OLLAMA = os.environ.get("OLLAMA_URL", "http://ollama:11434")
+OLLAMA_ENV = os.environ.get("OLLAMA_URL", "")  # nur Startwert, wenn config.yaml noch keine Ollama-Adresse hat
+OLLAMA_PROVIDER = "pc-ollama"  # Eintrag unter providers: in config.yaml (Hermes: provider custom:pc-ollama)
 CTL_DIR = Path(os.environ.get("ADMIN_CTL_DIR", "/var/lib/jarvis-admin-ctl"))
 PHONE_HOST = os.environ.get("PHONE_HOST", "")  # Kiosk-Geraet (Xiaomi); leer = keins (Kachel/Menue ausgeblendet)
 KIOSK_PAUSED = os.environ.get("KIOSK_PAUSED", "").lower() in ("1", "true", "yes")  # pausiert: neutral, nicht pruefen
@@ -970,12 +971,54 @@ async def pairing_revoke(request: Request):
     return {"ok": True}
 
 
+def ollama_normalize(raw: str) -> tuple[str, str]:
+    """Nutzereingabe -> http(s)://host:port ohne /v1, plus Warnhinweis (z. B. localhost)."""
+    s = raw.strip().rstrip("/")
+    if not s:
+        raise HTTPException(400, "Bitte eine Ollama-Adresse eingeben, z. B. http://192.168.1.50:11434.")
+    if "://" not in s:
+        s = "http://" + s
+    u = urllib.parse.urlsplit(s)
+    if u.scheme not in ("http", "https") or not u.hostname:
+        raise HTTPException(400, "Die Ollama-Adresse muss mit http:// oder https:// beginnen.")
+    if u.query or u.fragment or u.username or u.password:
+        raise HTTPException(400, "Die Ollama-Adresse darf keine Zugangsdaten, Parameter oder Anker enthalten.")
+    path = re.sub(r"/(v1|api)$", "", u.path.rstrip("/"))
+    if path:
+        raise HTTPException(400, "Bitte nur Adresse und Port angeben, ohne Pfad (z. B. http://192.168.1.50:11434).")
+    host = f"[{u.hostname}]" if ":" in u.hostname else u.hostname
+    port = u.port or (11434 if u.scheme == "http" and ":" not in u.netloc.rsplit("]", 1)[-1] else None)
+    url = f"{u.scheme}://{host}" + (f":{port}" if port else "")
+    warn = ""
+    with contextlib.suppress(ValueError):
+        if u.hostname in ("localhost",) or ipaddress.ip_address(u.hostname).is_loopback or u.hostname == "0.0.0.0":
+            warn = "localhost zeigt auf den NuOrb-Server selbst, nicht auf deinen PC. Trage die IP-Adresse des PCs ein."
+    if u.hostname == "localhost":
+        warn = "localhost zeigt auf den NuOrb-Server selbst, nicht auf deinen PC. Trage die IP-Adresse des PCs ein."
+    return url, warn
+
+
+def ollama_base(cfg: dict | None = None) -> str:
+    """Die eine Ollama-Adresse (ohne /v1): providers.pc-ollama.api in config.yaml, sonst model.base_url
+    (wenn das Gehirn lokal ist), sonst OLLAMA_URL aus der Umgebung, sonst leer."""
+    cfg = cfg if cfg is not None else to_plain(load_config_rt())
+    cand = [((cfg.get("providers") or {}).get(OLLAMA_PROVIDER) or {}).get("api")]
+    model = cfg.get("model") or {}
+    if str(model.get("provider", "")).startswith("custom"):
+        cand.append(model.get("base_url"))
+    cand.append(OLLAMA_ENV)
+    for c in cand:
+        c = str(c or "").strip().rstrip("/")
+        if c:
+            return re.sub(r"/v1$", "", c)
+    return ""
+
+
 @app.get("/api/status")
 async def status():
     cfg = to_plain(load_config_rt())
     model = cfg.get("model", {}) or {}
-    base = (model.get("base_url") or "").rstrip("/")
-    ollama = base[:-3] if base.endswith("/v1") else OLLAMA
+    ollama = ollama_base(cfg)
     (brain, ver), (ps_ok, ps), (hermes, _), (stt, sttj), (ui, uij) = await asyncio.gather(
         probe(f"{ollama}/api/version", 3), probe(f"{ollama}/api/ps", 3), probe(f"{HERMES_URL}/health"),
         probe(STT_URL), probe(f"{UI_URL}/api/status", verify=ui_ssl_ctx()))
@@ -1007,13 +1050,12 @@ async def status():
 async def models():
     cfg = to_plain(load_config_rt())
     model = cfg.get("model", {}) or {}
-    base = (model.get("base_url") or "").rstrip("/")
-    ollama = base[:-3] if base.endswith("/v1") else OLLAMA
-    ok, tags = await probe(f"{ollama}/api/tags", timeout=3)
+    ollama = ollama_base(cfg)
+    ok, tags = (await probe(f"{ollama}/api/tags", timeout=3)) if ollama else (False, None)
     names = sorted(m.get("name") for m in (tags or {}).get("models", [])) if ok else []
     sizes = {m.get("name"): m.get("size") for m in (tags or {}).get("models", [])} if ok else {}
     providers = cfg.get("providers") or {}
-    return {"ollama": names, "sizes": sizes, "online": ok, "model": model,
+    return {"ollama": names, "sizes": sizes, "online": ok, "model": model, "ollama_url": ollama,
             "reasoning": (cfg.get("agent") or {}).get("reasoning_effort"),
             "fallback": cfg.get("fallback_providers") or [],
             "providers": list(providers.keys()),
@@ -1030,6 +1072,15 @@ async def models_save(request: Request):
         if not re.fullmatch(r"[A-Za-z0-9._:/\-]{1,120}", name):
             raise HTTPException(400, "Ungültiger Modellname.")
         ch["model.default"] = name
+    if d.get("ollama_url"):
+        url, _ = ollama_normalize(str(d["ollama_url"]))
+        cfg = to_plain(load_config_rt())
+        if url != ollama_base(cfg):
+            ch[f"providers.{OLLAMA_PROVIDER}.api"] = url + "/v1"
+            if not ((cfg.get("providers") or {}).get(OLLAMA_PROVIDER) or {}).get("name"):
+                ch[f"providers.{OLLAMA_PROVIDER}.name"] = "Ollama"
+            if str((cfg.get("model") or {}).get("provider", "")) == f"custom:{OLLAMA_PROVIDER}":
+                ch["model.base_url"] = url + "/v1"
     if "context_length" in d:
         n = int(d["context_length"]) if d["context_length"] else None
         if n is not None and not 2048 <= n <= 1048576:
@@ -1057,6 +1108,33 @@ async def models_save(request: Request):
     return config_preview(ch, "Modell/Fallback ändern", danger=danger)
 
 
+@app.post("/api/ollama/test")
+async def ollama_test(request: Request):
+    """Adresse pruefen: erreichbar? Version, Modelle. Aendert nichts."""
+    d = await body(request)
+    url, warn = ollama_normalize(str(d.get("url", "")))
+    try:
+        async with httpx.AsyncClient(timeout=5) as c:
+            v = await c.get(f"{url}/api/version")
+            t = await c.get(f"{url}/api/tags")
+    except httpx.ConnectTimeout:
+        raise HTTPException(502, f"Keine Antwort von {url} (Zeitüberschreitung). Läuft der PC, und ist Ollama im Netz erreichbar (OLLAMA_HOST=0.0.0.0)?")
+    except httpx.ConnectError:
+        raise HTTPException(502, f"Keine Verbindung zu {url}. Adresse und Port prüfen; Ollama muss im Netz lauschen (OLLAMA_HOST=0.0.0.0).")
+    except httpx.HTTPError:
+        raise HTTPException(502, f"Keine Verbindung zu {url}.")
+    try:
+        ver = v.json().get("version") if v.status_code == 200 else None
+        tags = t.json().get("models", []) if t.status_code == 200 else None
+    except ValueError:
+        ver = tags = None
+    if not ver or tags is None:
+        raise HTTPException(502, f"{url} antwortet, ist aber kein Ollama.")
+    names = sorted(m.get("name") for m in tags if m.get("name"))
+    return {"ok": True, "url": url, "version": ver, "count": len(names), "models": names,
+            "sizes": {m.get("name"): m.get("size") for m in tags}, "warn": warn}
+
+
 @app.post("/api/models/check")
 async def models_check(request: Request):
     d = await body(request)
@@ -1072,8 +1150,9 @@ async def models_unload(request: Request):
     d = await body(request)
     name = str(d.get("name", ""))
     cfg = to_plain(load_config_rt())
-    base = ((cfg.get("model") or {}).get("base_url") or "").rstrip("/")
-    ollama = base[:-3] if base.endswith("/v1") else OLLAMA
+    ollama = ollama_base(cfg)
+    if not ollama:
+        raise HTTPException(400, "Keine Ollama-Adresse eingestellt.")
     async with httpx.AsyncClient(timeout=10) as c:
         r = await c.post(f"{ollama}/api/generate", json={"model": name, "keep_alive": 0})
     audit(who(request), f"Modell entladen: {name}")
@@ -1088,7 +1167,7 @@ CLAUDE_MODELS = {
     "claude-sonnet-5-5": {"name": "Claude Sonnet 5.5", "in": 2.0, "out": 10.0, "hint": "ausgewogen"},
     "claude-opus-5-5": {"name": "Claude Opus 5.5", "in": 4.0, "out": 20.0, "hint": "am stärksten, denkt immer"},
 }
-LOCAL_DEFAULT = {"provider": "custom:pc-ollama", "base_url": "http://ollama:11434/v1", "default": "gemma4-26b-64k-g24"}
+LOCAL_DEFAULT = {"provider": f"custom:{OLLAMA_PROVIDER}", "base_url": "", "default": ""}  # Adresse: ollama_base()
 FB_BLOCK = re.compile(r"# >>> jarvis-claude-fallback.*?# <<< jarvis-claude-fallback\n", re.S)
 PC_BLOCK = re.compile(r"^(?:  )?# >>> jarvis-projekt-claude[^\n]*\n.*?^(?:  )?# <<< jarvis-projekt-claude[^\n]*\n", re.S | re.M)  # neues Format: eingerueckt in mcp_servers
 BRAIN_FILE = DATA / "brain.json"
@@ -1171,6 +1250,12 @@ def build_brain_change(mode: str, remote_model: str | None, fallback_model: str 
         cfg_set(data, "model.default", remote_model)
         data["model"]["base_url"] = None  # nicht entfernen: daran haengen ~300 Kommentarzeilen
     else:
+        base = ollama_base(to_plain(data))
+        if not base:
+            raise HTTPException(400, "Keine Ollama-Adresse eingestellt (Modell & Fallback → Lokales Modell).")
+        if not local["default"]:
+            raise HTTPException(400, "Kein lokales Modell gewählt (Modell & Fallback → Lokales Modell).")
+        local = {**local, "base_url": base + "/v1"}
         for k in ("provider", "base_url", "default"):
             cfg_set(data, f"model.{k}", local[k])
     rn, fn = CLAUDE_MODELS[remote_model]["name"], CLAUDE_MODELS[fallback_model]["name"]
@@ -1190,8 +1275,9 @@ async def unload_local_model() -> bool:
     """Bei Remote: lokales Modell sofort aus dem PC-VRAM werfen (sonst haelt Ollama es noch keep_alive-Minuten)."""
     saved = load_brain_saved()
     local = {**LOCAL_DEFAULT, **{k: v for k, v in (saved.get("local") or {}).items() if v}}
-    base = (local.get("base_url") or "").rstrip("/")
-    ollama = base[:-3] if base.endswith("/v1") else OLLAMA
+    ollama = ollama_base()
+    if not ollama or not local["default"]:
+        return False
     try:
         async with httpx.AsyncClient(timeout=5) as c:
             r = await c.post(f"{ollama}/api/generate", json={"model": local["default"], "keep_alive": 0})
