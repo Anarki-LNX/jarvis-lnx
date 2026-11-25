@@ -53,7 +53,9 @@ UI_CERTS = Path(os.environ.get("ADMIN_CERTS", str(HOME / "certs/jarvis-admin")))
 UI_SETTINGS = Path(os.environ.get("JARVIS_UI_SETTINGS", str(HOME / ".config/jarvis/ui.json")))
 OLLAMA = os.environ.get("OLLAMA_URL", "http://ollama:11434")
 CTL_DIR = Path(os.environ.get("ADMIN_CTL_DIR", "/var/lib/jarvis-admin-ctl"))
-PHONE_HOST = os.environ.get("PHONE_HOST", "")  # leer = kein Smartphone (Kachel ausgeblendet)
+PHONE_HOST = os.environ.get("PHONE_HOST", "")  # Kiosk-Geraet (Xiaomi); leer = keins (Kachel/Menue ausgeblendet)
+KIOSK_PAUSED = os.environ.get("KIOSK_PAUSED", "").lower() in ("1", "true", "yes")  # pausiert: neutral, nicht pruefen
+PHONE_ONLINE_S = int(os.environ.get("PHONE_ONLINE_S", "300"))  # gekoppelte App gilt so lange nach last_seen als aktiv
 GPU_LABEL = os.environ.get("ADMIN_GPU_LABEL", "")
 # Produktwerte (im Image per Env fest, hier nur Anzeige/Standard)
 BRAND_NAME = os.environ.get("BRAND_NAME", "NuOrb")  # Produktname (Titel, Login)
@@ -931,6 +933,21 @@ async def pairing_new(request: Request):
     return {**pair_payload(request, code), "expires": int(exp), "ttl": CODE_TTL, "pairing_supported": True}
 
 
+def _age_s(iso: str | None) -> float | None:
+    try:
+        return time.time() - datetime.fromisoformat(str(iso)).timestamp()
+    except (TypeError, ValueError):
+        return None
+
+
+def phones_summary() -> dict:
+    """Gekoppelte NuOrb-Apps: Anzahl, davon aktiv (last_seen juenger als PHONE_ONLINE_S), zuletzt gesehenes Geraet."""
+    devs = sorted(_json_read(DEVICES_FILE, {}).values(), key=lambda v: v.get("last_seen") or "", reverse=True)
+    online = sum(1 for v in devs if (a := _age_s(v.get("last_seen"))) is not None and a < PHONE_ONLINE_S)
+    last = {"name": devs[0].get("name"), "last_seen": devs[0].get("last_seen")} if devs else None
+    return {"paired": len(devs), "online": online, "last": last, "online_s": PHONE_ONLINE_S}
+
+
 @app.get("/api/pairing/devices")
 async def pairing_devices():
     out = [{"id": k, **{x: v.get(x) for x in ("name", "platform", "created", "last_seen", "ip")}}
@@ -978,7 +995,8 @@ async def status():
         "fallback": [{"provider": f.get("provider"), "model": f.get("model")} for f in fb if isinstance(f, dict)],
         "approvals": (cfg.get("approvals") or {}).get("mode"),
         "mode": brain_state()["mode"],
-        "units": units, "system": sysinfo(), "phone": await phone_status(cached=True) if PHONE_HOST else None,
+        "units": units, "system": sysinfo(), "phone": await phone_status(cached=True) if PHONE_HOST and not KIOSK_PAUSED else None,
+        "kiosk": {"configured": bool(PHONE_HOST), "paused": KIOSK_PAUSED}, "phones": phones_summary(),
         "gpu_label": GPU_LABEL or None,
         "restart": ctl_result(),
     }
@@ -2036,16 +2054,16 @@ async def logs(source: str = "agent", lines: int = 300, level: str = "", q: str 
             "sources": {k: v[2] for k, v in LOG_SOURCES.items()}}
 
 
-# ------------------------------------------------------------------ Smartphone (eingeschraenkter SSH-Schlüssel)
+# ------------------------------------------------------------------ Kiosk-Gerät (eingeschraenkter SSH-Schlüssel)
 PHONE_CACHE: dict = {"t": 0, "data": None}
 PHONE_CMDS = {"status", "reboot", "kiosk-reload", "bildschirm"}
 
 
 async def phone_cmd(*args: str, timeout: float = 8) -> tuple[int, str]:
     if not PHONE_HOST:
-        return 255, "Kein Smartphone eingerichtet (PHONE_HOST fehlt)."
+        return 255, "Kein Kiosk-Gerät eingerichtet (PHONE_HOST fehlt)."
     if not PHONE_KEY.exists():
-        return 255, "Kein Smartphone-Schlüssel eingerichtet."
+        return 255, "Kein Kiosk-Schlüssel eingerichtet."
     kh = BASE / "keys/known_hosts"
     cmd = ["ssh", "-i", str(PHONE_KEY), "-o", "BatchMode=yes", "-o", "ConnectTimeout=4",
            "-o", "StrictHostKeyChecking=yes", "-o", f"UserKnownHostsFile={kh}", "-o", "IdentitiesOnly=yes",
@@ -2072,13 +2090,13 @@ def tcp_open(host: str, port: int, timeout: float = 1.0) -> bool:
 def phone_error_text(out: str, code: int) -> str:
     o = out.lower()
     if "host key" in o:
-        return "Hostschlüssel des Smartphones ist noch nicht bestätigt (Einrichtung läuft)."
+        return "Hostschlüssel des Kiosk-Geräts ist noch nicht bestätigt (Einrichtung läuft)."
     if "permission denied" in o:
-        return "Die Steuerung ist auf dem Smartphone noch nicht eingerichtet (Schlüssel nicht hinterlegt)."
+        return "Die Steuerung ist auf dem Kiosk-Gerät noch nicht eingerichtet (Schlüssel nicht hinterlegt)."
     if code == 2 or "nicht erlaubt" in o:
-        return "Das Smartphone kennt diesen Befehl nicht."
+        return "Das Kiosk-Gerät kennt diesen Befehl nicht."
     if code == 124:
-        return "Das Smartphone antwortet nicht (Zeitüberschreitung)."
+        return "Das Kiosk-Gerät antwortet nicht (Zeitüberschreitung)."
     return (out or f"Fehler {code}")[:300]
 
 
@@ -2093,7 +2111,7 @@ async def phone_status(cached: bool = False) -> dict:
             try:
                 data["status"] = json.loads(out)
             except Exception:
-                data["error"] = "Antwort des Smartphones unlesbar."
+                data["error"] = "Antwort des Kiosk-Geräts unlesbar."
         else:
             data["error"] = phone_error_text(out, code)
     PHONE_CACHE.update(t=time.time(), data=data)
@@ -2103,7 +2121,9 @@ async def phone_status(cached: bool = False) -> dict:
 @app.get("/api/phone")
 async def phone_get():
     pub = BASE / "keys/handy_ed25519.pub"
-    d = await phone_status()
+    d = ({"reachable": False, "host": PHONE_HOST, "configured": PHONE_KEY.exists(), "status": None, "error": None}
+         if KIOSK_PAUSED else await phone_status())
+    d["paused"] = KIOSK_PAUSED
     d["pubkey"] = read_text(pub).strip() if pub.exists() else None
     return d
 
@@ -2128,11 +2148,11 @@ async def phone_action(action: str, request: Request):
         args = ["bildschirm", d["value"]]
     else:
         raise HTTPException(404, "Unbekannte Aktion.")
-    audit(who(request), f"Smartphone: {' '.join(args)}")
+    audit(who(request), f"Kiosk-Gerät: {' '.join(args)}")
     code, out = await phone_cmd(*args, timeout=12)
     PHONE_CACHE["t"] = 0
     if code != 0:
-        raise HTTPException(502, f"Smartphone: {phone_error_text(out, code)}")
+        raise HTTPException(502, f"Kiosk-Gerät: {phone_error_text(out, code)}")
     return {"ok": True, "output": out}
 
 

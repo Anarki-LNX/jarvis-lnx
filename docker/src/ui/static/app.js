@@ -6,7 +6,7 @@
   const DE = !window.I18N || window.I18N.lang === "de"; // lokale Sprachbefehle (deutsche Muster) nur auf Deutsch
   const LOC = DE ? "de-DE" : "en-GB";
   const $ = (id) => document.getElementById(id);
-  const VERSION = "2026-11-25.55";
+  const VERSION = "2026-11-25.56";
   // Kurzes Client-Log ins Server-Journal (Kiosk hat keine JS-Konsole)
   function clog(msg) {
     try { fetch("/api/clientlog", { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
@@ -1487,6 +1487,13 @@
   if (NATIVE && typeof NATIVE.einstellungen === "function") {
     $("appSettings").hidden = false;
     $("appSettings").addEventListener("click", () => { try { NATIVE.einstellungen(); } catch (e) { toast(t("Umschalten fehlgeschlagen.")); } });
+  }
+  // NuOrb-App ab 1.3.5: Update-Pruefung ueber Google Play (Ergebnis zeigt die App selbst)
+  if (NATIVE && typeof NATIVE.updatesSuchen === "function") {
+    let v = ""; try { v = typeof NATIVE.appVersion === "function" ? String(NATIVE.appVersion() || "").replace(/[^\w.\- ]/g, "").slice(0, 20) : ""; } catch (e) { /* egal */ }
+    $("appVersion").textContent = v ? t("Installiert: {v}", { v }) : "";
+    $("appUpdates").hidden = false;
+    $("appUpdates").addEventListener("click", () => { try { NATIVE.updatesSuchen(); } catch (e) { toast(t("Das hat nicht geklappt.")); } });
   }
   $("wakeRow").addEventListener("click", () => { if (!wakeAvailable()) toast(t("Weckwort kommt mit einem Update. Bis dahin: Orb antippen.")); });
   $("optWake").addEventListener("change", async () => {

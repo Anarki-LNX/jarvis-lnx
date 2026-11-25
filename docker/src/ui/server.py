@@ -180,6 +180,15 @@ async def lan_only(request: Request, call_next):
     path = request.url.path
     if pairing_required() and path.startswith("/api/") and path not in PAIR_PUBLIC and device_for_request(request) is None:
         return JSONResponse({"detail": "pairing_required"}, status_code=401)
+    if not pairing_required() and path.startswith("/api/") and device_token(request):
+        device_for_request(request)  # „zuletzt gesehen“ auch ohne Kopplungspflicht nachfuehren (Kachel „Phones“)
+    if path == "/api/status":  # Diagnose: kommt ein Geraete-Token mit? (je IP hoechstens alle 10 min eine Zeile)
+        cip = request.client.host if request.client else "?"
+        if time.time() - _tokdiag.get(cip, 0) > 600:
+            _tokdiag[cip] = time.time()
+            tk = device_token(request)
+            src = "Bearer" if request.headers.get("authorization", "").lower().startswith("bearer ") else "Cookie" if tk else "-"
+            print(f"[geraet] {cip}: Token {('gueltig' if device_for_request(request) else 'ungueltig') + ' (' + src + ')' if tk else 'keiner'}", flush=True)
     resp = await call_next(request)
     resp.headers.setdefault("X-Content-Type-Options", "nosniff")
     resp.headers.setdefault("Referrer-Policy", "no-referrer")
@@ -565,6 +574,7 @@ DEVICE_COOKIE = "nuorb_device"
 DEVICE_COOKIE_OLD = "jarvis_device"  # NuOrb-App < 1.3.3 und Docker-Image setzen noch diesen Namen
 _pair_fails: dict[str, list[float]] = {}
 _seen_cache: dict[str, float] = {}
+_tokdiag: dict[str, float] = {}
 
 
 def pairing_required() -> bool:
@@ -621,7 +631,7 @@ def device_for_request(request: Request) -> str | None:
     h, devs = _sha(token), _read_json(DEVICES_FILE, {})
     for did, v in devs.items():
         if isinstance(v, dict) and hmac.compare_digest(str(v.get("token", "")), h):
-            if time.time() - _seen_cache.get(did, 0) > 300:  # „zuletzt gesehen“ hoechstens alle 5 min schreiben
+            if time.time() - _seen_cache.get(did, 0) > 60:  # „zuletzt gesehen“ hoechstens 1x pro Minute schreiben
                 _seen_cache[did] = time.time()
                 v["last_seen"] = datetime.now().astimezone().isoformat(timespec="seconds")
                 v["ip"] = request.client.host if request.client else ""
@@ -637,6 +647,23 @@ def server_name() -> str:
     """Name des Servers fuer QR/Kopplung – dieselbe Quelle wie jarvis-admin: JARVIS_NAME, sonst die Marke."""
     n = re.sub(r"[^\w .äöüÄÖÜß-]", "", os.environ.get("JARVIS_NAME", "")).strip()[:24]
     return n or ui_cfg()["brand"]
+
+
+@app.get("/internal/devices")
+async def internal_devices(request: Request):
+    """Fuer die NuOrb-Verwaltung: gekoppelte Geraete mit „zuletzt gesehen“ (ohne Token-Hashes).
+    Nur von Loopback und mit X-Jarvis-Internal (gleiches Token wie /internal/* der Verwaltung)."""
+    host = request.client.host if request.client else ""
+    try:
+        tok = ADMIN_TOKEN_FILE.read_text().strip()
+    except OSError:
+        tok = ""
+    given = request.headers.get("X-Jarvis-Internal", "")
+    if host not in ("127.0.0.1", "::1") or not tok or not hmac.compare_digest(given.strip(), tok):
+        raise HTTPException(403, "nur intern")
+    devs = _read_json(DEVICES_FILE, {})
+    return {"devices": {did: {k: v.get(k) for k in ("name", "platform", "created", "last_seen", "ip")}
+                        for did, v in devs.items() if isinstance(v, dict)}, "now": datetime.now().astimezone().isoformat(timespec="seconds")}
 
 
 @app.get("/api/info")

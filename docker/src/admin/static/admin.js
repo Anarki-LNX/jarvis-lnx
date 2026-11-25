@@ -27,6 +27,11 @@ const dec = (s) => (I18N.lang === "de" ? s.replace(".", ",") : s);
 const fmtBytes = (n) => n == null ? "–" : n >= 1e9 ? dec((n / 1073741824).toFixed(1)) + " GiB" : n >= 1e6 ? (n / 1048576).toFixed(0) + " MiB" : (n / 1024).toFixed(0) + " KiB";
 const fmtDur = (s) => { s = Math.floor(s); const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return d ? `${d} ${I18N.lang === "de" ? "T" : "d"} ${h} h` : h ? `${h} h ${m} min` : `${m} min`; };
 const fmtTime = (iso) => { if (!iso) return "–"; const d = new Date(iso); return isNaN(d) ? String(iso) : d.toLocaleString(I18N.locale, { dateStyle: "short", timeStyle: "short" }); };
+const fmtAgo = (iso) => {
+  const d = new Date(iso); if (!iso || isNaN(d)) return "–";
+  const m = Math.round((Date.now() - d) / 60000);
+  return m < 1 ? T("gerade eben") : m < 60 ? T("vor {0} min", [m]) : m < 1440 ? T("vor {0} h", [Math.round(m / 60)]) : fmtTime(iso);
+};
 const busy = async (btn, fn) => { const t = btn.textContent; btn.disabled = true; btn.textContent = "…"; try { return await fn(); } catch (e) { toast(e.message, "err"); } finally { btn.disabled = false; btn.textContent = t; } };
 const dot = (ok) => `<span class="dot" data-ok="${ok === true ? "true" : ok === false ? "false" : "warn"}"></span>`;
 const sw = (name, on, extra = "") => `<label class="switch"><input type="checkbox" ${on ? "checked" : ""} data-sw="${esc(name)}" ${extra}><i></i></label>`;
@@ -122,7 +127,7 @@ async function restartUnit(id, skipConfirm = false) {
 
 /* ------------------------------------------------------------ Bereiche */
 const VIEWS = [
-  { id: "uebersicht", group: "System", label: "Übersicht", icon: "home", title: "Übersicht", lead: "Zustand von Gehirn, Diensten und Smartphone auf einen Blick.", render: viewOverview },
+  { id: "uebersicht", group: "System", label: "Übersicht", icon: "home", title: "Übersicht", lead: "Zustand von Gehirn, Diensten und Smartphones auf einen Blick.", render: viewOverview },
   { id: "modell", group: "Gehirn", label: "Modell & Fallback", icon: "brain", title: "Modell & Fallback", lead: "Welches Sprachmodell JARVIS nutzt und worauf es ausweicht, wenn der PC aus ist.", render: viewModel },
   { id: "persona", group: "Gehirn", label: "Persönlichkeit", icon: "soul", title: "Persönlichkeit", lead: "Wer JARVIS ist und wie er spricht.", render: viewPersona },
   { id: "gedaechtnis", group: "Gehirn", label: "Gedächtnis", icon: "mem", title: "Gedächtnis", lead: "Was JARVIS sich dauerhaft merkt – über sich, die Umgebung und dich.", render: viewMemory },
@@ -133,7 +138,7 @@ const VIEWS = [
   { id: "schluessel", group: "Sicherheit", label: "Schlüssel", icon: "key", title: "Schlüssel & Variablen", lead: "API-Schlüssel werden nie angezeigt – nur, ob sie gesetzt sind. Überschreiben ist jederzeit möglich.", render: viewEnv },
   { id: "sprache", group: "Geräte", label: "Sprache", icon: "wave", title: "Sprache", lead: "Stimme, Sprechtempo und Spracherkennung.", render: viewVoice },
   { id: "koppeln", group: "Geräte", label: "Smartphones koppeln", icon: "phone", title: "Smartphones koppeln", lead: "NuOrb-App auf einem oder mehreren Smartphones per QR-Code verbinden.", render: viewPair },
-  { id: "handy", group: "Geräte", label: "Smartphone", icon: "phone", title: "Smartphone", lead: "Zustand, Neustart, Kiosk.", render: viewPhone },
+  { id: "handy", group: "Geräte", label: "Kiosk-Gerät", icon: "phone", title: "Kiosk-Gerät", lead: "Kiosk-Gerät (Xiaomi) mit NixOS: Zustand, Neustart, Kiosk.", render: viewPhone },
   { id: "dienste", group: "System", label: "Dienste", icon: "gear", title: "Dienste & Prüfungen", lead: "Dienste neu starten und Hermes-Selbsttests ausführen.", render: viewServices },
   { id: "protokolle", group: "System", label: "Protokolle", icon: "log", title: "Protokolle", lead: "Gefilterte Logs. Schlüssel werden automatisch unkenntlich gemacht.", render: viewLogs },
   { id: "sicherungen", group: "System", label: "Sicherungen", icon: "backup", title: "Sicherungen & Konto", lead: "Jede Änderung legt eine Sicherung an. Hier rückgängig machen, exportieren und das Passwort ändern.", render: viewBackups },
@@ -177,6 +182,7 @@ function applyStatus(s) {
   const hermesOn = s.hermes.online, remote = s.mode === "remote", brainOn = remote || s.brain.online;
   const state = !hermesOn ? "error" : !brainOn ? (s.fallback.length ? "thinking" : "offline") : "idle";
   shell.dataset.state = state; window.Orb && Orb.set({ state });
+  const kb = $('#nav button[data-view="handy"]'); if (kb && s.kiosk) kb.hidden = !s.kiosk.configured;
   const chip = $("#chipBrain");
   chip.dataset.ok = !hermesOn ? "false" : brainOn ? "true" : "warn";
   chip.lastElementChild.textContent = !hermesOn ? "Hermes aus" : remote ? "Remote · Claude" : s.brain.online ? (s.mode === "local" ? "Lokal · online" : "Gehirn online") : s.fallback.length ? "PC aus · Claude" : "Gehirn offline";
@@ -191,7 +197,7 @@ async function viewOverview(view) {
   const loaded = s.brain.loaded.map((m) => `<div class="row"><div class="grow"><div class="title mono">${esc(m.name)}</div>
       <div class="meta">VRAM ${fmtBytes(m.vram)} von ${fmtBytes(m.size)}${m.ctx ? ` · Kontext ${esc(m.ctx)}` : ""} · bleibt bis ${esc(fmtTime(m.until))}</div></div>
       <button class="btn small ghost" data-unload="${esc(m.name)}">Entladen</button></div>`).join("");
-  const p = s.phone || {}, ps = p.status || {}, kw = s.phone ? "span-3" : "span-4";
+  const p = s.phone || {}, ps = p.status || {}, kw = "span-3", ph = s.phones || { paired: 0, online: 0 };
   const phoneLine = !p.reachable ? "nicht erreichbar" : !p.configured ? "erreichbar · Steuerung nicht eingerichtet" : p.error ? esc(p.error) : `Akku ${esc(ps.akku_prozent ?? "?")} %${ps.laedt ? " · lädt" : ""}`;
   const units = s.units.map((u) => `<div class="row">${dot(u.active === "active" ? true : u.active === "activating" ? null : false)}
       <div class="grow"><div class="title">${esc(u.label)}</div><div class="meta mono">${esc(u.unit)} · ${esc(u.active)}/${esc(u.sub)}${u.memory ? " · " + fmtBytes(u.memory) : ""}</div></div>
@@ -204,16 +210,21 @@ async function viewOverview(view) {
       <span class="sub">Fallback: ${s.fallback.length ? s.fallback.map((f) => esc(f.model)).join(", ") : "keiner"}</span></div>
     <div class="panel ${kw} kpi"><span class="label">Sprache</span><span class="value">${dot(s.stt.online && s.ui.online)}${s.stt.online && s.ui.online ? "Bereit" : "Gestört"}</span>
       <span class="sub">Erkennung ${s.stt.online ? "ok" : "aus"} · Oberfläche ${s.ui.online ? "ok" : "aus"}</span></div>
-    ${s.phone ? `<div class="panel span-3 kpi"><span class="label">Smartphone</span><span class="value">${dot(p.reachable && !p.error ? true : p.reachable ? null : false)}${p.reachable ? "Im WLAN" : "Offline"}</span>
-      <span class="sub">${phoneLine}</span>${ps.wlan_signal_dbm != null ? `<span class="sub">WLAN ${esc(ps.wlan_ssid || "")} ${esc(ps.wlan_signal_dbm)} dBm</span>` : ""}</div>` : ""}
+    <div class="panel span-3 kpi"><span class="label">Smartphones</span>
+      ${!ph.paired ? `<span class="value"><span class="dot"></span>Keine gekoppelt</span><span class="sub"><a href="#koppeln">Smartphones koppeln →</a></span>`
+        : `<span class="value">${ph.online ? dot(true) : '<span class="dot"></span>'}${ph.online ? `${ph.online} online` : "Nicht aktiv"}</span>
+      <span class="sub">${ph.paired} gekoppelt · ${ph.online} online</span>${ph.last ? `<span class="sub">${esc(ph.last.name)} · zuletzt ${esc(fmtAgo(ph.last.last_seen))}</span>` : ""}`}</div>
 
-    <div class="panel span-7"><div class="panel-head"><h3>Geladene Modelle (VRAM auf dem PC)</h3>${s.gpu_label ? `<span class="tag">${esc(s.gpu_label)}</span>` : ""}</div>
+    <div class="panel ${s.phone ? "span-5" : "span-7"}"><div class="panel-head"><h3>Geladene Modelle (VRAM auf dem PC)</h3>${s.gpu_label ? `<span class="tag">${esc(s.gpu_label)}</span>` : ""}</div>
       <div class="rows">${loaded || `<div class="empty">${s.brain.online ? "Kein Modell geladen – die erste Frage lädt es (~4 s)." : "PC/Ollama nicht erreichbar."}</div>`}</div>
       <p class="hint small">Tipp: Für Spiele am PC das Modell entladen; JARVIS lädt es bei der nächsten Frage selbst wieder.</p></div>
-    <div class="panel span-5"><h3>Server</h3>
+    <div class="panel ${s.phone ? "span-4" : "span-5"}"><h3>Server</h3>
       <div class="kpi"><span class="label">Arbeitsspeicher ${fmtBytes(memUsed)} / ${fmtBytes(sys.mem_total)}</span><div class="bar"><i data-w="${memUsed / sys.mem_total * 100}"></i></div></div><br>
       <div class="kpi"><span class="label">Speicher ${fmtBytes(diskUsed)} / ${fmtBytes(sys.disk_total)}</span><div class="bar" ${diskUsed / sys.disk_total > .85 ? "data-warn" : ""}><i data-w="${diskUsed / sys.disk_total * 100}"></i></div></div><br>
       <div class="sub muted">Last ${esc(sys.load.join(" · "))} (${sys.cpus} Kerne) · läuft seit ${fmtDur(sys.uptime)}</div></div>
+    ${s.phone ? `<div class="panel span-3 kpi"><span class="label">Kiosk-Gerät</span><span class="value">${dot(p.reachable && !p.error ? true : p.reachable ? null : false)}${p.reachable ? "Im WLAN" : "Offline"}</span>
+      <span class="sub">${phoneLine}</span>${ps.wlan_signal_dbm != null ? `<span class="sub">WLAN ${esc(ps.wlan_ssid || "")} ${esc(ps.wlan_signal_dbm)} dBm</span>` : ""}
+      <span class="sub"><a href="#handy">Details →</a></span></div>` : ""}
     <div class="panel span-12"><div class="panel-head"><h3>Dienste</h3><a href="#dienste" class="small">Prüfungen →</a></div><div class="rows">${units}</div></div>`);
   $$("[data-restart]", view).forEach((b) => b.onclick = () => busy(b, () => restartUnit(b.dataset.restart).then(() => show("uebersicht", true))));
   $$("[data-unload]", view).forEach((b) => b.onclick = () => busy(b, async () => { await api("/api/models/unload", { method: "POST", body: { name: b.dataset.unload } }); toast("Modell entladen."); show("uebersicht", true); }));
@@ -509,7 +520,7 @@ async function viewPair(view) {
   const [l, dv] = await Promise.all([api("/api/pairing/link"), api("/api/pairing/devices")]);
   const fp = (x) => (x ? esc(x.match(/.{2}/g).join(":")) : "kein eigenes Zertifikat gefunden");
   const devRows = dv.devices.map((x) => `<div class="row"><div class="grow"><div class="title">${esc(x.name)}</div>
-      <div class="meta">${esc(x.platform || "")} · gekoppelt ${esc(fmtTime(x.created))} · zuletzt ${esc(fmtTime(x.last_seen))}${x.ip ? ` · ${esc(x.ip)}` : ""}</div></div>
+      <div class="meta">${esc(x.platform || "")} · gekoppelt ${esc(fmtTime(x.created))} · zuletzt ${esc(fmtAgo(x.last_seen))}${x.ip ? ` · ${esc(x.ip)}` : ""}</div></div>
       <button class="btn small ghost" data-revoke="${esc(x.id)}" data-name="${esc(x.name)}">Entkoppeln …</button></div>`).join("");
   setHTML(view, `
     <div class="panel span-5"><h3>Neues Smartphone koppeln</h3>
@@ -551,28 +562,34 @@ async function viewPair(view) {
   }).then(() => { e.target.textContent = T("Weiteren QR-Code erzeugen"); });
 }
 
-/* ------------------------------------------------------------ Smartphone */
+/* ------------------------------------------------------------ Kiosk-Gerät */
 async function viewPhone(view) {
   const p = await api("/api/phone"), s = p.status || {};
   actions(`<button class="btn ghost" id="phRefresh">Aktualisieren</button>`).querySelector("#phRefresh").onclick = () => show("handy");
   const kv = (k, v) => `<div class="row"><div class="grow desc">${k}</div><div class="mono">${v ?? "–"}</div></div>`;
+  if (p.paused) {
+    setHTML(view, `<div class="panel span-12"><div class="panel-head"><h3>Zustand</h3><span class="dot"></span></div>
+      <p class="hint">Das Kiosk-Gerät ist pausiert. Es wird nicht geprüft und erscheint nicht in der Übersicht.</p>
+      <p class="muted small">Zum Fortsetzen KIOSK_PAUSED in der Dienst-Konfiguration der Verwaltung entfernen.</p></div>`);
+    return;
+  }
   setHTML(view, `
     <div class="panel span-5"><div class="panel-head"><h3>Zustand</h3>${dot(p.reachable && !p.error ? true : p.reachable ? null : false)}</div>
-      ${!p.configured || p.error ? `<div class="note ${p.reachable ? "warn" : "danger"}">${!p.reachable ? `Smartphone (${esc(p.host)}) ist nicht erreichbar.` : !p.configured ? "Die Smartphone-Steuerung ist noch nicht eingerichtet." : esc(p.error)}</div><br>` : ""}
+      ${!p.configured || p.error ? `<div class="note ${p.reachable ? "warn" : "danger"}">${!p.reachable ? `Kiosk-Gerät (${esc(p.host)}) ist nicht erreichbar.` : !p.configured ? "Die Kiosk-Steuerung ist noch nicht eingerichtet." : esc(p.error)}</div><br>` : ""}
       ${s.akku_prozent != null ? `<div class="kpi"><span class="label">Akku ${esc(s.akku_prozent)} %${s.laedt ? " · lädt" : ""}${s.akku_temp != null ? ` · ${esc(s.akku_temp)} °C` : ""}</span><div class="bar"><i data-w="${+s.akku_prozent}"></i></div></div><br>` : ""}
       <div class="rows">${kv("IP-Adresse", esc(s.ip || p.host))}${kv("WLAN", s.wlan_ssid ? `${esc(s.wlan_ssid)} · ${esc(s.wlan_signal_dbm)} dBm` : null)}
         ${kv("Läuft seit", s.uptime_s != null ? fmtDur(s.uptime_s) : null)}${kv("Kiosk", s.kiosk_laeuft == null ? null : s.kiosk_laeuft ? "läuft" : "aus")}${kv("NixOS-Generation", esc(s.nixos_generation))}</div></div>
     <div class="panel span-7"><h3>Steuerung</h3>
       <div class="inline"><button class="btn" data-ph="kiosk-reload">Kiosk neu laden</button><button class="btn ghost" data-ph="bildschirm" data-v="an">Bildschirm an</button>
-        <button class="btn ghost" data-ph="bildschirm" data-v="aus">Bildschirm aus</button><span class="grow"></span><button class="btn danger" id="phReboot">Smartphone neu starten</button></div><br>
+        <button class="btn ghost" data-ph="bildschirm" data-v="aus">Bildschirm aus</button><span class="grow"></span><button class="btn danger" id="phReboot">Kiosk-Gerät neu starten</button></div><br>
       <div class="grid2"><label class="field"><span>Helligkeit <b id="brOut">${esc(s.helligkeit_prozent ?? "–")}</b> %</span><input type="range" id="phBr" min="5" max="100" step="5" value="${esc(s.helligkeit_prozent ?? 60)}"></label>
         <label class="field"><span>Lautstärke <b id="voOut">${esc(s.lautstaerke_prozent ?? "–")}</b> %</span><input type="range" id="phVo" min="0" max="100" step="5" value="${esc(s.lautstaerke_prozent ?? 70)}"></label></div>
       <p class="hint small">Neustart dauert bis zur fertigen JARVIS-Oberfläche etwa 100 Sekunden.</p>
       ${p.pubkey ? `<details><summary class="small muted">Technik: eingeschränkter SSH-Schlüssel der Verwaltung</summary><pre class="code mono">${esc(p.pubkey)}</pre>
-        <p class="hint small">Auf dem Smartphone nur mit command=-Restriktion (status, reboot, kiosk-reload, helligkeit, lautstaerke, bildschirm) hinterlegt.</p></details>` : ""}</div>`);
+        <p class="hint small">Auf dem Kiosk-Gerät nur mit command=-Restriktion (status, reboot, kiosk-reload, helligkeit, lautstaerke, bildschirm) hinterlegt.</p></details>` : ""}</div>`);
   const act = (action, body = {}) => api(`/api/phone/${action}`, { method: "POST", body }).then(() => toast("Erledigt."));
   $$("[data-ph]", view).forEach((b) => b.onclick = () => busy(b, () => act(b.dataset.ph, { value: b.dataset.v })));
-  $("#phReboot").onclick = async () => { if (await confirmBox("Smartphone neu starten?", "Das Smartphone startet neu. JARVIS ist am Smartphone etwa 100 Sekunden nicht erreichbar.", "Neu starten", true)) busy($("#phReboot"), () => act("reboot", { confirm: "NEUSTART" })); };
+  $("#phReboot").onclick = async () => { if (await confirmBox("Kiosk-Gerät neu starten?", "Das Kiosk-Gerät startet neu. JARVIS ist am Kiosk-Gerät etwa 100 Sekunden nicht erreichbar.", "Neu starten", true)) busy($("#phReboot"), () => act("reboot", { confirm: "NEUSTART" })); };
   const slider = (id, outId, action) => { let t; $(id).oninput = (e) => { $(outId).textContent = e.target.value; clearTimeout(t); t = setTimeout(() => act(action, { value: +e.target.value }).catch((er) => toast(er.message, "err")), 400); }; };
   slider("#phBr", "#brOut", "helligkeit"); slider("#phVo", "#voOut", "lautstaerke");
 }

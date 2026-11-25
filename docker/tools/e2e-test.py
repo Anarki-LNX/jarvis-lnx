@@ -215,6 +215,11 @@ def main() -> int:
     # ---------------------------------------------------------------- Entkoppeln
     st, devs = adm.req("GET", "/api/pairing/devices")
     check("Gerät im Admin gelistet", any(x["name"] == "E2E-Test" for x in devs.get("devices", [])))
+    seen = [x.get("last_seen") for x in devs.get("devices", []) if x["name"] == "E2E-Test"]
+    check("Gerät hat „zuletzt gesehen“", bool(seen and seen[0]), str(seen[:1]))
+    st, ast = adm.req("GET", "/api/status")
+    ph = ast.get("phones") or {}
+    check("Admin-Kachel Smartphones zählt das Gerät", ph.get("paired", 0) >= 1 and ph.get("online", 0) >= 1, str(ph)[:100])
     st, _ = app.req("POST", "/api/unpair")
     st2, _ = app.req("GET", "/api/status")
     check("Nach Entkoppeln: 401", st == 200 and st2 == 401)

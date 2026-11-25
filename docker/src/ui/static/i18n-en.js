@@ -376,4 +376,6 @@ window.I18N_EN = {
   "Weckwort kommt mit einem Update. Bis dahin: Orb antippen.": "The wake word is coming in an update. Until then, tap the orb.",
   "App-Einstellungen": "App settings",
   "Server, Kopplung, Sprache, Updates": "Server, pairing, language, updates",
+  "Nach Updates suchen": "Check for updates",
+  "Installiert: {v}": "Installed: {v}",
 };
