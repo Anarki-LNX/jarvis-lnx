@@ -14,6 +14,7 @@ import hashlib
 import hmac
 import ipaddress
 import json
+import contextvars
 import os
 import secrets
 import time
@@ -47,10 +48,41 @@ def lang() -> str:
     return v
 
 
+# Sprache des Admin-Webinterfaces (Einrichtung, Koppeln, Fehlermeldungen); getrennt von der Sprache des Assistenten.
+REQ_LANG: contextvars.ContextVar[str | None] = contextvars.ContextVar("jarvis_req_lang", default=None)
+
+
+def ui_lang() -> str:
+    """Kopf X-UI-Lang der laufenden Anfrage (Wahl im Browser), sonst ADMIN_LANG/UI_LANG, Standard Englisch."""
+    v = REQ_LANG.get()
+    if v in ("de", "en"):
+        return v
+    return "de" if (env("ADMIN_LANG") or env("UI_LANG", "en")).lower().startswith("de") else "en"
+
+
+def ui_lang_setting() -> str:
+    """Admin-Sprache für den Browser: de | en | auto (auto = Browsersprache).
+    Reihenfolge: ui.json ui_lang (im Admin gewählt), ADMIN_LANG (Image-Standard en), UI_LANG."""
+    v = str(ui_cfg().get("ui_lang") or "").lower()
+    if v not in ("de", "en"):
+        v = (env("ADMIN_LANG") or env("UI_LANG", "auto")).lower()
+    return v if v in ("de", "en") else "auto"
+
+
+def server_label() -> str:
+    """Sichtbarer Servername mit Version, z. B. „NuOrb Server v0.2.1“ (kein „Jarvis LNX“ in der Oberfläche)."""
+    ver = env("JARVIS_LNX_VERSION").lstrip("v")
+    return f"{brand()} Server" + (f" v{ver}" if ver and ver != "dev" else (" (dev)" if ver else ""))
+
+
+def tr(de: str, en: str) -> str:
+    return de if ui_lang() == "de" else en
+
+
 DEFAULT_VOICE = {"de": "de_DE-thorsten-medium", "en": "en_GB-alan-medium"}
 # Stimmen, die der Assistent zur Auswahl anbietet (Piper, rhasspy/piper-voices); Lizenz je Stimme siehe README
 VOICE_CHOICES = {
-    "de": [("de_DE-thorsten-medium", "Thorsten (männlich, CC0)"), ("de_DE-thorsten-high", "Thorsten, hohe Qualität"),
+    "de": [("de_DE-thorsten-medium", "Thorsten (male, CC0)"), ("de_DE-thorsten-high", "Thorsten, high quality"),
            ("de_DE-kerstin-low", "Kerstin (weiblich)")],
     "en": [("en_GB-alan-medium", "Alan (British, male)"), ("en_US-ryan-high", "Ryan (US, male)"),
            ("en_US-amy-medium", "Amy (US, female)")],
@@ -183,8 +215,8 @@ def ensure_certs() -> None:
 
     if not (ca_key_p.exists() and ca_crt_p.exists()):
         k = ec.generate_private_key(ec.SECP256R1())
-        name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, f"JARVIS LNX CA {secrets.token_hex(3)}"),
-                          x509.NameAttribute(NameOID.ORGANIZATION_NAME, "JARVIS LNX (self-hosted)")])
+        name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, f"{brand()} Home CA {secrets.token_hex(3)}"),
+                          x509.NameAttribute(NameOID.ORGANIZATION_NAME, f"{brand()} (self-hosted)")])
         crt = (x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(k.public_key())
                .serial_number(x509.random_serial_number()).not_valid_before(now - dt.timedelta(minutes=5))
                .not_valid_after(now + dt.timedelta(days=3650))
@@ -195,7 +227,7 @@ def ensure_certs() -> None:
         save_key(k, ca_key_p)
         ca_crt_p.write_bytes(crt.public_bytes(serialization.Encoding.PEM))
         os.chmod(ca_crt_p, 0o644)
-        print(f"[jarvis] Neue Heim-CA erzeugt, Fingerabdruck {ca_fingerprint()}", flush=True)
+        print(f"[nuorb] New home CA created, fingerprint {ca_fingerprint()}", flush=True)
     if tls_mode() != "selfsigned":
         return
     want = sorted(set(hosts() + ["localhost", "127.0.0.1", "jarvis"]))
@@ -217,7 +249,7 @@ def ensure_certs() -> None:
         except ValueError:
             alt.append(x509.DNSName(h))
     crt = (x509.CertificateBuilder()
-           .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, want[0] if hosts() else "jarvis")]))
+           .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, want[0] if hosts() else "localhost")]))
            .issuer_name(ca_crt.subject).public_key(k.public_key()).serial_number(x509.random_serial_number())
            .not_valid_before(now - dt.timedelta(minutes=5)).not_valid_after(now + dt.timedelta(days=825))
            .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
@@ -229,7 +261,7 @@ def ensure_certs() -> None:
     save_key(k, srv_key_p)
     srv_crt_p.write_bytes(crt.public_bytes(serialization.Encoding.PEM))
     os.chmod(srv_crt_p, 0o644)
-    print(f"[jarvis] Server-Zertifikat für {', '.join(want)} erzeugt (825 Tage).", flush=True)
+    print(f"[nuorb] Server certificate created for {', '.join(want)} (825 days).", flush=True)
 
 
 def ca_fingerprint() -> str:
@@ -302,7 +334,7 @@ def add_device(name: str, platform: str, ip: str) -> tuple[str, str]:
     token = secrets.token_urlsafe(32)
     did = "d_" + secrets.token_hex(6)
     d = devices()
-    d[did] = {"name": (name or "Gerät")[:60], "platform": (platform or "unbekannt")[:20], "token": _sha(token),
+    d[did] = {"name": (name or "Device")[:60], "platform": (platform or "unknown")[:20], "token": _sha(token),
               "created": now_iso(), "last_seen": now_iso(), "ip": ip}
     _write_json(DEVICES, d)
     return did, token

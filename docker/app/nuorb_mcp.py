@@ -56,13 +56,13 @@ def admin(payload: dict) -> tuple[bool, str]:
 def call(name: str, args: dict) -> tuple[str, bool]:
     if name == "name_setzen":
         ok, out = admin({"assistant_name": str(args.get("name", "")).strip(), "onboarded": True, "source": "sprache"})
-        return (f"Name gespeichert: {args.get('name')}. Bestätige ihn kurz." if ok else f"Fehler: {out}"), not ok
+        return (f"Name saved: {args.get('name')}. Briefly confirm it." if ok else f"Error: {out}"), not ok
     if name == "nutzername_setzen":
         ok, out = admin({"user_name": str(args.get("name", "")).strip(), "source": "sprache"})
-        return (f"Gemerkt: Der Nutzer heißt {args.get('name')}." if ok else f"Fehler: {out}"), not ok
+        return (f"Remembered: the user's name is {args.get('name')}." if ok else f"Error: {out}"), not ok
     if name == "kennenlernen_fertig":
         ok, out = admin({"onboarded": True, "source": "sprache"})
-        return ("Kennenlernen abgeschlossen." if ok else f"Fehler: {out}"), not ok
+        return ("Kennenlernen abgeschlossen." if ok else f"Error: {out}"), not ok
     return f"Unbekanntes Werkzeug: {name}", True
 
 
@@ -94,7 +94,7 @@ def main():
             text, err = call(params.get("name"), params.get("arguments") or {})
             send(mid, {"content": [{"type": "text", "text": text}], "isError": err})
         else:
-            send(mid, error={"code": -32601, "message": f"Methode nicht unterstützt: {method}"})
+            send(mid, error={"code": -32601, "message": f"Method not supported: {method}"})
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ Grundsaetze
 - Secrets (.env, Schlüssel in config.yaml) verlassen den Server nie im Klartext: nur "gesetzt …1234".
 - Login: Passwort (scrypt), das der Nutzer beim ersten Aufruf mit einem Einmal-Code selbst setzt.
 - Dienst-Neustarts nur über den root-Helfer jarvis-admin-ctl (systemd-Path-Unit, feste Whitelist).
-- Handy nur über einen eigenen SSH-Schlüssel mit command=-Restriktion auf dem Handy.
+- Smartphone nur über einen eigenen SSH-Schlüssel mit command=-Restriktion auf dem Smartphone.
 """
 from __future__ import annotations
 
@@ -26,6 +26,7 @@ import shutil
 import socket
 import ssl
 import time
+import urllib.parse
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -52,12 +53,15 @@ UI_CERTS = Path(os.environ.get("ADMIN_CERTS", str(HOME / "certs/jarvis-admin")))
 UI_SETTINGS = Path(os.environ.get("JARVIS_UI_SETTINGS", str(HOME / ".config/jarvis/ui.json")))
 OLLAMA = os.environ.get("OLLAMA_URL", "http://ollama:11434")
 CTL_DIR = Path(os.environ.get("ADMIN_CTL_DIR", "/var/lib/jarvis-admin-ctl"))
-PHONE_HOST = os.environ.get("PHONE_HOST", "")  # leer = kein Handy (Kachel ausgeblendet)
+PHONE_HOST = os.environ.get("PHONE_HOST", "")  # leer = kein Smartphone (Kachel ausgeblendet)
 GPU_LABEL = os.environ.get("ADMIN_GPU_LABEL", "")
 # Produktwerte (im Image per Env fest, hier nur Anzeige/Standard)
-BRAND_NAME = os.environ.get("BRAND_NAME", "JARVIS")
-WAKE_PHRASE = os.environ.get("WAKE_PHRASE", "Hey Jarvis")
-UI_LANG = os.environ.get("UI_LANG", "de")
+BRAND_NAME = os.environ.get("BRAND_NAME", "NuOrb")  # Produktname (Titel, Login)
+ASSISTANT_NAME = os.environ.get("ASSISTANT_NAME", "") or BRAND_NAME  # wie der Assistent heisst
+WAKE_PHRASE = os.environ.get("WAKE_PHRASE", "") or "Hey " + (ASSISTANT_NAME.capitalize() if ASSISTANT_NAME.isupper() else ASSISTANT_NAME)
+UI_LANG = os.environ.get("ADMIN_LANG", "") or os.environ.get("UI_LANG", "")  # de | en | leer/auto = Browser
+SERVER_VERSION = os.environ.get("JARVIS_LNX_VERSION", "")
+SERVER_LABEL = f"{BRAND_NAME} Server" + (f" v{SERVER_VERSION.lstrip('v')}" if SERVER_VERSION else "")
 NAME_RE = r"[A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß0-9 .-]{0,23}"  # z. B. „RX 7800 XT · 16 GB“, leer = keine Angabe
 PHONE_USER = os.environ.get("PHONE_USER", "jarvis-ctl")
 PHONE_KEY = Path(os.environ.get("PHONE_KEY", str(BASE / "keys/handy_ed25519")))
@@ -71,7 +75,7 @@ UNITS = {  # Anzeige-Name -> systemd-Unit (Whitelist, identisch im root-Helfer)
     "admin": "jarvis-admin.service",
 }
 UNIT_LABELS = {"hermes": "Hermes-Gateway (Gehirn-Anbindung)", "stt": "Spracherkennung (Parakeet)",
-               "ui": "JARVIS-Oberfläche (Handy)", "admin": "Verwaltung (diese Seite)"}
+               "ui": "JARVIS-Oberfläche (Smartphone)", "admin": "Verwaltung (diese Seite)"}
 ALLOWED_NETS = [ipaddress.ip_network(n) for n in os.environ.get(
     "ADMIN_ALLOWED_NETS", "127.0.0.0/8,::1/128,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12").split(",")]
 
@@ -87,7 +91,7 @@ FILES = {  # Schlüssel -> (Pfad, Art)
     "ui": (UI_SETTINGS, "json"),
 }
 FILE_LABELS = {"config": "Hermes-Konfiguration", "soul": "Persönlichkeit (SOUL.md)", "memory": "Gedächtnis (MEMORY.md)",
-               "user": "Nutzerprofil (USER.md)", "env": "Schlüssel (.env)", "ui": "Handy-Oberfläche (ui.json)"}
+               "user": "Nutzerprofil (USER.md)", "env": "Schlüssel (.env)", "ui": "Smartphone-Oberfläche (ui.json)"}
 
 DATA.mkdir(parents=True, exist_ok=True)
 BACKUPS.mkdir(parents=True, exist_ok=True)
@@ -339,7 +343,7 @@ async def guard(request: Request, call_next):
     resp.headers["Referrer-Policy"] = "no-referrer"
     resp.headers["Permissions-Policy"] = "microphone=(), camera=(), geolocation=()"
     resp.headers["Content-Security-Policy"] = ("default-src 'self'; img-src 'self' data:; style-src 'self'; "
-                                               "script-src 'self'; connect-src 'self'; frame-ancestors 'none'; "
+                                               "script-src 'self'; connect-src 'self'; media-src 'self' blob:; frame-ancestors 'none'; "
                                                "base-uri 'none'; form-action 'self'")
     resp.headers["Strict-Transport-Security"] = "max-age=31536000"
     if path.startswith("/api/"):
@@ -362,11 +366,27 @@ async def body(request: Request) -> dict:
 
 
 # ------------------------------------------------------------------ Auth-Endpunkte
+def ui_brand() -> dict:
+    """Marke, Name, Weckwort und Sprache wie jarvis-ui: ui.json vor Umgebung. Oeffentlich (Login-Seite)."""
+    ui = read_ui_settings()
+
+    def pick(k, d):
+        v = ui.get(k)
+        return (v if isinstance(v, str) and v.strip() else d).strip()[:24]
+    lang = pick("ui_lang", UI_LANG or "auto").lower()
+    return {"brand_name": pick("brand_name", BRAND_NAME), "assistant_name": pick("assistant_name", ASSISTANT_NAME),
+            "wake_phrase": pick("wake_phrase", WAKE_PHRASE), "ui_lang": lang if lang in ("de", "en") else "auto"}
+
+
 @app.get("/api/auth/state")
 async def auth_state(request: Request):
+    b = ui_brand()
     return {"configured": auth_configured(), "loggedIn": session_of(request) is not None,
+            "brand": b["brand_name"], "ui_lang": b["ui_lang"],  # flach fuer die Docker-Seiten
+            "ui": {"brand": b["brand_name"], "assistant_name": b["assistant_name"], "wake_phrase": b["wake_phrase"],
+                   "ui_lang": b["ui_lang"], "server": SERVER_LABEL},
             "setupHint": None if auth_configured() else
-            f"docker compose exec jarvis cat {SETUP_FILE}"}
+            f"cat {SETUP_FILE}"}
 
 
 @app.post("/api/auth/setup")
@@ -823,6 +843,116 @@ def sysinfo() -> dict:
             "disk_free": du.free, "load": load, "uptime": up, "cpus": os.cpu_count()}
 
 
+# ------------------------------------------------------------------ Gerät koppeln (NuOrb-App)
+UI_PUBLIC_URL = os.environ.get("UI_PUBLIC_URL", "")  # leer = Host des Browser-Aufrufs, Port UI_PUBLIC_PORT
+UI_PUBLIC_PORT = os.environ.get("UI_PUBLIC_PORT", "8443")
+
+
+def ca_fingerprint() -> str:
+    """SHA-256 ueber das oeffentliche Heim-CA-Zertifikat (DER), 64 Hex gross. Leer, wenn keins da ist."""
+    try:
+        der = ssl.PEM_cert_to_DER_cert((UI_CERTS / "jarvis-ca.crt").read_text())
+    except (OSError, ValueError):
+        return ""
+    return hashlib.sha256(der).hexdigest().upper()
+
+
+def pair_ui_url(request: Request) -> str:
+    if UI_PUBLIC_URL:
+        return UI_PUBLIC_URL.rstrip("/")
+    host = request.url.hostname or "localhost"
+    host = f"[{host}]" if ":" in host else host
+    return f"https://{host}:{UI_PUBLIC_PORT}"
+
+
+# Mehrere Smartphones: Einmal-Codes + Geraeteliste, Dateiformat wie im Docker-Image (jarvis_common):
+# pairing.json {sha256(code): {exp, by, created}}, devices.json {id: {name, platform, token: sha256, created, last_seen, ip}}.
+# Eingeloest wird der Code von jarvis-ui (POST /api/pair). Kann jarvis-ui das (noch) nicht, gibt es den QR ohne Code.
+PAIR_DIR = UI_SETTINGS.parent
+PAIRING_FILE, DEVICES_FILE = PAIR_DIR / "pairing.json", PAIR_DIR / "devices.json"
+CODE_TTL = 600
+CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # ohne 0/O/1/I
+PAIR_PROBE: dict = {"t": 0.0, "ok": False}
+
+
+def _json_read(p: Path, default):
+    with contextlib.suppress(FileNotFoundError, ValueError):
+        return json.loads(p.read_text(encoding="utf-8"))
+    return default
+
+
+def _json_write(p: Path, data) -> None:
+    atomic_write(p, json.dumps(data, indent=1, ensure_ascii=False), 0o600)
+
+
+async def ui_pairing_supported() -> bool:
+    """Kann jarvis-ui Kopplungscodes einloesen? (GET /api/info gibt es nur mit Kopplung.) 60 s gemerkt."""
+    if time.time() - PAIR_PROBE["t"] < 60:
+        return PAIR_PROBE["ok"]
+    ok, j = await probe(f"{UI_URL}/api/info", 2, verify=ui_ssl_ctx())
+    ok = bool(ok and isinstance(j, dict) and "pairing_required" in j)
+    PAIR_PROBE.update(t=time.time(), ok=ok)
+    return ok
+
+
+def qr_data(text: str) -> str:
+    import segno
+    buf = io.BytesIO()
+    segno.make(text, error="m").save(buf, kind="svg", scale=6, border=2, dark="#000", light="#fff")
+    return "data:image/svg+xml;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
+def pair_payload(request: Request, code: str | None) -> dict:
+    url, fp = pair_ui_url(request), ca_fingerprint()
+    name = os.environ.get("JARVIS_NAME", "")[:40] or ui_brand()["brand_name"]
+    q = {"v": "1", "url": url, **({"code": code} if code else {}), **({"fp": fp} if fp else {}), "name": name}
+    uri = "jarvislnx://pair?" + urllib.parse.urlencode(q)
+    return {"uri": uri, "url": url, "fingerprint": fp, "name": name, "code": code, "qr": qr_data(uri)}
+
+
+@app.get("/api/pairing/link")
+async def pairing_link(request: Request):
+    """QR ohne Code (gilt fuer beliebig viele Geraete, solange jarvis-ui keine Kopplung verlangt)."""
+    return {**pair_payload(request, None), "pairing_supported": await ui_pairing_supported()}
+
+
+@app.post("/api/pairing/new")
+async def pairing_new(request: Request):
+    if not await ui_pairing_supported():
+        return {**pair_payload(request, None), "pairing_supported": False}
+    raw = "".join(secrets.choice(CODE_ALPHABET) for _ in range(8))
+    async with BRAIN_LOCK:
+        data = {k: v for k, v in _json_read(PAIRING_FILE, {}).items() if v.get("exp", 0) > time.time()}
+        exp = time.time() + CODE_TTL
+        data[hashlib.sha256(raw.encode()).hexdigest()] = {"exp": exp, "by": who(request)[:40], "created": now_iso()}
+        _json_write(PAIRING_FILE, data)
+    audit(who(request), "Kopplungscode erzeugt")
+    code = f"{raw[:4]}-{raw[4:]}"
+    return {**pair_payload(request, code), "expires": int(exp), "ttl": CODE_TTL, "pairing_supported": True}
+
+
+@app.get("/api/pairing/devices")
+async def pairing_devices():
+    out = [{"id": k, **{x: v.get(x) for x in ("name", "platform", "created", "last_seen", "ip")}}
+           for k, v in _json_read(DEVICES_FILE, {}).items()]
+    out.sort(key=lambda x: x.get("last_seen") or "", reverse=True)
+    return {"devices": out, "pairing_supported": await ui_pairing_supported(), "fingerprint": ca_fingerprint()}
+
+
+@app.post("/api/pairing/revoke")
+async def pairing_revoke(request: Request):
+    d = await body(request)
+    did = str(d.get("id", ""))
+    async with BRAIN_LOCK:
+        devs = _json_read(DEVICES_FILE, {})
+        if did not in devs:
+            raise HTTPException(404, "Gerät nicht gefunden.")
+        name = devs.pop(did).get("name", did)
+        _json_write(DEVICES_FILE, devs)
+    audit(who(request), f"Gerät entkoppelt: {name}")
+    return {"ok": True}
+
+
 @app.get("/api/status")
 async def status():
     cfg = to_plain(load_config_rt())
@@ -999,7 +1129,7 @@ def brain_state() -> dict:
 
 
 def build_brain_change(mode: str, remote_model: str | None, fallback_model: str | None) -> dict:
-    """Gemeinsame Logik fuer Admin-UI und Handy: liefert neuen config.yaml-Text + Texte + ui.json-Felder."""
+    """Gemeinsame Logik fuer Admin-UI und Smartphone: liefert neuen config.yaml-Text + Texte + ui.json-Felder."""
     if mode not in MODE_LABEL:
         raise HTTPException(400, "Ungültiger Modus (local, auto oder remote).")
     st = brain_state()
@@ -1079,7 +1209,7 @@ async def brain_save(request: Request):
     return pv
 
 
-# ------------------------------------------------------------------ Interne Schnittstelle fuer jarvis-ui (Handy-Schalter)
+# ------------------------------------------------------------------ Interne Schnittstelle fuer jarvis-ui (Smartphone-Schalter)
 INTERNAL_TOKEN_FILE = UI_SETTINGS.parent / "internal.token"
 
 
@@ -1110,7 +1240,7 @@ async def internal_brain_get():
 @app.post("/internal/brain")
 async def internal_brain_set(request: Request):
     """Nur Gehirn-Modus und Claude-Modell. Gleiche Logik wie im Admin-UI, aber ohne Vorschau (der Nutzer hat am
-    Handy bestaetigt): Sicherung, atomar schreiben, `hermes config check`, bei Fehler automatisch zurueck."""
+    Smartphone bestaetigt): Sicherung, atomar schreiben, `hermes config check`, bei Fehler automatisch zurueck."""
     d = await body(request)
     mode = d.get("mode")
     model = d.get("claude") or d.get("model")
@@ -1170,7 +1300,7 @@ async def persona_get():
     return {"soul": read_text(FILES["soul"][0]), "ui_persona": ui.get("persona"),
             "ui_supported": UI_SETTINGS.exists(), "assistant_name": ui_field_value(ui, "assistant_name"),
             "onboarded": ui_field_value(ui, "onboarded"),
-            "brand_name": BRAND_NAME, "wake_phrase": WAKE_PHRASE, "ui_lang": UI_LANG}
+            **{k: v for k, v in ui_brand().items() if k in ("brand_name", "wake_phrase", "ui_lang")}}
 
 
 @app.post("/api/persona/save")
@@ -1192,12 +1322,12 @@ async def persona_save(request: Request):
             ui["persona"] = val
         else:
             ui.pop("persona", None)
-        return make_preview("ui", json.dumps(ui, indent=2, ensure_ascii=False) + "\n", "Sprach-Persona des Handys ändern",
-                            "Gilt für die nächste Frage am Handy. Erste Antwort danach einmalig langsamer.")
+        return make_preview("ui", json.dumps(ui, indent=2, ensure_ascii=False) + "\n", "Sprach-Persona des Smartphones ändern",
+                            "Gilt für die nächste Frage am Smartphone. Erste Antwort danach einmalig langsamer.")
     if "assistant_name" in d:
         ui = read_ui_settings()
         v = ui_field_check("assistant_name", d["assistant_name"])
-        if v == BRAND_NAME:
+        if v == ASSISTANT_NAME:
             ui.pop("assistant_name", None)  # Standard = Marke (haelt den Prompt-Cache)
         else:
             ui["assistant_name"] = v
@@ -1270,16 +1400,16 @@ async def ui_settings_save(request: Request):
             if k == "piper_voice" and not re.fullmatch(r"[A-Za-z0-9_\-]+", v):
                 raise HTTPException(400, "Ungültige Stimme.")
             ui[k] = v
-    return make_preview("ui", json.dumps(ui, indent=2, ensure_ascii=False) + "\n", "Spracheinstellungen des Handys",
-                        "Gilt für die nächste Antwort am Handy.")
+    return make_preview("ui", json.dumps(ui, indent=2, ensure_ascii=False) + "\n", "Spracheinstellungen des Smartphones",
+                        "Gilt für die nächste Antwort am Smartphone.")
 
 
-# Interne Schnittstelle fuer einzelne ui.json-Schalter (Handy). Whitelist: Feld -> (Typ, Bezeichnung, Standard, Bereich)
+# Interne Schnittstelle fuer einzelne ui.json-Schalter (Smartphone). Whitelist: Feld -> (Typ, Bezeichnung, Standard, Bereich)
 INTERNAL_UI_FIELDS = {
     "wake_word": (bool, f"Wecken mit „{WAKE_PHRASE}“", False, None),
     "follow_up": (bool, "Nach Antwort weiter zuhören", True, None),
     "follow_up_timeout_s": (int, "Wartezeit auf Antwort", 8, (4, 30)),
-    "assistant_name": (str, "Name des Assistenten", BRAND_NAME, NAME_RE),  # Bereich = Regex
+    "assistant_name": (str, "Name des Assistenten", ASSISTANT_NAME, NAME_RE),  # Bereich = Regex
     # Fehlt das Feld, begruesst die Instanz nie von selbst -> Standard "erledigt"
     "onboarded": (bool, "Begrüßung erledigt", True, None),
 }
@@ -1337,7 +1467,7 @@ async def internal_ui_set(request: Request):
         ui = read_ui_settings()
         changed = {k: v for k, v in fields.items() if ui_field_value(ui, k) != v}
         if changed:
-            write_ui_fields(changed, f"Handy-Schalter via {src}")
+            write_ui_fields(changed, f"Smartphone-Schalter via {src}")
             audit(f"internal:{src}", ", ".join(ui_field_text(k, v) for k, v in changed.items()))
     ui = read_ui_settings()
     return {"ok": True, **({"unchanged": True} if not changed else {}), **{k: ui_field_value(ui, k) for k in fields}}
@@ -1347,9 +1477,24 @@ async def internal_ui_set(request: Request):
 async def tts_test(request: Request):
     d = await body(request)
     text = str(d.get("text", "Guten Tag. Alle Systeme sind bereit."))[:300]
+    payload = {"text": text}
+    # Probehoeren mit den Formularwerten (noch nicht gespeichert); nur vorhandene Stimmen
+    if d.get("piper_voice"):
+        v = str(d["piper_voice"])
+        if not re.fullmatch(r"[A-Za-z0-9_\-]+", v) or not (HERMES_HOME / f"cache/piper-voices/{v}.onnx").is_file():
+            raise HTTPException(400, "Unbekannte Stimme.")
+        payload["voice"] = v
+    if d.get("length_scale") is not None:
+        try:
+            ls = float(d["length_scale"])
+        except (TypeError, ValueError):
+            raise HTTPException(400, "Sprechtempo ungültig.")
+        if not 0.6 <= ls <= 1.6:
+            raise HTTPException(400, "Sprechtempo zwischen 0,6 und 1,6.")
+        payload["length_scale"] = ls
     try:
         async with httpx.AsyncClient(timeout=20, verify=ui_ssl_ctx()) as c:
-            r = await c.post(f"{UI_URL}/api/tts", json={"text": text})
+            r = await c.post(f"{UI_URL}/api/tts", json=payload)
         if r.status_code >= 400:
             raise HTTPException(502, "Sprachausgabe nicht erreichbar.")
         return Response(r.content, media_type=r.headers.get("content-type", "audio/wav"))
@@ -1725,7 +1870,7 @@ async def env_save(request: Request):
     if not re.fullmatch(r"[A-Z_][A-Z0-9_]{1,60}", name):
         raise HTTPException(400, "Ungültiger Variablenname.")
     if name in ENV_PROTECTED:
-        raise HTTPException(403, "Diese Variable verbindet Hermes mit der Handy-Oberfläche und ist hier gesperrt.")
+        raise HTTPException(403, "Diese Variable verbindet Hermes mit der Smartphone-Oberfläche und ist hier gesperrt.")
     remove = bool(d.get("remove"))
     value = str(d.get("value", ""))
     if not remove and (not value or "\n" in value or len(value) > 4096):
@@ -1847,7 +1992,7 @@ LOG_SOURCES = {
     "gateway": ("file", HERMES_HOME / "logs/gateway.log", "Hermes: Gateway"),
     "j-hermes": ("journal", UNITS["hermes"], "Dienst: Hermes-Gateway"),
     "j-stt": ("journal", UNITS["stt"], "Dienst: Spracherkennung"),
-    "j-ui": ("journal", UNITS["ui"], "Dienst: Handy-Oberfläche"),
+    "j-ui": ("journal", UNITS["ui"], "Dienst: Smartphone-Oberfläche"),
     "j-admin": ("journal", UNITS["admin"], "Dienst: Verwaltung"),
     "audit": ("file", DATA / "audit.log", "Verwaltung: Änderungsprotokoll"),
 }
@@ -1891,16 +2036,16 @@ async def logs(source: str = "agent", lines: int = 300, level: str = "", q: str 
             "sources": {k: v[2] for k, v in LOG_SOURCES.items()}}
 
 
-# ------------------------------------------------------------------ Handy (eingeschraenkter SSH-Schlüssel)
+# ------------------------------------------------------------------ Smartphone (eingeschraenkter SSH-Schlüssel)
 PHONE_CACHE: dict = {"t": 0, "data": None}
 PHONE_CMDS = {"status", "reboot", "kiosk-reload", "bildschirm"}
 
 
 async def phone_cmd(*args: str, timeout: float = 8) -> tuple[int, str]:
     if not PHONE_HOST:
-        return 255, "Kein Handy eingerichtet (PHONE_HOST fehlt)."
+        return 255, "Kein Smartphone eingerichtet (PHONE_HOST fehlt)."
     if not PHONE_KEY.exists():
-        return 255, "Kein Handy-Schlüssel eingerichtet."
+        return 255, "Kein Smartphone-Schlüssel eingerichtet."
     kh = BASE / "keys/known_hosts"
     cmd = ["ssh", "-i", str(PHONE_KEY), "-o", "BatchMode=yes", "-o", "ConnectTimeout=4",
            "-o", "StrictHostKeyChecking=yes", "-o", f"UserKnownHostsFile={kh}", "-o", "IdentitiesOnly=yes",
@@ -1927,13 +2072,13 @@ def tcp_open(host: str, port: int, timeout: float = 1.0) -> bool:
 def phone_error_text(out: str, code: int) -> str:
     o = out.lower()
     if "host key" in o:
-        return "Hostschlüssel des Handys ist noch nicht bestätigt (Einrichtung läuft)."
+        return "Hostschlüssel des Smartphones ist noch nicht bestätigt (Einrichtung läuft)."
     if "permission denied" in o:
-        return "Die Steuerung ist auf dem Handy noch nicht eingerichtet (Schlüssel nicht hinterlegt)."
+        return "Die Steuerung ist auf dem Smartphone noch nicht eingerichtet (Schlüssel nicht hinterlegt)."
     if code == 2 or "nicht erlaubt" in o:
-        return "Das Handy kennt diesen Befehl nicht."
+        return "Das Smartphone kennt diesen Befehl nicht."
     if code == 124:
-        return "Das Handy antwortet nicht (Zeitüberschreitung)."
+        return "Das Smartphone antwortet nicht (Zeitüberschreitung)."
     return (out or f"Fehler {code}")[:300]
 
 
@@ -1948,7 +2093,7 @@ async def phone_status(cached: bool = False) -> dict:
             try:
                 data["status"] = json.loads(out)
             except Exception:
-                data["error"] = "Antwort des Handys unlesbar."
+                data["error"] = "Antwort des Smartphones unlesbar."
         else:
             data["error"] = phone_error_text(out, code)
     PHONE_CACHE.update(t=time.time(), data=data)
@@ -1983,11 +2128,11 @@ async def phone_action(action: str, request: Request):
         args = ["bildschirm", d["value"]]
     else:
         raise HTTPException(404, "Unbekannte Aktion.")
-    audit(who(request), f"Handy: {' '.join(args)}")
+    audit(who(request), f"Smartphone: {' '.join(args)}")
     code, out = await phone_cmd(*args, timeout=12)
     PHONE_CACHE["t"] = 0
     if code != 0:
-        raise HTTPException(502, f"Handy: {phone_error_text(out, code)}")
+        raise HTTPException(502, f"Smartphone: {phone_error_text(out, code)}")
     return {"ok": True, "output": out}
 
 

@@ -6,7 +6,7 @@
   const DE = !window.I18N || window.I18N.lang === "de"; // lokale Sprachbefehle (deutsche Muster) nur auf Deutsch
   const LOC = DE ? "de-DE" : "en-GB";
   const $ = (id) => document.getElementById(id);
-  const VERSION = "2026-11-24.48";
+  const VERSION = "2026-11-25.52";
   // Kurzes Client-Log ins Server-Journal (Kiosk hat keine JS-Konsole)
   function clog(msg) {
     try { fetch("/api/clientlog", { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
@@ -851,7 +851,7 @@
           [t("Kosten"), det.kosten || k.kosten]].filter(Boolean);
       }
       else {
-        title = server === "handy" ? t("Handy-Werkzeug „{tool}“ ausführen?", { tool }) : t("Werkzeug „{tool}“ von „{server}“ ausführen?", { tool, server });
+        title = server === "handy" ? t("Smartphone-Werkzeug „{tool}“ ausführen?", { tool }) : t("Werkzeug „{tool}“ von „{server}“ ausführen?", { tool, server });
         desc = t("Der Server „{server}“ ist als nicht vertrauenswürdig eingestuft; jede schreibende Aktion braucht deine Freigabe.", { server });
         facts = [[t("Werkzeug"), server + " · " + tool], [t("Kosten"), det.kosten]];
         if (det.args) code = JSON.stringify(det.args, null, 1).slice(0, 600);
@@ -951,6 +951,7 @@
     return d;
   }
   async function pollDevice() {
+    if (S.features && S.features.geraet === false) { if (DEV.available !== false) { DEV.available = false; renderDevice(); } return; }
     if (DEV.available === false) return;
     try {
       const r = await fetch("/device/status", { cache: "no-store" });
@@ -980,8 +981,8 @@
     link.dataset.sig = String(w.signal == null ? 3 : w.signal >= 70 ? 3 : w.signal >= 45 ? 2 : w.signal >= 20 ? 1 : 0);
     link.title = !w.enabled ? t("WLAN aus") : w.connected ? t("WLAN {s}", { s: w.ssid || "" }) : t("WLAN nicht verbunden");
     const hot = !!tp.warn, tc = Math.max(tp.cpu_c || 0, tp.battery_c || 0);
-    $("chipTemp").hidden = !hot; $("tempVal").textContent = tc ? Math.round(tc) + "°" : t("heiß"); $("chipTemp").title = tc ? t("Handy warm: {c} °C", { c: Math.round(tc) }) : t("Handy warm");
-    if (hot && !S._hotSaid) { S._hotSaid = true; toast(t("Das Handy ist warm ({c} °C).", { c: Math.round(tc) })); }
+    $("chipTemp").hidden = !hot; $("tempVal").textContent = tc ? Math.round(tc) + "°" : t("heiß"); $("chipTemp").title = tc ? t("Smartphone warm: {c} °C", { c: Math.round(tc) }) : t("Smartphone warm");
+    if (hot && !S._hotSaid) { S._hotSaid = true; toast(t("Das Smartphone ist warm ({c} °C).", { c: Math.round(tc) })); }
     if (!hot) S._hotSaid = false;
     $("devLine").textContent = [b.percent != null ? (b.charging ? t("Akku {p} · lädt", { p: pct(b.percent) }) : t("Akku {p}", { p: pct(b.percent) })) : null,
       tp.cpu_c != null ? "CPU " + Math.round(tp.cpu_c) + " °C" : null, w.enabled ? (w.connected ? t("WLAN {s}", { s: w.ssid || t("verbunden") }) : t("WLAN sucht …")) : t("WLAN aus")]
@@ -1021,16 +1022,16 @@
     const reboot = kind === "reboot";
     closeSheet("setBackdrop");
     confirmLocal({
-      title: reboot ? t("Handy neu starten?") : t("Handy ausschalten?"),
+      title: reboot ? t("Smartphone neu starten?") : t("Smartphone ausschalten?"),
       desc: reboot ? t("JARVIS ist etwa zwei Minuten weg und startet danach von selbst.") : t("Zum Einschalten danach die Ein-Taste lange drücken."),
-      facts: [[t("Ziel"), t("JARVIS-Handy (Xiaomi, NixOS)")], [t("Befehl"), reboot ? t("Neustart in 3 s") : t("Ausschalten in 3 s")]],
+      facts: [[t("Ziel"), t("JARVIS-Smartphone (Xiaomi, NixOS)")], [t("Befehl"), reboot ? t("Neustart in 3 s") : t("Ausschalten in 3 s")]],
       yes: reboot ? t("Ja, neu starten") : t("Ja, ausschalten"),
-      say: reboot ? t("Soll ich das Handy wirklich neu starten?") : t("Soll ich das Handy wirklich ausschalten?"),
+      say: reboot ? t("Soll ich das Smartphone wirklich neu starten?") : t("Soll ich das Smartphone wirklich ausschalten?"),
       run: async () => {
         try {
           await devCall(reboot ? "reboot" : "poweroff", {});
           speech.say(reboot ? t("Bis gleich.") : t("Gute Nacht."));
-          $("powerText").textContent = reboot ? t("Handy startet neu …") : t("Handy wird ausgeschaltet …"); $("powerVeil").hidden = false;
+          $("powerText").textContent = reboot ? t("Smartphone startet neu …") : t("Smartphone wird ausgeschaltet …"); $("powerVeil").hidden = false;
         } catch (e) { card("err", String(e.message || e)); }
       },
     });
@@ -1039,7 +1040,7 @@
     if (on) return devCall("wifi", { on: true }).then(() => { card("sys", t("WLAN eingeschaltet.")); }).catch((e) => card("err", String(e.message || e)));
     confirmLocal({
       title: t("WLAN ausschalten?"), desc: t("Ohne WLAN kann JARVIS nicht sprechen und nicht antworten. Zum Wiedereinschalten erscheint ein großer Knopf."),
-      facts: [[t("Ziel"), t("WLAN des Handys")], [t("Wieder an"), t("Knopf „WLAN einschalten“ oder Gerät-Panel")]],
+      facts: [[t("Ziel"), t("WLAN des Smartphones")], [t("Wieder an"), t("Knopf „WLAN einschalten“ oder Gerät-Panel")]],
       yes: t("Ja, ausschalten"), say: t("Soll ich das WLAN wirklich ausschalten? Dann bin ich offline."),
       run: async () => { try { await devCall("wifi", { on: false }); card("sys", t("WLAN ausgeschaltet.")); } catch (e) { card("err", String(e.message || e)); } },
     });
@@ -1097,7 +1098,7 @@
     clog("Hermes fordert Geräteaktion: " + JSON.stringify(a));
     S.lastIntentSay = (INTENT_SAY[a.aktion] || t("Erledige ich.")).replace("{w}", a.wert);
     if (ANDROID) { S.lastIntentSay = t("Gerätebefehle gehen in dieser App nicht."); return; } // Antwort setzt streamRun (fester Satz)
-    if (!DEV.available) { card("err", t("Geräteaktion nicht möglich: kein Gerätedienst (läuft die Seite auf dem Handy?).")); return; }
+    if (!DEV.available) { card("err", t("Geräteaktion nicht möglich: kein Gerätedienst (läuft die Seite auf dem Smartphone?).")); return; }
     const v = a.wert == null ? null : Math.max(0, Math.min(100, Math.round(+a.wert)));
     const err = (e) => card("err", String(e.message || e));
     switch (a.aktion) {
@@ -1125,8 +1126,8 @@
     let m;
     if (/\b(w-?lan|wifi|wi-fi|internet)\b.*\b(aus|ab|ausschalten|abschalten|deaktivier\w*)\b/.test(lc)) { card("user", text); wifiAction(false); return true; }
     if (/\b(w-?lan|wifi|wi-fi|internet)\b.*\b(an|ein|einschalten|anschalten|aktivier\w*)\b/.test(lc)) { say(t("WLAN geht an.")); wifiAction(true); return true; }
-    if (/\b(handy|telefon|gerät|system)\b.*\b(neu ?start\w*|neustarten|rebooten)\b|\bneustart\b|\bstart\w*\b.*\b(handy|telefon|gerät|system)\b.*\bneu\b/.test(lc)) { card("user", text); powerAction("reboot"); return true; }
-    if (/\b(handy|telefon|gerät)\b.*\b(ausschalten|abschalten|herunterfahren|runterfahren)\b/.test(lc) || /\b(schalt\w*|fahr\w*)\b.*\b(handy|telefon|gerät)\b.*\b(aus|ab|herunter|runter)\b/.test(lc)) { card("user", text); powerAction("poweroff"); return true; }
+    if (/\b(handy|smartphone|telefon|gerät|system)\b.*\b(neu ?start\w*|neustarten|rebooten)\b|\bneustart\b|\bstart\w*\b.*\b(handy|smartphone|telefon|gerät|system)\b.*\bneu\b/.test(lc)) { card("user", text); powerAction("reboot"); return true; }
+    if (/\b(handy|smartphone|telefon|gerät)\b.*\b(ausschalten|abschalten|herunterfahren|runterfahren)\b/.test(lc) || /\b(schalt\w*|fahr\w*)\b.*\b(handy|smartphone|telefon|gerät)\b.*\b(aus|ab|herunter|runter)\b/.test(lc)) { card("user", text); powerAction("poweroff"); return true; }
     if (/\bbildschirm\b.*\b(aus|ausschalten|dunkel)\b/.test(lc)) { say(t("Bildschirm aus. Tippen weckt mich.")); setTimeout(() => devCall("screen", { on: false }).catch(() => {}), 1800); return true; }
     if ((m = lc.match(/\bhelligkeit\b\D{0,12}(\d{1,3})/))) { say(t("Helligkeit {v} Prozent.", { v: m[1] })); devCall("brightness", { percent: +m[1] }).catch((e) => card("err", e.message)); return true; }
     if (/\b(heller)\b/.test(lc) || /\b(dunkler)\b/.test(lc)) {
@@ -1162,14 +1163,14 @@
       b.setAttribute("aria-checked", String(id === BR.claude));
       const nm = document.createElement("b"); nm.textContent = modelShort(id, "remote");
       const p = document.createElement("span"); p.textContent = t("{i} / {o}\nje 1 Mio. Token", { i: fmtUsd(m.in), o: fmtUsd(m.out) });
-      p.style.whiteSpace = "pre-line"; b.append(nm, p); b.title = m.hint || "";
+      p.style.whiteSpace = "pre-line"; b.append(nm, p); b.title = m.hint ? t(m.hint) : "";
       b.addEventListener("click", () => { BR.claude = id; renderBrain(); }); box.appendChild(b);
     }
     $("brPrivacy").hidden = BR.mode === "local";
     const cur = d.mode ? t("Aktiv: {m}", { m: (MODE_DE[d.mode] || d.mode) + (d.mode !== "local" && d.claude ? " · " + modelShort(d.claude, "remote") : "") }) : "";
     const m = models[BR.claude];
     $("brNote").textContent = !d.available ? (d.detail || t("Umschalten nur im Admin-UI möglich."))
-      : [cur, BR.mode !== "local" && m ? t("{n}: {h} (Eingabe {i}, Ausgabe {o} je 1 Mio. Token)", { n: m.name, h: m.hint || "", i: fmtUsd(m.in), o: fmtUsd(m.out) }) : ""].filter(Boolean).join(" · ");
+      : [cur, BR.mode !== "local" && m ? t("{n}: {h} (Eingabe {i}, Ausgabe {o} je 1 Mio. Token)", { n: m.name, h: m.hint ? t(m.hint) : "", i: fmtUsd(m.in), o: fmtUsd(m.out) }) : ""].filter(Boolean).join(" · ");
     $("brApply").disabled = !d.available || (d.mode === BR.mode && (BR.mode === "local" || remembered(BR.mode) === BR.claude));
   }
   // je Modus gemerktes Claude-Modell (jarvis-admin: remote_model / fallback_model)
@@ -1331,13 +1332,14 @@
     return DEV.available === true;
   }
   function renderWake() {
-    const avail = wakeAvailable(), row = $("wakeRow");
-    row.hidden = !avail && !ANDROID; $("wakeInfo").hidden = !avail && !ANDROID;
-    $("optWake").disabled = !avail;
-    if (!avail && ANDROID) { $("optWake").checked = false; $("wakeInfo").firstElementChild.textContent = t("bald"); return; }
+    const avail = wakeAvailable(), row = $("wakeRow"), soon = !avail && ANDROID;
+    // Ohne Weckwort: im Browser ausblenden; in der App (Store-Fassung) ausgegraut mit „bald verfuegbar“ in derselben Zeile
+    row.hidden = !avail && !ANDROID; $("wakeInfo").hidden = !avail;
+    $("optWake").disabled = !avail; row.classList.toggle("is-off", soon); $("wakeSoon").hidden = !soon;
+    if (soon) { $("optWake").checked = false; return; }
     $("optWake").checked = !!WAKE.on;
     const info = $("wakeInfo").firstElementChild;
-    info.textContent = ANDROID ? (NATIVE ? (WAKE.on ? t("aktiv (App)") : "") : t("nur in der App")) : DEV.available === false ? t("nur am Handy") : WAKE.on && WAKE.svc === false ? t("Wake-Dienst fehlt") : WAKE.on && WAKE.svc ? t("aktiv") : "";
+    info.textContent = ANDROID ? (NATIVE ? (WAKE.on ? t("aktiv (App)") : "") : t("nur in der App")) : DEV.available === false ? t("nur am Smartphone") : WAKE.on && WAKE.svc === false ? t("Wake-Dienst fehlt") : WAKE.on && WAKE.svc ? t("aktiv") : "";
   }
   function wakeApply(on) {
     if (ANDROID) { // Wake gehoert der App, nicht ui.json (sonst schaltet das Xiaomi sein Mikro)
@@ -1390,13 +1392,13 @@
     if (!on) { go(); return true; }
     if (WAKE.on) { speech.say(t("Hey Jarvis ist schon an.")); return true; }
     confirmLocal({ title: t("„Hey Jarvis“ einschalten?"), desc: t("Das Mikro hört dann ständig mit. Nichts wird gespeichert oder gesendet, bevor „Hey Jarvis“ erkannt ist."),
-      facts: [[t("Ziel"), t("Wake-Word auf dem Handy")], [t("Aus"), t("„Hey Jarvis aus“ oder Gerät-Panel")]], yes: t("Ja, einschalten"),
+      facts: [[t("Ziel"), t("Wake-Word auf dem Smartphone")], [t("Aus"), t("„Hey Jarvis aus“ oder Gerät-Panel")]], yes: t("Ja, einschalten"),
       say: t("Soll ich Hey Jarvis einschalten? Dann höre ich ständig mit."), run: go });
     return true;
   }
   // Wetter immer von der eigenen Station (deterministisch, ohne Modell): /api/wetter -> fertiger Sprechsatz
   const WX_WORDS = /\b(wetter\w*|wie (warm|kalt)|wie viel grad|wieviel grad|grad (hat|haben|sind|ist) es|temperatur draußen|draußen (warm|kalt)|regnet( es)?|regnen|regen|regenschirm|schneit|schneien|schnee|frost|glätte|glatteis|wind\w*|sturm|gewitter)\b/;
-  const WX_NOT = /\b(handy|akku|cpu|prozessor|gerät|pc|rechner|telefon|windows|wecker)\b/;
+  const WX_NOT = /\b(handy|smartphone|akku|cpu|prozessor|gerät|pc|rechner|telefon|windows|wecker)\b/;
   // Haus (nur LESEN, lokal ueber /api/zuhause): Heizung/Puffer/Laddomat/Pumpen/Ofen, Raeume, Klima, Energie.
   // Schreibsaetze (stell/mach/schalt…, waermer/kaelter, „auf 22 Grad“) gehen bewusst an Hermes (Haiku-Weiche), damit Karten greifen.
   const HOME_WRITE = /\b(stelle?n?|stellst|setze?n?|mache?n?|machst|schalte?n?|schaltest|drehe?n?|erhöh\w*|senk\w*|reduzier\w*|wärmer|kälter|heiz\w* (auf|hoch)|kühl\w* (auf|runter)|auf \d+(,\d)? ?grad|an ?machen|aus ?machen|einschalten|ausschalten)\b/;
@@ -1410,7 +1412,7 @@
     }
   }
   function homeQuery(lc, text) {
-    if (HOME_WRITE.test(lc) || /\b(handy|telefon|akku)\b/.test(lc)) return false;
+    if (HOME_WRITE.test(lc) || /\b(handy|smartphone|telefon|akku)\b/.test(lc)) return false;
     const room = (ROOMS.find(([re]) => re.test(lc)) || [])[1] || "";
     let w = null, args = {};
     let m;
@@ -1472,6 +1474,7 @@
       opts.follow = an; if (!an) convEnd("ausgeschaltet"); toast(an ? t("JARVIS hört nach jeder Antwort kurz weiter zu.") : t("Nach der Antwort: wieder Tippen oder „Hey Jarvis“."));
     } catch (e) { el.checked = !an; toast(String(e.message || e)); }
   });
+  $("wakeRow").addEventListener("click", () => { if (!wakeAvailable()) toast(t("Weckwort kommt mit einem Update. Bis dahin: Orb antippen.")); });
   $("optWake").addEventListener("change", async () => {
     const el = $("optWake"), an = el.checked;
     if (ANDROID) {
@@ -1565,8 +1568,9 @@
   levelLoop();
   const dm = new URLSearchParams(location.search).get("demo");
   if (dm) { pollStatus().then(() => demo(dm)); loadWidgets(); }
-  else { pollStatus(); setInterval(() => { if (!S.demo) pollStatus(); }, 5000); loadWidgets(); setInterval(loadWidgets, 60000);
+  else { const first = pollStatus(); setInterval(() => { if (!S.demo) pollStatus(); }, 5000); loadWidgets(); setInterval(loadWidgets, 60000);
     loadBrain(); setInterval(loadBrain, 60000);
-    pollDevice(); setInterval(() => { if (DEV.available !== false) pollDevice(); }, 5000); }
+    // Geraetedienst erst nach dem ersten Status fragen: bei features.geraet === false gar nicht (kein 404 im Image)
+    first.finally(() => { pollDevice(); setInterval(() => { if (DEV.available !== false) pollDevice(); }, 5000); }); }
   window.JARVIS = { S, ask, speech, demo };
 })();

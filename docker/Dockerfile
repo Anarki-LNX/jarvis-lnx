@@ -34,4 +34,7 @@ EXPOSE 8443 8444
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 CMD ["/opt/jarvis/bin/healthcheck"]
 
 # Hermes-Gateway (Agent + API auf 127.0.0.1:8642) als Hauptprozess; JARVIS-Dienste laufen daneben unter s6.
+# Version für die Anzeige im Admin („NuOrb Server v…“); im Release setzt der GitHub-Workflow den Tag ein
+ARG JARVIS_LNX_VERSION=dev
+ENV JARVIS_LNX_VERSION=${JARVIS_LNX_VERSION}
 CMD ["gateway", "run"]

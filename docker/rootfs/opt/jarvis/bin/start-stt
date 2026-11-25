@@ -1,5 +1,5 @@
 #!/bin/sh
 # Spracherkennung: Modelle bei Bedarf laden (erster Start), dann Parakeet-Router auf 127.0.0.1.
 . /opt/jarvis/bin/jarvis-env
-$PY -I /opt/jarvis/app/fetch_models.py voices stt || { echo "[jarvis-stt] Modelle fehlen, neuer Versuch in 60 s"; sleep 60; exit 1; }
+$PY -I /opt/jarvis/app/fetch_models.py voices stt || { echo "[nuorb-stt] speech models missing, retrying in 60 s"; sleep 60; exit 1; }
 exec $PY -I /opt/jarvis/stt/stt_router.py

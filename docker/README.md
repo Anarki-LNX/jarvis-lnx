@@ -8,7 +8,7 @@ Die **JARVIS-App für Android** und jeder Browser im Heimnetz verbinden sich dam
 wurden (QR-Code oder Code im Admin-Panel).
 
 > **Kurzfassung:** `.env` anlegen → `docker compose up -d` → `https://<server>:8444` öffnen → Einrichtungscode aus
-> dem Log eingeben → Gehirn wählen → Handy koppeln. Dauert etwa 10 Minuten, davon die meiste Zeit Downloads.
+> dem Log eingeben → Gehirn wählen → Smartphone koppeln. Dauert etwa 10 Minuten, davon die meiste Zeit Downloads.
 
 ---
 
@@ -21,7 +21,7 @@ wurden (QR-Code oder Code im Admin-Panel).
 | RAM | 4 GB frei | 6 GB |
 | Platte | 8 GB | 15 GB |
 | Software | Docker Engine 24+ mit Compose v2 (`docker compose version`) | aktuelle Version |
-| Netz | Server und Handy im selben Heimnetz **oder** per VPN verbunden | feste IP für den Server |
+| Netz | Server und Smartphone im selben Heimnetz **oder** per VPN verbunden | feste IP für den Server |
 | Gehirn | Ollama im Heimnetz **oder** ein Anthropic-API-Schlüssel | beides |
 
 **Downloads:** Image ca. 1,2 GB (entpackt ~3,5 GB). Beim ersten Start lädt der Container zusätzlich
@@ -69,7 +69,7 @@ docker compose logs jarvis | grep -i einrichtungscode
 
 `<server-ip>` ist die Adresse des Rechners bzw. der VM/des LXC, auf dem Docker läuft (`hostname -I`).
 
-### Handy koppeln
+### Smartphone koppeln
 
 1. Im Admin-Panel **Gerät koppeln → Neuen Kopplungscode erzeugen**.
 2. **App:** JARVIS-App öffnen → „Server hinzufügen“ → **QR-Code scannen**. Ohne Kamera: Adresse
@@ -139,7 +139,7 @@ selben Compose-Projekt: `docker compose --profile ollama up -d`, Adresse dann `h
 legst du in der Einrichtung fest oder einfach im Gespräch: „Ab jetzt heißt du Max.“ Beim ersten Gespräch stellt er
 sich vor und fragt auch nach deinem Namen.
 
-Sprache **Deutsch oder Englisch** wählst du in der Einrichtung (Oberfläche: `UI_LANG=auto` folgt der Gerätesprache); dazu passende Stimmen (Thorsten, Kerstin; Alan, Ryan,
+Sprache **Deutsch oder Englisch** wählst du in der Einrichtung (Oberfläche: `UI_LANG=auto` folgt der Gerätesprache; Admin-Webinterface: `ADMIN_LANG=en` oder `de`, im Browser umschaltbar); dazu passende Stimmen (Thorsten, Kerstin; Alan, Ryan,
 Amy). Stimmen-Lizenzen: <https://huggingface.co/rhasspy/piper-voices> (Thorsten: CC0). 
 
 Optional „Hey Jarvis“ in der App: Die openWakeWord-Dateien (`melspectrogram.tflite`, `embedding_model.tflite`,
@@ -148,7 +148,7 @@ offiziellen Projekt an.
 
 ## Nicht enthalten
 
-Steuerung des Xiaomi-Handys (NixOS-Kiosk) und Haus-/Wetterstation-Anbindungen des Autors. Eigene Werkzeuge bindest
+Steuerung des Xiaomi-Smartphones (NixOS-Kiosk) und Haus-/Wetterstation-Anbindungen des Autors. Eigene Werkzeuge bindest
 du im Admin unter „MCP-Server“ an (z. B. Home Assistant).
 
 ## Fehlersuche

@@ -1,9 +1,10 @@
-/* JARVIS Verwaltung – Oberflaeche (ohne Framework). Alle Daten werden escaped eingesetzt (esc), CSP erlaubt nur 'self'. */
+/* Admin – Oberflaeche (ohne Framework). Alle Daten werden escaped eingesetzt (esc), CSP erlaubt nur 'self'. */
 "use strict";
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const shell = $("#shell");
+const T = (s, v) => I18N.t(s, v);  // Texte, die nicht ueber den DOM laufen (Titel, <pre>)
 let current = null, refreshTimer = null, lastStatus = null;
 
 /* ------------------------------------------------------------ Hilfen */
@@ -22,9 +23,10 @@ function toast(msg, kind = "ok", ms = 4200) {
   $("#toasts").append(t); setTimeout(() => t.remove(), ms);
 }
 function setHTML(el, html) { el.innerHTML = html; $$("[data-w]", el).forEach((b) => { b.style.width = Math.max(0, Math.min(100, +b.dataset.w)) + "%"; }); return el; }
-const fmtBytes = (n) => n == null ? "–" : n >= 1e9 ? (n / 1073741824).toFixed(1).replace(".", ",") + " GiB" : n >= 1e6 ? (n / 1048576).toFixed(0) + " MiB" : (n / 1024).toFixed(0) + " KiB";
-const fmtDur = (s) => { s = Math.floor(s); const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return d ? `${d} T ${h} h` : h ? `${h} h ${m} min` : `${m} min`; };
-const fmtTime = (iso) => { if (!iso) return "–"; const d = new Date(iso); return isNaN(d) ? String(iso) : d.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" }); };
+const dec = (s) => (I18N.lang === "de" ? s.replace(".", ",") : s);
+const fmtBytes = (n) => n == null ? "–" : n >= 1e9 ? dec((n / 1073741824).toFixed(1)) + " GiB" : n >= 1e6 ? (n / 1048576).toFixed(0) + " MiB" : (n / 1024).toFixed(0) + " KiB";
+const fmtDur = (s) => { s = Math.floor(s); const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return d ? `${d} ${I18N.lang === "de" ? "T" : "d"} ${h} h` : h ? `${h} h ${m} min` : `${m} min`; };
+const fmtTime = (iso) => { if (!iso) return "–"; const d = new Date(iso); return isNaN(d) ? String(iso) : d.toLocaleString(I18N.locale, { dateStyle: "short", timeStyle: "short" }); };
 const busy = async (btn, fn) => { const t = btn.textContent; btn.disabled = true; btn.textContent = "…"; try { return await fn(); } catch (e) { toast(e.message, "err"); } finally { btn.disabled = false; btn.textContent = t; } };
 const dot = (ok) => `<span class="dot" data-ok="${ok === true ? "true" : ok === false ? "false" : "warn"}"></span>`;
 const sw = (name, on, extra = "") => `<label class="switch"><input type="checkbox" ${on ? "checked" : ""} data-sw="${esc(name)}" ${extra}><i></i></label>`;
@@ -120,7 +122,7 @@ async function restartUnit(id, skipConfirm = false) {
 
 /* ------------------------------------------------------------ Bereiche */
 const VIEWS = [
-  { id: "uebersicht", group: "System", label: "Übersicht", icon: "home", title: "Übersicht", lead: "Zustand von Gehirn, Diensten und Handy auf einen Blick.", render: viewOverview },
+  { id: "uebersicht", group: "System", label: "Übersicht", icon: "home", title: "Übersicht", lead: "Zustand von Gehirn, Diensten und Smartphone auf einen Blick.", render: viewOverview },
   { id: "modell", group: "Gehirn", label: "Modell & Fallback", icon: "brain", title: "Modell & Fallback", lead: "Welches Sprachmodell JARVIS nutzt und worauf es ausweicht, wenn der PC aus ist.", render: viewModel },
   { id: "persona", group: "Gehirn", label: "Persönlichkeit", icon: "soul", title: "Persönlichkeit", lead: "Wer JARVIS ist und wie er spricht.", render: viewPersona },
   { id: "gedaechtnis", group: "Gehirn", label: "Gedächtnis", icon: "mem", title: "Gedächtnis", lead: "Was JARVIS sich dauerhaft merkt – über sich, die Umgebung und dich.", render: viewMemory },
@@ -130,7 +132,8 @@ const VIEWS = [
   { id: "regeln", group: "Sicherheit", label: "Bestätigungen", icon: "shield", title: "Bestätigungsregeln", lead: "Wann JARVIS vor gefährlichen Aktionen fragen muss.", render: viewApprovals },
   { id: "schluessel", group: "Sicherheit", label: "Schlüssel", icon: "key", title: "Schlüssel & Variablen", lead: "API-Schlüssel werden nie angezeigt – nur, ob sie gesetzt sind. Überschreiben ist jederzeit möglich.", render: viewEnv },
   { id: "sprache", group: "Geräte", label: "Sprache", icon: "wave", title: "Sprache", lead: "Stimme, Sprechtempo und Spracherkennung.", render: viewVoice },
-  { id: "handy", group: "Geräte", label: "Handy", icon: "phone", title: "Handy", lead: "Zustand, Neustart, Kiosk.", render: viewPhone },
+  { id: "koppeln", group: "Geräte", label: "Smartphones koppeln", icon: "phone", title: "Smartphones koppeln", lead: "NuOrb-App auf einem oder mehreren Smartphones per QR-Code verbinden.", render: viewPair },
+  { id: "handy", group: "Geräte", label: "Smartphone", icon: "phone", title: "Smartphone", lead: "Zustand, Neustart, Kiosk.", render: viewPhone },
   { id: "dienste", group: "System", label: "Dienste", icon: "gear", title: "Dienste & Prüfungen", lead: "Dienste neu starten und Hermes-Selbsttests ausführen.", render: viewServices },
   { id: "protokolle", group: "System", label: "Protokolle", icon: "log", title: "Protokolle", lead: "Gefilterte Logs. Schlüssel werden automatisch unkenntlich gemacht.", render: viewLogs },
   { id: "sicherungen", group: "System", label: "Sicherungen", icon: "backup", title: "Sicherungen & Konto", lead: "Jede Änderung legt eine Sicherung an. Hier rückgängig machen, exportieren und das Passwort ändern.", render: viewBackups },
@@ -161,7 +164,7 @@ async function show(id, quiet = false) {
   $("#pageEyebrow").textContent = v.group; $("#pageTitle").textContent = v.title; $("#pageLead").textContent = v.lead;
   $("#pageActions").innerHTML = "";
   const view = $("#view"); setHTML(view, `<div class="panel span-12 empty">Lade …</div>`);
-  document.title = `${v.title} · JARVIS Verwaltung`;
+  document.title = `${T(v.title)} · ${I18N.brand} ${T("Verwaltung")}`;
   rendering = true;
   try { await v.render(view); } catch (e) { setHTML(view, `<div class="panel span-12"><div class="note danger">${esc(e.message)}</div></div>`); } finally { rendering = false; }
 }
@@ -201,13 +204,13 @@ async function viewOverview(view) {
       <span class="sub">Fallback: ${s.fallback.length ? s.fallback.map((f) => esc(f.model)).join(", ") : "keiner"}</span></div>
     <div class="panel ${kw} kpi"><span class="label">Sprache</span><span class="value">${dot(s.stt.online && s.ui.online)}${s.stt.online && s.ui.online ? "Bereit" : "Gestört"}</span>
       <span class="sub">Erkennung ${s.stt.online ? "ok" : "aus"} · Oberfläche ${s.ui.online ? "ok" : "aus"}</span></div>
-    ${s.phone ? `<div class="panel span-3 kpi"><span class="label">Handy</span><span class="value">${dot(p.reachable && !p.error ? true : p.reachable ? null : false)}${p.reachable ? "Im WLAN" : "Offline"}</span>
+    ${s.phone ? `<div class="panel span-3 kpi"><span class="label">Smartphone</span><span class="value">${dot(p.reachable && !p.error ? true : p.reachable ? null : false)}${p.reachable ? "Im WLAN" : "Offline"}</span>
       <span class="sub">${phoneLine}</span>${ps.wlan_signal_dbm != null ? `<span class="sub">WLAN ${esc(ps.wlan_ssid || "")} ${esc(ps.wlan_signal_dbm)} dBm</span>` : ""}</div>` : ""}
 
     <div class="panel span-7"><div class="panel-head"><h3>Geladene Modelle (VRAM auf dem PC)</h3>${s.gpu_label ? `<span class="tag">${esc(s.gpu_label)}</span>` : ""}</div>
       <div class="rows">${loaded || `<div class="empty">${s.brain.online ? "Kein Modell geladen – die erste Frage lädt es (~4 s)." : "PC/Ollama nicht erreichbar."}</div>`}</div>
       <p class="hint small">Tipp: Für Spiele am PC das Modell entladen; JARVIS lädt es bei der nächsten Frage selbst wieder.</p></div>
-    <div class="panel span-5"><h3>Container jarvis</h3>
+    <div class="panel span-5"><h3>Server</h3>
       <div class="kpi"><span class="label">Arbeitsspeicher ${fmtBytes(memUsed)} / ${fmtBytes(sys.mem_total)}</span><div class="bar"><i data-w="${memUsed / sys.mem_total * 100}"></i></div></div><br>
       <div class="kpi"><span class="label">Speicher ${fmtBytes(diskUsed)} / ${fmtBytes(sys.disk_total)}</span><div class="bar" ${diskUsed / sys.disk_total > .85 ? "data-warn" : ""}><i data-w="${diskUsed / sys.disk_total * 100}"></i></div></div><br>
       <div class="sub muted">Last ${esc(sys.load.join(" · "))} (${sys.cpus} Kerne) · läuft seit ${fmtDur(sys.uptime)}</div></div>
@@ -219,14 +222,14 @@ async function viewOverview(view) {
 }
 
 /* ------------------------------------------------------------ Gehirn & Modell */
-const usd = (n) => "$" + n.toFixed(2).replace(".", ",");
+const usd = (n) => "$" + dec(n.toFixed(2));
 async function viewModel(view) {
   const [m, br] = await Promise.all([api("/api/models"), api("/api/brain")]);
   const cur = br.local_model || m.model.default || "";
   const opts = [...new Set([cur, ...m.ollama].filter(Boolean))].map((n) => `<option ${n === cur ? "selected" : ""} value="${esc(n)}">${esc(n)}${m.sizes[n] ? ` (${fmtBytes(m.sizes[n])})` : ""}</option>`).join("");
   const modes = [
-    ["local", "Lokal", "Nur Gemma auf deinem PC. Keine Cloud. Ist der PC aus, meldet JARVIS „Gehirn offline“."],
-    ["auto", "Automatisch", "Zuerst Gemma auf dem PC; antwortet der nicht, übernimmt Claude."],
+    ["local", "Lokal", "Nur das lokale Modell auf deinem PC. Keine Cloud. Ist der PC aus, meldet JARVIS „Gehirn offline“."],
+    ["auto", "Automatisch", "Zuerst das lokale Modell auf dem PC; antwortet es nicht, übernimmt Claude."],
     ["remote", "Remote", "Nur Claude. Der PC und seine Grafikkarte werden geschont."]];
   const claudeCards = (name, sel) => Object.entries(br.models).map(([id, c]) => `<label class="choice small-choice">
       <input type="radio" name="${name}" value="${id}" ${id === sel ? "checked" : ""}><span class="c-title">${esc(c.name)}</span>
@@ -240,7 +243,7 @@ async function viewModel(view) {
       <div id="pickFallback"><h3 class="mt">Ausweich-Modell <span class="muted small">(bei Automatisch, wenn der PC nicht antwortet)</span></h3>
         <div class="choices">${claudeCards("bfallback", br.fallback_model)}</div></div>
       <div class="note warn mt" id="privacyNote">Datenschutz: Bei Remote und beim Ausweichen auf Claude gehen die Gesprächstexte an Anthropic (USA). Audio, Spracherkennung und Sprachausgabe bleiben lokal.</div>
-      <p class="hint small mt">Umschalten wirkt ab der nächsten Frage, ohne Neustart und ohne PC-Last. Auch am Handy umschaltbar (Einstellungen oder Sprachbefehl).</p>
+      <p class="hint small mt">Umschalten wirkt ab der nächsten Frage, ohne Neustart und ohne PC-Last. Auch am Smartphone umschaltbar (Einstellungen oder Sprachbefehl).</p>
       <div class="inline mt"><span class="muted small">Anthropic-Schlüssel: <b>${esc(br.anthropic_key || "nicht gesetzt")}</b></span><span class="grow"></span>
         <button class="btn ghost small" id="fbCheck">Prüfen</button><button class="btn ghost small" id="fbLive" title="Eine Mini-Anfrage an Claude">Live prüfen (&lt; 0,1 Cent)</button>
         <button class="btn primary" id="brainSave">Übernehmen …</button></div>
@@ -251,18 +254,18 @@ async function viewModel(view) {
       <div class="grid2">
         <label class="field"><span>Kontextlänge (Token)</span><input id="mCtx" type="number" min="2048" step="1024" value="${esc(m.model.context_length || "")}"><small>64k = 65536. Mehr Kontext braucht mehr VRAM.</small></label>
         <label class="field"><span>Denktiefe (global)</span><select id="mReason">${["none", "low", "medium", "high"].map((r) => `<option ${r === m.reasoning ? "selected" : ""} value="${r}">${{ none: "aus", low: "niedrig", medium: "mittel", high: "hoch" }[r]}</option>`).join("")}</select>
-          <small>Sprachfragen vom Handy denken immer ohne – das hält die Antwort schnell.</small></label></div>
-      <div class="note warn">Modelle, die nicht in den Grafikspeicher passen, machen den PC träge. Gemma 4 26B mit 64k belegt ~12,9 GiB.</div><br>
+          <small>Sprachfragen vom Smartphone denken immer ohne – das hält die Antwort schnell.</small></label></div>
+      <div class="note warn">Modelle, die nicht in den Grafikspeicher passen, machen den PC träge.</div><br>
       <button class="btn primary" id="saveModel">Speichern …</button></div>
     <div class="panel span-5"><h3>Projekt-Claude</h3>
-      <p class="hint">Claude Code für Programmier-Aufträge („Jarvis, frag Claude …“). Kosten fallen nur bei Nutzung an.</p>
+      <p class="hint">Claude Code für Programmier-Aufträge („JARVIS, frag Claude …“). Kosten fallen nur bei Nutzung an.</p>
       ${br.projekt ? `<div class="choices one">${claudeCards("pclaude", br.projekt)}</div><br><button class="btn primary" id="pcSave">Übernehmen …</button>` : `<div class="note">Projekt-Claude ist nicht eingerichtet.</div>`}</div>`);
   const upd = () => { const md = $("input[name=bmode]:checked", view)?.value; $("#pickRemote").hidden = md !== "remote"; $("#pickFallback").hidden = md !== "auto"; $("#privacyNote").hidden = md === "local"; };
   $$("input[name=bmode]", view).forEach((r) => r.onchange = upd); upd();
   $("#brainSave").onclick = () => change(() => api("/api/brain/save", { method: "POST", body: { mode: $("input[name=bmode]:checked", view).value, remote_model: $("input[name=bremote]:checked", view)?.value, fallback_model: $("input[name=bfallback]:checked", view)?.value } }), () => { show("modell"); pollStatus(); });
   $("#saveModel").onclick = () => change(() => api("/api/models/save", { method: "POST", body: { ...(br.mode === "remote" ? {} : { default: $("#mDefault").value }), context_length: $("#mCtx").value ? +$("#mCtx").value : null, reasoning: $("#mReason").value } }), () => show("modell"));
   if ($("#pcSave")) $("#pcSave").onclick = () => change(() => api("/api/brain/projekt", { method: "POST", body: { model: $("input[name=pclaude]:checked", view).value } }), () => show("modell"));
-  const check = (live) => (e) => busy(e.target, async () => { const o = $("#fbOut"); o.hidden = false; o.textContent = "Prüfe …"; const r = await api("/api/models/check", { method: "POST", body: { live } }); o.textContent = (r.ok ? "✓ Nutzbar\n\n" : "✗ Probleme gefunden\n\n") + r.output; });
+  const check = (live) => (e) => busy(e.target, async () => { const o = $("#fbOut"); o.hidden = false; o.textContent = T("Prüfe …"); const r = await api("/api/models/check", { method: "POST", body: { live } }); o.textContent = (r.ok ? T("✓ Nutzbar") : T("✗ Probleme gefunden")) + "\n\n" + r.output; });
   $("#fbCheck").onclick = check(false); $("#fbLive").onclick = check(true);
 }
 
@@ -271,12 +274,12 @@ async function viewPersona(view) {
   const p = await api("/api/persona");
   setHTML(view, `
     <div class="panel span-7"><div class="panel-head"><h3>SOUL.md – Identität von Hermes/JARVIS</h3><span class="counter" id="soulCount"></span></div>
-      <p class="hint">Steht an erster Stelle im System-Prompt und gilt überall (Handy, Zeitpläne, Chat).</p>
+      <p class="hint">Steht an erster Stelle im System-Prompt und gilt überall (Smartphone, Zeitpläne, Chat).</p>
       <textarea id="soul" class="mono" rows="18" spellcheck="true">${esc(p.soul)}</textarea><br><br>
       <button class="btn primary" id="saveSoul">Speichern …</button></div>
-    <div class="panel span-5"><h3>Sprach-Persona am Handy</h3>
-      <p class="hint">Zusätzliche Anweisungen nur für Sprachgespräche über das Handy (kurz, gesprochen, ohne Markdown). Leer lassen = Standard der Oberfläche.</p>
-      ${p.ui_supported ? "" : `<div class="note warn">Die Handy-Oberfläche liest diese Einstellung noch nicht (Datei ui.json fehlt). Sie wird beim Speichern angelegt.</div><br>`}
+    <div class="panel span-5"><h3>Sprach-Persona am Smartphone</h3>
+      <p class="hint">Zusätzliche Anweisungen nur für Sprachgespräche über das Smartphone (kurz, gesprochen, ohne Markdown). Leer lassen = Standard der Oberfläche.</p>
+      ${p.ui_supported ? "" : `<div class="note warn">Die Smartphone-Oberfläche liest diese Einstellung noch nicht (Datei ui.json fehlt). Sie wird beim Speichern angelegt.</div><br>`}
       <textarea id="uiPersona" rows="12">${esc(p.ui_persona || "")}</textarea><br><br>
       <button class="btn primary" id="saveUiPersona">Speichern …</button>
       <div class="note small">Jede Änderung an der Persönlichkeit macht die erste Antwort danach einmalig ~8 s langsamer (Prompt-Cache).</div></div>
@@ -459,7 +462,7 @@ async function viewEnv(view) {
       <label class="field"><span>Name</span><input id="evName" class="mono" placeholder="OPENROUTER_API_KEY" autocomplete="off"></label>
       <label class="field"><span>Wert</span><input id="evVal" type="password" class="mono" autocomplete="new-password"><small>Wird nur an den Server geschickt, nie wieder angezeigt.</small></label>
       <button class="btn primary" id="evSave">Weiter zur Vorschau</button>
-      <div class="note small">API_SERVER_* verbinden Hermes mit der Handy-Oberfläche und sind gesperrt.</div></div>`);
+      <div class="note small">API_SERVER_* verbinden Hermes mit der Smartphone-Oberfläche und sind gesperrt.</div></div>`);
   const save = (name, value, remove = false) => change(() => api("/api/env/save", { method: "POST", body: { name, value, remove } }), () => show("schluessel"));
   $$("[data-set]", view).forEach((b) => b.onclick = () => { $("#evName").value = b.dataset.set; $("#evVal").type = b.dataset.secret ? "password" : "text"; $("#evVal").focus(); });
   $$("[data-rm]", view).forEach((b) => b.onclick = () => save(b.dataset.rm, "", true));
@@ -473,13 +476,13 @@ async function viewVoice(view) {
   const ls = s.length_scale ?? 0.95;
   const stops = (cfg.voice?.stop_phrases || []).join(", ");
   setHTML(view, `
-    <div class="panel span-6"><h3>Stimme am Handy</h3>
+    <div class="panel span-6"><h3>Stimme am Smartphone</h3>
       ${u.exists ? "" : `<div class="note warn">Noch keine ui.json – Standardwerte der Oberfläche aktiv. Speichern legt sie an.</div><br>`}
       <label class="field"><span>Piper-Stimme</span><select id="vVoice">${u.voices.map((v) => `<option ${v === (s.piper_voice || "de_DE-thorsten-medium") ? "selected" : ""}>${esc(v)}</option>`).join("")}</select><small>„high“ klingt natürlicher, braucht aber mehr Rechenzeit.</small></label>
       <label class="field"><span>Sprechtempo <b id="vLsOut"></b></span><input id="vLs" type="range" min="0.7" max="1.3" step="0.05" value="${esc(ls)}"><small>Kleiner = schneller (length_scale).</small></label>
       <div class="row"><div class="grow"><div class="title">Bei Sprachfragen nachdenken</div><div class="desc">Aus = schnelle Antworten (~2 s). An = gründlicher, aber deutlich langsamer.</div></div>${sw("reason", !!s.reasoning_voice, 'id="vReason"')}</div>
-      <div class="row"><div class="grow"><div class="title">Wecken mit „${esc(u.wake_phrase || "Hey Jarvis")}“</div><div class="desc">Das Mikro läuft dann ständig mit, aber nichts wird aufgezeichnet oder gesendet, bevor „${esc(u.wake_phrase || "Hey Jarvis")}“ erkannt ist (nur kurzer Puffer im Arbeitsspeicher des Handys).</div></div>${sw("wake", !!s.wake_word, 'id="vWake"')}</div>
-      <div class="row"><div class="grow"><div class="title">Nach Antwort weiter zuhören</div><div class="desc">JARVIS fragt nach jeder Antwort kurz nach und hört einige Sekunden ohne „${esc(u.wake_phrase || "Hey Jarvis")}“ zu. Beenden mit „Nein danke“, „Das war’s“ oder „Gute Nacht“.</div></div>${sw("followup", s.follow_up ?? true, 'id="vFollow"')}</div>
+      <div class="row"><div class="grow"><div class="title">Wecken mit „${esc(u.wake_phrase || I18N.wake)}“</div><div class="desc">Das Mikro läuft dann ständig mit, aber nichts wird aufgezeichnet oder gesendet, bevor „${esc(u.wake_phrase || I18N.wake)}“ erkannt ist (nur kurzer Puffer im Arbeitsspeicher des Smartphones).</div></div>${sw("wake", !!s.wake_word, 'id="vWake"')}</div>
+      <div class="row"><div class="grow"><div class="title">Nach Antwort weiter zuhören</div><div class="desc">JARVIS fragt nach jeder Antwort kurz nach und hört einige Sekunden ohne „${esc(u.wake_phrase || I18N.wake)}“ zu. Beenden mit „Nein danke“, „Das war’s“ oder „Gute Nacht“.</div></div>${sw("followup", s.follow_up ?? true, 'id="vFollow"')}</div>
       <label class="field"><span>Wartezeit auf Antwort (Sekunden)</span><input id="vFollowT" type="number" min="4" max="30" step="1" value="${esc(s.follow_up_timeout_s ?? 8)}"><small>4 bis 30 Sekunden, Standard 8.</small></label>
       <label class="field"><span>Betriebsmodus</span><select id="vMode"><option value="live">Live (echtes Gehirn)</option><option value="demo">Demo (ohne Sprachmodell)</option></select></label>
       <div class="inline"><button class="btn ghost" id="vTest">▶ Probehören</button><span class="grow"></span><button class="btn primary" id="vSave">Speichern …</button></div>
@@ -490,37 +493,86 @@ async function viewVoice(view) {
       <label class="field"><span>Stopp-Wörter (durch Komma getrennt)</span><input id="hStop" value="${esc(stops)}"><small>Beenden eine laufende Sprachausgabe.</small></label>
       <button class="btn primary" id="hSave">Speichern …</button></div>`);
   $("#vMode").value = s.mode || "live";
-  const out = () => { $("#vLsOut").textContent = (+$("#vLs").value).toFixed(2).replace(".", ","); }; $("#vLs").oninput = out; out();
+  const out = () => { $("#vLsOut").textContent = dec((+$("#vLs").value).toFixed(2)); }; $("#vLs").oninput = out; out();
   $("#vSave").onclick = () => change(() => api("/api/ui-settings/save", { method: "POST", body: { piper_voice: $("#vVoice").value, length_scale: +$("#vLs").value, reasoning_voice: $("#vReason").checked, wake_word: $("#vWake").checked, follow_up: $("#vFollow").checked, follow_up_timeout_s: Math.round(+$("#vFollowT").value), mode: $("#vMode").value } }), () => show("sprache"));
   $("#hSave").onclick = () => change(() => api("/api/config/multi", { method: "POST", body: { desc: "Hermes-Spracheinstellungen", changes: { "stt.language": $("#hLang").value.trim() || "de", "voice.stop_phrases": $("#hStop").value.split(",").map((x) => x.trim()).filter(Boolean) } } }), () => show("sprache"));
   $("#vTest").onclick = (e) => busy(e.target, async () => {
-    const r = await api("/api/tts-test", { method: "POST", body: { text: "Guten Tag. Alle Systeme sind bereit." }, raw: true });
+    const r = await api("/api/tts-test", { method: "POST", body: { text: "Guten Tag. Alle Systeme sind bereit.", piper_voice: $("#vVoice").value, length_scale: +$("#vLs").value }, raw: true });
     const a = $("#vAudio"); a.src = URL.createObjectURL(await r.blob()); await a.play();
   });
 }
 
-/* ------------------------------------------------------------ Handy */
+/* ------------------------------------------------------------ Geraet koppeln */
+let pairTimer = null;
+async function viewPair(view) {
+  clearInterval(pairTimer);
+  const [l, dv] = await Promise.all([api("/api/pairing/link"), api("/api/pairing/devices")]);
+  const fp = (x) => (x ? esc(x.match(/.{2}/g).join(":")) : "kein eigenes Zertifikat gefunden");
+  const devRows = dv.devices.map((x) => `<div class="row"><div class="grow"><div class="title">${esc(x.name)}</div>
+      <div class="meta">${esc(x.platform || "")} · gekoppelt ${esc(fmtTime(x.created))} · zuletzt ${esc(fmtTime(x.last_seen))}${x.ip ? ` · ${esc(x.ip)}` : ""}</div></div>
+      <button class="btn small ghost" data-revoke="${esc(x.id)}" data-name="${esc(x.name)}">Entkoppeln …</button></div>`).join("");
+  setHTML(view, `
+    <div class="panel span-5"><h3>Neues Smartphone koppeln</h3>
+      ${l.pairing_supported
+        ? `<p class="hint">Für jedes Smartphone einen eigenen QR-Code erzeugen und in der NuOrb-App unter „Koppeln“ scannen. Der Code gilt 10 Minuten und nur einmal.</p>
+           <button class="btn primary" id="pairNew">QR-Code erzeugen</button><div id="pairOut"></div>`
+        : `<p class="hint">In der NuOrb-App „Koppeln“ wählen und diesen Code scannen. Er funktioniert für beliebig viele Smartphones – einfach nacheinander scannen.</p>
+           <img class="qr" src="${esc(l.qr)}" alt="QR-Code zum Koppeln">`}</div>
+    <div class="panel span-7"><h3>Oder von Hand eingeben</h3>
+      <div class="rows">
+        <div class="row"><div class="grow"><div class="title">Adresse</div><div class="desc mono">${esc(l.url)}</div></div></div>
+        <div class="row"><div class="grow"><div class="title">Name</div><div class="desc mono">${esc(l.name)}</div></div></div>
+        <div class="row"><div class="grow"><div class="title">Zertifikats-Fingerabdruck (SHA-256 der Heim-CA)</div><div class="desc mono">${fp(l.fingerprint)}</div></div></div>
+        <div class="row" id="pairCodeRow" hidden><div class="grow"><div class="title">Kopplungscode</div><div class="desc mono" id="pairCode"></div></div></div>
+      </div>
+      ${l.pairing_supported ? "" : `<div class="note small">Hier ist kein Kopplungscode nötig: Die Oberfläche ist im Heimnetz ohne Code erreichbar. Der Fingerabdruck sorgt dafür, dass die App nur diesem Server vertraut.</div>`}
+      <p class="hint small mt">Öffne die Ports 8443/8444 nicht ins Internet. Für unterwegs: VPN ins Heimnetz (z. B. WireGuard oder Tailscale).</p>
+      <details><summary class="muted small">Link anzeigen</summary><div class="mono small" id="pairUri">${esc(l.uri)}</div></details></div>
+    <div class="panel span-12"><div class="panel-head"><h3>Gekoppelte Smartphones</h3><span class="tag">${dv.devices.length}</span></div>
+      <div class="rows" id="pairDevs">${devRows || `<div class="empty">${l.pairing_supported ? "Noch keine Smartphones gekoppelt." : "Die Geräteliste erscheint, sobald die Oberfläche Kopplungscodes unterstützt."}</div>`}</div></div>`);
+  $$("[data-revoke]", view).forEach((b) => b.onclick = async () => {
+    if (!await confirmBox("Smartphone entkoppeln?", `„${b.dataset.name}“ verliert sofort den Zugriff und muss neu gekoppelt werden.`, "Entkoppeln", true)) return;
+    busy(b, async () => { await api("/api/pairing/revoke", { method: "POST", body: { id: b.dataset.revoke } }); toast("Entkoppelt."); show("koppeln", true); });
+  });
+  if (!$("#pairNew")) return;
+  $("#pairNew").onclick = (e) => busy(e.target, async () => {
+    const d = await api("/api/pairing/new", { method: "POST", body: {} });
+    setHTML($("#pairOut"), `<img class="qr" src="${esc(d.qr)}" alt="QR-Code zum Koppeln"><p class="center"><span class="mono" data-noi18n>${esc(d.code || "")}</span> · <span id="pairLeft"></span></p>`);
+    $("#pairCodeRow").hidden = !d.code; $("#pairCode").textContent = d.code || ""; $("#pairUri").textContent = d.uri;
+    const n0 = dv.devices.length;
+    clearInterval(pairTimer);
+    pairTimer = setInterval(async () => {
+      if (current !== "koppeln") return clearInterval(pairTimer);
+      const s = Math.max(0, Math.round(d.expires - Date.now() / 1000));
+      $("#pairLeft").textContent = s ? T("noch {0} min gültig", [`${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`]) : T("abgelaufen");
+      if (!s) { clearInterval(pairTimer); $("#pairOut img").style.opacity = ".15"; }
+      if (s % 5 === 0) { const x = await api("/api/pairing/devices").catch(() => null); if (x && x.devices.length > n0) { clearInterval(pairTimer); toast(T("Smartphone gekoppelt: {0}", [x.devices[0].name])); show("koppeln", true); } }
+    }, 1000);
+  }).then(() => { e.target.textContent = T("Weiteren QR-Code erzeugen"); });
+}
+
+/* ------------------------------------------------------------ Smartphone */
 async function viewPhone(view) {
   const p = await api("/api/phone"), s = p.status || {};
   actions(`<button class="btn ghost" id="phRefresh">Aktualisieren</button>`).querySelector("#phRefresh").onclick = () => show("handy");
   const kv = (k, v) => `<div class="row"><div class="grow desc">${k}</div><div class="mono">${v ?? "–"}</div></div>`;
   setHTML(view, `
     <div class="panel span-5"><div class="panel-head"><h3>Zustand</h3>${dot(p.reachable && !p.error ? true : p.reachable ? null : false)}</div>
-      ${!p.configured || p.error ? `<div class="note ${p.reachable ? "warn" : "danger"}">${!p.reachable ? `Handy (${esc(p.host)}) ist nicht erreichbar.` : !p.configured ? "Die Handy-Steuerung ist noch nicht eingerichtet." : esc(p.error)}</div><br>` : ""}
+      ${!p.configured || p.error ? `<div class="note ${p.reachable ? "warn" : "danger"}">${!p.reachable ? `Smartphone (${esc(p.host)}) ist nicht erreichbar.` : !p.configured ? "Die Smartphone-Steuerung ist noch nicht eingerichtet." : esc(p.error)}</div><br>` : ""}
       ${s.akku_prozent != null ? `<div class="kpi"><span class="label">Akku ${esc(s.akku_prozent)} %${s.laedt ? " · lädt" : ""}${s.akku_temp != null ? ` · ${esc(s.akku_temp)} °C` : ""}</span><div class="bar"><i data-w="${+s.akku_prozent}"></i></div></div><br>` : ""}
       <div class="rows">${kv("IP-Adresse", esc(s.ip || p.host))}${kv("WLAN", s.wlan_ssid ? `${esc(s.wlan_ssid)} · ${esc(s.wlan_signal_dbm)} dBm` : null)}
         ${kv("Läuft seit", s.uptime_s != null ? fmtDur(s.uptime_s) : null)}${kv("Kiosk", s.kiosk_laeuft == null ? null : s.kiosk_laeuft ? "läuft" : "aus")}${kv("NixOS-Generation", esc(s.nixos_generation))}</div></div>
     <div class="panel span-7"><h3>Steuerung</h3>
       <div class="inline"><button class="btn" data-ph="kiosk-reload">Kiosk neu laden</button><button class="btn ghost" data-ph="bildschirm" data-v="an">Bildschirm an</button>
-        <button class="btn ghost" data-ph="bildschirm" data-v="aus">Bildschirm aus</button><span class="grow"></span><button class="btn danger" id="phReboot">Handy neu starten</button></div><br>
+        <button class="btn ghost" data-ph="bildschirm" data-v="aus">Bildschirm aus</button><span class="grow"></span><button class="btn danger" id="phReboot">Smartphone neu starten</button></div><br>
       <div class="grid2"><label class="field"><span>Helligkeit <b id="brOut">${esc(s.helligkeit_prozent ?? "–")}</b> %</span><input type="range" id="phBr" min="5" max="100" step="5" value="${esc(s.helligkeit_prozent ?? 60)}"></label>
         <label class="field"><span>Lautstärke <b id="voOut">${esc(s.lautstaerke_prozent ?? "–")}</b> %</span><input type="range" id="phVo" min="0" max="100" step="5" value="${esc(s.lautstaerke_prozent ?? 70)}"></label></div>
       <p class="hint small">Neustart dauert bis zur fertigen JARVIS-Oberfläche etwa 100 Sekunden.</p>
       ${p.pubkey ? `<details><summary class="small muted">Technik: eingeschränkter SSH-Schlüssel der Verwaltung</summary><pre class="code mono">${esc(p.pubkey)}</pre>
-        <p class="hint small">Auf dem Handy nur mit command=-Restriktion (status, reboot, kiosk-reload, helligkeit, lautstaerke, bildschirm) hinterlegt.</p></details>` : ""}</div>`);
+        <p class="hint small">Auf dem Smartphone nur mit command=-Restriktion (status, reboot, kiosk-reload, helligkeit, lautstaerke, bildschirm) hinterlegt.</p></details>` : ""}</div>`);
   const act = (action, body = {}) => api(`/api/phone/${action}`, { method: "POST", body }).then(() => toast("Erledigt."));
   $$("[data-ph]", view).forEach((b) => b.onclick = () => busy(b, () => act(b.dataset.ph, { value: b.dataset.v })));
-  $("#phReboot").onclick = async () => { if (await confirmBox("Handy neu starten?", "Das Handy startet neu. JARVIS ist am Handy etwa 100 Sekunden nicht erreichbar.", "Neu starten", true)) busy($("#phReboot"), () => act("reboot", { confirm: "NEUSTART" })); };
+  $("#phReboot").onclick = async () => { if (await confirmBox("Smartphone neu starten?", "Das Smartphone startet neu. JARVIS ist am Smartphone etwa 100 Sekunden nicht erreichbar.", "Neu starten", true)) busy($("#phReboot"), () => act("reboot", { confirm: "NEUSTART" })); };
   const slider = (id, outId, action) => { let t; $(id).oninput = (e) => { $(outId).textContent = e.target.value; clearTimeout(t); t = setTimeout(() => act(action, { value: +e.target.value }).catch((er) => toast(er.message, "err")), 400); }; };
   slider("#phBr", "#brOut", "helligkeit"); slider("#phVo", "#voOut", "lautstaerke");
 }
@@ -532,13 +584,13 @@ async function viewServices(view) {
   setHTML(view, `
     <div class="panel span-6"><h3>Dienste</h3>${d.ctl ? "" : `<div class="note warn">Neustart-Helfer nicht eingerichtet.</div>`}
       <div class="rows">${d.units.map((u) => `<div class="row">${dot(u.active === "active" ? true : u.active === "activating" ? null : false)}
-        <div class="grow"><div class="title">${esc(u.label)}</div><div class="meta mono">${esc(u.unit)} · seit ${esc(u.since || "–")}${u.restarts && u.restarts !== "0" ? ` · ${esc(u.restarts)} Abstürze` : ""}</div></div>
+        <div class="grow"><div class="title">${esc(u.label)}</div><div class="meta mono">${esc(u.unit)} · seit ${esc(/^\d{4}-\d\d-\d\dT/.test(u.since || "") ? fmtTime(u.since) : u.since || "–")}${u.restarts && u.restarts !== "0" ? ` · ${esc(u.restarts)} Abstürze` : ""}</div></div>
         <button class="btn small" data-restart="${esc(u.id)}" ${d.ctl ? "" : "disabled"}>Neu starten</button></div>`).join("")}</div>
       ${d.last ? `<p class="hint small">Letzter Neustart: ${esc(d.last.unit)} – ${esc(d.last.message)} (${esc(fmtTime(d.last.time))})</p>` : ""}</div>
     <div class="panel span-6"><h3>Prüfungen</h3><div class="inline">${checks.map(([k, l, c]) => `<button class="btn small ghost" data-check="${k}" title="${esc(c)}">${esc(l)}</button>`).join("")}</div><br>
-      <pre class="out" id="chkOut">Eine Prüfung wählen …</pre></div>`);
+      <pre class="out" id="chkOut">${esc(T("Eine Prüfung wählen …"))}</pre></div>`);
   $$("[data-restart]", view).forEach((b) => b.onclick = () => busy(b, () => restartUnit(b.dataset.restart).then(() => show("dienste"))));
-  $$("[data-check]", view).forEach((b) => b.onclick = () => busy(b, async () => { $("#chkOut").textContent = "Läuft …"; const r = await api("/api/doctor", { method: "POST", body: { which: b.dataset.check } }); $("#chkOut").textContent = (r.ok ? "✓ " : "✗ ") + b.textContent + "\n\n" + r.output; }));
+  $$("[data-check]", view).forEach((b) => b.onclick = () => busy(b, async () => { $("#chkOut").textContent = T("Läuft …"); const r = await api("/api/doctor", { method: "POST", body: { which: b.dataset.check } }); $("#chkOut").textContent = (r.ok ? "✓ " : "✗ ") + b.textContent + "\n\n" + r.output; }));
 }
 
 /* ------------------------------------------------------------ Protokolle */
@@ -584,7 +636,7 @@ async function viewBackups(view) {
       <label class="field"><span>Bisheriges Passwort</span><input id="pwOld" type="password" autocomplete="current-password"></label>
       <label class="field"><span>Neues Passwort (mind. 10 Zeichen)</span><input id="pwNew" type="password" autocomplete="new-password"></label>
       <div class="inline"><button class="btn ghost small" id="pwAll">Alle Geräte abmelden</button><span class="grow"></span><button class="btn primary small" id="pwSave">Passwort ändern</button></div></div>
-    <div class="panel span-12"><h3>Änderungsprotokoll</h3><div class="log">${au.lines.slice().reverse().map((l) => `<div>${esc(l)}</div>`).join("") || `<div class="empty">Leer.</div>`}</div></div>`);
+    <div class="panel span-12"><h3>Änderungsprotokoll</h3><div class="log">${au.lines.slice().reverse().map((l) => { const [tm, who, ...w] = l.split("\t"); return w.length ? `<div><span class="muted" data-noi18n>${esc(fmtTime(tm))} · ${esc(who)}</span> <span>${esc(w.join(" "))}</span></div>` : `<div>${esc(l)}</div>`; }).join("") || `<div class="empty">Leer.</div>`}</div></div>`);
   $$("[data-restore]", view).forEach((x) => x.onclick = () => change(() => api(`/api/backups/${encodeURIComponent(x.dataset.restore)}/restore`, { method: "POST", body: {} }), () => show("sicherungen")));
   $("#exSet").onclick = () => change(() => api("/api/config/set", { method: "POST", body: { path: $("#exPath").value, value: $("#exVal").value } }), () => show("sicherungen"));
   $("#exRm").onclick = () => change(() => api("/api/config/set", { method: "POST", body: { path: $("#exPath").value, remove: true } }), () => show("sicherungen"));
@@ -598,6 +650,7 @@ function moveOrb(toLogin) { const w = $(".orb-wrap"); (toLogin ? $("#loginOrbSlo
 async function showLogin() {
   clearInterval(refreshTimer); shell.dataset.auth = "out"; $("#login").hidden = false; moveOrb(true); closeModal();
   let st = { configured: true }; try { st = await (await fetch("/api/auth/state")).json(); } catch { /* */ }
+  applyCfg(st.ui);
   setupMode = !st.configured;
   $("#setupFields").hidden = !setupMode; $("#pw2Field").hidden = !setupMode;
   $("#pwLabel").textContent = setupMode ? "Neues Passwort (mind. 10 Zeichen)" : "Passwort";
@@ -618,10 +671,31 @@ $("#loginForm").addEventListener("submit", async (e) => {
 });
 $("#btnLogout").addEventListener("click", async () => { await api("/api/auth/logout", { method: "POST", body: {} }).catch(() => {}); showLogin(); });
 
+/* ------------------------------------------------------------ Sprache + Marke */
+function applyCfg(c) {
+  I18N.configure(c);
+  $$("[data-brand]").forEach((e) => { e.textContent = I18N.brand; });
+  $$("[data-server]").forEach((e) => { e.textContent = I18N.server; });
+  langToggles();
+  if (!current) document.title = `${I18N.brand} ${T("Verwaltung")}`;
+}
+// DE | EN: aktive Sprache hervorgehoben; ohne gespeicherte Wahl gilt ui_lang bzw. die Browser-Sprache.
+function langToggles() {
+  $$("[data-langtoggle] button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === I18N.lang)));
+}
+function setLang(l) {
+  if (l === I18N.lang && I18N.choice === l) return;
+  I18N.setLang(l);
+  location.reload();  // einfach und einheitlich mit den Zusatzseiten des Docker-Images
+}
+$$("[data-langtoggle] button").forEach((b) => b.addEventListener("click", () => setLang(b.dataset.lang)));
+langToggles();
+
 /* ------------------------------------------------------------ Start */
-function tick() { $("#clock").textContent = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }); }
+function tick() { $("#clock").textContent = new Date().toLocaleTimeString(I18N.locale, { hour: "2-digit", minute: "2-digit" }); }
 async function start() {
   const st = await (await fetch("/api/auth/state")).json();
+  applyCfg(st.ui);
   if (!st.loggedIn) return showLogin();
   $("#login").hidden = true; shell.dataset.auth = "in"; moveOrb(false);
   if (!$("#nav").children.length) buildNav();

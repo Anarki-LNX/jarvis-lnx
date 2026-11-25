@@ -9,7 +9,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 18434
-MODEL = "mock-jarvis"
+MODEL = "mock-nuorb"
 
 
 def answer(msgs):

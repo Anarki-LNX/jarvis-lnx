@@ -10,6 +10,7 @@ Die neuen Seiten sind eigenständige HTML-Dateien unter /static/docker/, ihre AP
 from __future__ import annotations
 
 import asyncio
+import datetime as dt
 import base64
 import io
 import json
@@ -37,8 +38,8 @@ LOGS = jc.J / "logs"
 
 # ------------------------------------------------------------------ Dienste über s6
 adm.UNITS.clear()
-adm.UNITS.update({"hermes": "hermes-gateway", "stt": "jarvis-stt", "ui": "jarvis-ui", "admin": "jarvis-admin"})
-adm.UNIT_LABELS["ui"] = "JARVIS-Oberfläche (Web/App)"
+# Sichtbare Kurznamen (die s6-Dienste heißen intern jarvis-*; die Zuordnung steht in SVC). Anzeigenamen: UNIT_LABELS von jarvis-admin.
+adm.UNITS.update({"hermes": "gateway", "stt": "stt", "ui": "ui", "admin": "admin"})
 
 
 def gateway_slot() -> Path | None:
@@ -66,7 +67,8 @@ async def unit_state(name: str) -> dict:
     up = parts[:1] == ["true"]
     since = None
     if len(parts) >= 3 and parts[2].isdigit():
-        since = f"seit {int(parts[2]) // 60} min"
+        # ISO-Zeitstempel wie unter systemd; die Seite formatiert ihn je Sprache
+        since = (dt.datetime.now().astimezone() - dt.timedelta(seconds=int(parts[2]))).isoformat(timespec="seconds")
     return {"id": name, "unit": adm.UNITS[name], "label": adm.UNIT_LABELS[name],
             "active": "active" if up else ("inactive" if d else "unknown"), "sub": "running" if up else "dead",
             "since": since, "memory": None, "restarts": None}
@@ -79,11 +81,11 @@ adm.CTL_DIR = jc.J / "ctl"  # Verzeichnis existiert -> Admin-Seite bietet Neusta
 async def service_restart(request: Request):
     name = request.path_params["name"]
     if name not in adm.UNITS:
-        raise HTTPException(404, "Unbekannter Dienst.")
+        raise HTTPException(404, jc.tr("Unbekannter Dienst.", "Unknown service."))
     d = svc_dir(name)
     if not d:
-        raise HTTPException(503, "Dienst nicht gefunden.")
-    adm.audit(adm.who(request), f"Neustart angefordert: {adm.UNITS[name]}")
+        raise HTTPException(503, jc.tr("Dienst nicht gefunden.", "Service not found."))
+    adm.audit(adm.who(request), f"Restart requested: {adm.UNITS[name]}")
     if name == "admin":  # sich selbst: Antwort zuerst, dann Neustart
         asyncio.get_running_loop().call_later(0.5, lambda: subprocess.Popen(["s6-svc", "-r", str(d)]))
         return {"ok": True, "self": True}
@@ -91,14 +93,14 @@ async def service_restart(request: Request):
     err = (await p.communicate())[1].decode()[:200]
     ok = p.returncode == 0
     res = {"id": "s6", "action": "restart", "unit": adm.UNITS[name], "ok": ok,
-           "message": "neu gestartet" if ok else f"Neustart fehlgeschlagen {err}", "time": adm.now_iso()}
+           "message": jc.tr("neu gestartet", "restarted") if ok else jc.tr("Neustart fehlgeschlagen", "restart failed") + f" {err}", "time": adm.now_iso()}
     adm.atomic_write(adm.CTL_DIR / "result.json", json.dumps(res), 0o600)
     return {"ok": ok, "result": res}
 
 
 # Protokolle: Dateien statt journald
-for key, fname, label in (("j-hermes", None, "Dienst: Hermes-Gateway"), ("j-stt", "stt", "Dienst: Spracherkennung"),
-                          ("j-ui", "ui", "Dienst: Oberfläche"), ("j-admin", "admin", "Dienst: Verwaltung")):
+for key, fname, label in (("j-hermes", None, "Service: Hermes gateway"), ("j-stt", "stt", "Service: speech recognition"),
+                          ("j-ui", "ui", "Service: UI"), ("j-admin", "admin", "Service: admin")):
     if fname:
         adm.LOG_SOURCES[key] = ("file", LOGS / fname / "current", label)
     else:
@@ -128,15 +130,15 @@ adm.probe = probe
 
 async def tts_test(request: Request):
     d = await adm.body(request)
-    text = str(d.get("text", "Guten Tag. Alle Systeme sind bereit."))[:300]
+    text = str(d.get("text") or ("Guten Tag. Alle Systeme sind bereit." if jc.lang() == "de" else "Hello. All systems are ready."))[:300]
     try:
         async with httpx.AsyncClient(timeout=20, verify=adm.ui_ssl_ctx() if jc.tls_mode() == "selfsigned" else False) as c:
             r = await c.post(f"{adm.UI_URL}/api/tts", json={"text": text}, headers=_internal_headers())
         if r.status_code >= 400:
-            raise HTTPException(502, "Sprachausgabe nicht erreichbar.")
+            raise HTTPException(502, jc.tr("Sprachausgabe nicht erreichbar.", "Speech output not reachable."))
         return Response(r.content, media_type=r.headers.get("content-type", "audio/wav"))
     except httpx.HTTPError:
-        raise HTTPException(502, "Sprachausgabe nicht erreichbar.")
+        raise HTTPException(502, jc.tr("Sprachausgabe nicht erreichbar.", "Speech output not reachable."))
 
 
 # ------------------------------------------------------------------ kein Xiaomi-Handy im generischen Image
@@ -150,10 +152,21 @@ adm.phone_status = phone_status
 
 
 # ------------------------------------------------------------------ Einrichtungscode: Hinweis für Docker
+_orig_auth_state = adm.auth_state
+
+
 async def auth_state(request: Request):
-    return {"configured": adm.auth_configured(), "loggedIn": adm.session_of(request) is not None,
-            "setupHint": None if adm.auth_configured() else
-            f"docker compose exec jarvis cat {adm.SETUP_FILE}\n# oder: docker compose logs jarvis | grep -i einrichtungscode"}
+    st = _orig_auth_state(request)
+    st = dict(await st if asyncio.iscoroutine(st) else st)
+    st["setupHint"] = None if adm.auth_configured() else \
+        f"docker compose exec jarvis cat {adm.SETUP_FILE}\n# {jc.tr('oder', 'or')}: docker compose logs jarvis | grep -i 'setup code'"
+    # Marke/Sprache für Login und Fußzeile (Feld „ui“ von jarvis-admin): Sprache nach ADMIN_LANG, Servername ohne „Jarvis LNX“
+    ui = dict(st.get("ui") or {})
+    ui.update(brand=ui.get("brand") or jc.brand(), ui_lang=jc.ui_lang_setting(), server=jc.server_label())
+    st["ui"] = ui
+    st.setdefault("ui_lang", ui["ui_lang"])
+    st.setdefault("brand", ui["brand"])
+    return st
 
 
 # ------------------------------------------------------------------ Ersteinrichtung (LLM + Schlüssel)
@@ -165,7 +178,7 @@ def setup_state() -> dict:
     cfg = adm.to_plain(adm.load_config_rt())
     model = cfg.get("model") or {}
     prov = (cfg.get("providers") or {}).get(OLLAMA_PROVIDER) or {}
-    return {"done": SETUP_DONE.exists(), "lang": jc.lang(), "name": jc.server_name(),
+    return {"done": SETUP_DONE.exists(), "lang": jc.lang(), "ui_lang": jc.ui_lang_setting(), "name": jc.server_name(),
             "ollama_url": (prov.get("api") or jc.env("JARVIS_INIT_OLLAMA_URL")).removesuffix("/v1"),
             "ollama_model": (model.get("default") if str(model.get("provider", "")).startswith("custom:") else "")
             or jc.env("JARVIS_INIT_OLLAMA_MODEL"),
@@ -197,9 +210,9 @@ async def setup_language(request: Request):
     lg = d.get("lang")
     voice = str(d.get("voice") or "")
     if lg not in ("de", "en"):
-        raise HTTPException(400, "Sprache de oder en.")
+        raise HTTPException(400, jc.tr("Sprache de oder en.", "Language must be de or en."))
     if not re.fullmatch(r"[a-z]{2}_[A-Z]{2}-[a-z0-9_]+-(x_low|low|medium|high)", voice):
-        raise HTTPException(400, "Ungültiger Stimmenname (z. B. de_DE-thorsten-medium).")
+        raise HTTPException(400, jc.tr("Ungültiger Stimmenname (z. B. de_DE-thorsten-medium).", "Invalid voice name (e.g. en_GB-alan-medium)."))
     ui = adm.read_ui_settings()
     fields = {"lang": lg, "piper_voice": voice}
     if not ui.get("persona") or ui.get("persona") in personas.PERSONA.values():
@@ -223,13 +236,13 @@ async def setup_ollama_probe(request: Request):
     d = await adm.body(request)
     url = str(d.get("url", "")).strip().rstrip("/").removesuffix("/v1")
     if not re.fullmatch(r"https?://[A-Za-z0-9.\-\[\]:]{1,200}(:\d{1,5})?", url):
-        raise HTTPException(400, "Ungültige Adresse (z. B. http://192.0.2.30:11434).")
+        raise HTTPException(400, jc.tr("Ungültige Adresse (z. B. http://192.0.2.30:11434).", "Invalid address (e.g. http://192.0.2.30:11434)."))
     try:
         async with httpx.AsyncClient(timeout=5) as c:
             v = (await c.get(f"{url}/api/version")).json()
             tags = (await c.get(f"{url}/api/tags")).json()
     except Exception as exc:
-        raise HTTPException(502, f"Ollama unter {url} nicht erreichbar ({exc.__class__.__name__}).")
+        raise HTTPException(502, jc.tr(f"Ollama unter {url} nicht erreichbar", f"Ollama at {url} not reachable") + f" ({exc.__class__.__name__}).")
     return {"ok": True, "version": v.get("version"), "models": sorted(m.get("name") for m in tags.get("models", []))}
 
 
@@ -245,7 +258,7 @@ def _env_set(name: str, value: str | None) -> None:
     if not found and value:
         lines.append(f"{name}={value}")
     path = adm.FILES["env"][0]
-    adm.backup("env", adm.read_text(path), f"Einrichtung: {name}")
+    adm.backup("env", adm.read_text(path), f"Setup: {name}")
     adm.atomic_write(path, "\n".join(lines) + "\n", 0o600)
 
 
@@ -254,23 +267,23 @@ async def setup_apply(request: Request):
     d = await adm.body(request)
     mode = d.get("mode")
     if mode not in ("local", "auto", "remote"):
-        raise HTTPException(400, "Modus fehlt (local, auto oder remote).")
+        raise HTTPException(400, jc.tr("Modus fehlt (local, auto oder remote).", "Mode missing (local, auto or remote)."))
     url = str(d.get("ollama_url") or "").strip().rstrip("/").removesuffix("/v1")
     model = str(d.get("ollama_model") or "").strip()
     key = str(d.get("anthropic_key") or "").strip()
     ctx = int(d.get("context") or 65536)
     if mode in ("local", "auto") and not (url and re.fullmatch(r"[A-Za-z0-9._:/\-]{1,120}", model)):
-        raise HTTPException(400, "Für Lokal/Automatisch braucht es Ollama-Adresse und Modell.")
+        raise HTTPException(400, jc.tr("Für Lokal/Automatisch braucht es Ollama-Adresse und Modell.", "Local/automatic needs an Ollama address and a model."))
     if key and not re.fullmatch(r"sk-ant-[A-Za-z0-9_\-]{20,300}", key):
-        raise HTTPException(400, "Das sieht nicht wie ein Anthropic-Schlüssel aus (sk-ant-…).")
+        raise HTTPException(400, jc.tr("Das sieht nicht wie ein Anthropic-Schlüssel aus (sk-ant-…).", "That does not look like an Anthropic key (sk-ant-…)."))
     if not 64000 <= ctx <= 1048576:
-        raise HTTPException(400, "Hermes braucht mindestens 64k Kontext (64000 bis 1048576).")
+        raise HTTPException(400, jc.tr("Hermes braucht mindestens 64k Kontext (64000 bis 1048576).", "Hermes needs at least 64k context (64000 to 1048576)."))
     who = adm.who(request)
     if key:
         _env_set("ANTHROPIC_API_KEY", key)
-        adm.audit(who, "Einrichtung: Anthropic-Schlüssel gesetzt")
+        adm.audit(who, "Setup: Anthropic key set")
     if mode != "local" and not adm.env_value("ANTHROPIC_API_KEY"):
-        raise HTTPException(400, "Für Claude fehlt der Anthropic-Schlüssel.")
+        raise HTTPException(400, jc.tr("Für Claude fehlt der Anthropic-Schlüssel.", "Claude needs an Anthropic key."))
     path = adm.FILES["config"][0]
     old = adm.read_text(path)
     data = adm.load_config_rt()
@@ -286,7 +299,7 @@ async def setup_apply(request: Request):
         saved = adm.load_brain_saved()
         saved["local"] = {"provider": f"custom:{OLLAMA_PROVIDER}", "base_url": f"{url}/v1", "default": model}
         adm.save_brain_saved(saved)
-    adm.backup("config", old, "Einrichtung: LLM")
+    adm.backup("config", old, "Setup: LLM")
     adm.atomic_write(path, adm.dump_rt(data))
     # Gehirn-Modus mit derselben Logik wie Admin-Seite und Handy-Schalter
     remote = d.get("remote_model") if d.get("remote_model") in adm.CLAUDE_MODELS else None
@@ -295,10 +308,10 @@ async def setup_apply(request: Request):
     code, out = await adm.run_hermes("config", "check", timeout=90)
     if code != 0:
         adm.atomic_write(path, old)
-        raise HTTPException(500, "Hermes lehnt die Konfiguration ab, alte Einstellung wiederhergestellt: " + out[-400:])
+        raise HTTPException(500, jc.tr("Hermes lehnt die Konfiguration ab, alte Einstellung wiederhergestellt: ", "Hermes rejected the configuration, previous settings restored: ") + out[-400:])
     adm.save_brain_saved(ch["saved"])
-    adm.write_ui_fields(ch["ui"], "Einrichtung: Gehirn-Modus")
-    adm.audit(who, f"Einrichtung: {ch['desc']}")
+    adm.write_ui_fields(ch["ui"], "Setup: brain mode")
+    adm.audit(who, f"Setup: {ch['desc']}")
     jc._write_json(SETUP_DONE, {"time": adm.now_iso(), "mode": mode})
     gw = gateway_slot()
     if gw:  # Schlüssel aus .env liest Hermes beim Start
@@ -335,7 +348,7 @@ async def pairing_new(request: Request):
     uri = "jarvislnx://pair?" + urllib.parse.urlencode(q, quote_via=urllib.parse.quote)
     browser = f"{url}/pair?code={code['code']}"
     host = urllib.parse.urlparse(url).hostname or ""
-    adm.audit(adm.who(request), "Kopplungscode erzeugt")
+    adm.audit(adm.who(request), "Pairing code created")
     return {**code, "url": url, "fingerprint": fp, "uri": uri, "browser_url": browser,
             "qr": qr_svg_data(uri), "qr_browser": qr_svg_data(browser),
             "host_in_cert": jc.tls_mode() != "selfsigned" or host in jc.cert_names(), "cert_names": jc.cert_names()}
@@ -353,8 +366,8 @@ async def pairing_revoke(request: Request):
     d = await adm.body(request)
     did = str(d.get("id", ""))
     if not jc.revoke_device(did):
-        raise HTTPException(404, "Gerät nicht gefunden.")
-    adm.audit(adm.who(request), f"Gerät entkoppelt: {did}")
+        raise HTTPException(404, jc.tr("Gerät nicht gefunden.", "Device not found."))
+    adm.audit(adm.who(request), f"Device unpaired: {did}")
     return {"ok": True}
 
 
@@ -368,7 +381,7 @@ def _remember_user(name: str) -> None:
     old = adm.read_text(path)
     parts = [x for x in old.split(adm.MEM_SEP) if x.strip() and not x.strip().startswith(USER_MEM_PREFIX)]
     parts.append(f"{USER_MEM_PREFIX[0 if jc.lang() == 'de' else 1]} {name}")
-    adm.backup("user", old, "Nutzername gemerkt")
+    adm.backup("user", old, "User name remembered")
     adm.atomic_write(path, adm.MEM_SEP.join(p.strip() for p in parts) + "\n")
 
 
@@ -384,20 +397,20 @@ def assistant_update(d: dict, who: str) -> dict:
         if key in d and d[key] is not None:
             v = re.sub(r"\s+", " ", str(d[key])).strip()
             if v and not NAME_RE.fullmatch(v):
-                raise HTTPException(400, "Name: 1–40 Zeichen, Buchstaben, Ziffern, Leerzeichen, . ' -")
+                raise HTTPException(400, jc.tr("Name: 1–40 Zeichen, Buchstaben, Ziffern, Leerzeichen, . ' -", "Name: 1–40 characters, letters, digits, spaces, . ' -"))
             fields[key] = v or None   # leer = zurück auf Standard
-            notes.append(f"{key}={v or '(Standard)'}")
+            notes.append(f"{key}={v or '(default)'}")
     if "onboarded" in d:
         if not isinstance(d["onboarded"], bool):
-            raise HTTPException(400, "onboarded muss true/false sein.")
+            raise HTTPException(400, "onboarded must be true/false.")
         fields["onboarded"] = d["onboarded"]
         notes.append(f"onboarded={d['onboarded']}")
     if not fields:
-        raise HTTPException(400, "Nichts zu ändern.")
-    adm.write_ui_fields(fields, "Name/Kennenlernen")
+        raise HTTPException(400, jc.tr("Nichts zu ändern.", "Nothing to change."))
+    adm.write_ui_fields(fields, "Name/onboarding")
     if fields.get("user_name"):
         _remember_user(fields["user_name"])
-    adm.audit(who, "Assistent: " + ", ".join(notes))
+    adm.audit(who, "Assistant: " + ", ".join(notes))
     return {"ok": True, **assistant_state()}
 
 
@@ -458,9 +471,16 @@ if __name__ == "__main__":
     if not adm.auth_configured():
         try:
             code = adm.SETUP_FILE.read_text().strip()
-            print(f"[jarvis-admin] ===== Einrichtungscode / setup code: {code} =====", flush=True)
+            print(f"[nuorb-admin] ===== setup code / Einrichtungscode: {code} =====", flush=True)
         except OSError:
             pass
     adm.ensure_internal_token()
-    uvicorn.run(app, host=jc.env("ADMIN_HOST", "0.0.0.0"), port=int(jc.env("ADMIN_PORT", "8444")),
+    async def lang_app(scope, receive, send):
+        """Sprache der Anfrage (Kopf X-UI-Lang) für jc.tr(); jede Anfrage läuft in eigenem Task."""
+        if scope["type"] == "http":
+            h = dict(scope.get("headers") or []).get(b"x-ui-lang", b"").decode("latin-1")[:2].lower()
+            jc.REQ_LANG.set(h if h in ("de", "en") else None)
+        await app(scope, receive, send)
+
+    uvicorn.run(lang_app, host=jc.env("ADMIN_HOST", "0.0.0.0"), port=int(jc.env("ADMIN_PORT", "8444")),
                 log_level="warning", proxy_headers=False, server_header=False, **jc.ssl_kwargs())

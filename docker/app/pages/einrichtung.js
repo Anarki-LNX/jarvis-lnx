@@ -1,9 +1,12 @@
-// JARVIS LNX (Docker): Einrichtung – Sprache/Stimme, Gehirn (Ollama, Claude, beides), Modell-Downloads, weiter zum Koppeln.
+// NuOrb (Docker): Einrichtung – Name/Sprache/Stimme, Gehirn (Ollama, Claude, beides), Modell-Downloads, weiter zum Koppeln.
 (function () {
   const $ = (id) => document.getElementById(id);
+  const I = window.NuI18n;
   const EN = {
     back: "← Back to admin", title: "Setup", lead: "Three steps: language, brain, pair a device. Everything can be changed later in the admin panel.",
-    h_status: "Status", h_lang: "1 · Name, language and voice", l_aname: "Assistant name (how you address it)", l_uname: "Your name (optional)", name_hint: "The wake word stays “Hey” plus the product name. You can also rename it in conversation: “From now on you are called …”.", l_lang: "Language", l_voice: "Voice", apply: "Apply",
+    h_status: "Status", h_lang: "1 · Name, language and voice", l_aname: "Assistant name (how you address it)", l_uname: "Your name (optional)",
+    name_hint: "The wake word stays “Hey {brand}”. You can also rename the assistant in conversation: “From now on you are called …”.",
+    l_lang: "Assistant language", l_voice: "Voice", apply: "Apply",
     h_mode: "2 · Brain", m_local: "Local (Ollama)", m_local_d: "Only your Ollama. Nothing leaves your home. Free.",
     m_auto: "Both (automatic)", m_auto_d: "Ollama, and Claude when the PC is off.", m_remote: "Claude (API)",
     m_remote_d: "No PC of your own needed, costs per question.",
@@ -12,30 +15,41 @@
     h_claude: "Claude", l_key: "Anthropic API key", l_remote: "Claude model",
     cost: "Cost: billed per token directly by Anthropic (console.anthropic.com). A short voice question costs about 0.1–0.5 cents with Haiku, a few cents with Sonnet. Set a spending limit there.",
     privacy: "Privacy: with Claude, conversation text is sent to Anthropic (USA). Audio always stays local.",
-    save: "Save brain", skip: "Later", h_pair: "3 · Pair a device", pair_d: "Create a QR code for the JARVIS app or a code for a browser.",
+    save: "Save brain", skip: "Later", h_pair: "3 · Pair a device", pair_d: "Create a QR code for the {brand} app or a code for a browser.",
     pair_go: "Go to “Pair device”",
+  };
+  const DE = {
+    back: "← Zur Verwaltung", title: "Einrichtung", lead: "Drei Schritte: Sprache, Gehirn, Gerät koppeln. Alles lässt sich später in der Verwaltung ändern.",
+    h_status: "Zustand", h_lang: "1 · Name, Sprache und Stimme", l_aname: "Name des Assistenten (so sprichst du ihn an)", l_uname: "Dein Name (optional)",
+    name_hint: "Das Weckwort bleibt „Hey {brand}“. Den Namen kannst du auch im Gespräch ändern: „Ab jetzt heißt du …“.",
+    l_lang: "Sprache des Assistenten", l_voice: "Stimme", apply: "Übernehmen",
+    h_mode: "2 · Gehirn", m_local: "Lokal (Ollama)", m_local_d: "Nur dein Ollama. Nichts verlässt das Haus. Kostenlos.",
+    m_auto: "Beides (Automatik)", m_auto_d: "Ollama, und Claude, wenn der PC aus ist.", m_remote: "Claude (API)",
+    m_remote_d: "Kein eigener PC nötig, kostet pro Frage.",
+    h_ollama: "Ollama", l_url: "Adresse", probe: "Verbindung testen", l_model: "Modell", l_ctx: "Kontext (Token)",
+    ctx_hint: "Wichtig: Hermes verlangt mindestens 64k Token Kontext. Setze am Ollama-Server OLLAMA_CONTEXT_LENGTH=65536 oder lege eine Modell-Variante mit „PARAMETER num_ctx“ an, sonst werden Antworten abgeschnitten.",
+    h_claude: "Claude", l_key: "Anthropic-API-Schlüssel", l_remote: "Claude-Modell",
+    cost: "Kosten: Abrechnung pro Token direkt bei Anthropic (console.anthropic.com). Eine kurze Sprachfrage kostet mit Haiku etwa 0,1–0,5 Cent, mit Sonnet einige Cent. Lege dort ein Ausgabenlimit fest.",
+    privacy: "Datenschutz: Bei Claude gehen die Gesprächstexte an Anthropic (USA). Audio bleibt immer lokal.",
+    save: "Gehirn speichern", skip: "Später", h_pair: "3 · Gerät koppeln", pair_d: "Erzeuge einen QR-Code für die {brand}-App oder einen Code für den Browser.",
+    pair_go: "Zu „Gerät koppeln“",
   };
   const MSG = {
     de: { set: "Schlüssel gesetzt: ", none: "Noch kein Schlüssel hinterlegt.", saving: "Speichere … (Hermes startet neu, ~20 s)",
-          ok: "Fertig. JARVIS denkt jetzt mit: ", probing: "Teste …", found: (v, n) => `Verbunden: Ollama ${v}, ${n} Modelle.`, err: "Fehler: ",
-          noBrain: "⚠ Noch kein Gehirn eingerichtet – JARVIS kann noch nicht antworten.", brain: (m) => `✓ Gehirn eingerichtet (${m}).`,
+          ok: "Fertig. {brand} denkt jetzt mit: ", probing: "Teste …", found: (v, n) => `Verbunden: Ollama ${v}, ${n} Modelle.`, err: "Fehler: ",
+          noBrain: "⚠ Noch kein Gehirn eingerichtet – {brand} kann noch nicht antworten.", brain: (m) => `✓ Gehirn eingerichtet (${m}).`,
           load: (s) => `Lade Sprachmodelle: ${s.item || ""} ${s.done_mb || 0} / ${s.total_mb || "?"} MB`, ready: "✓ Sprachmodelle bereit (Spracherkennung und Stimme).",
+          offline: "Keine Internetverbindung: Die Sprachmodelle (~530 MB) konnten nicht geladen werden. Neuer Versuch läuft automatisch. Prüfe DNS/Proxy/Firewall des Containers.",
           langOk: "Übernommen.", dl: (v) => `Übernommen, Stimme ${v} wird geladen …`, modes: { local: "Lokal", auto: "Automatik", remote: "Claude" } },
     en: { set: "Key set: ", none: "No key stored yet.", saving: "Saving … (Hermes restarts, ~20 s)",
-          ok: "Done. JARVIS now thinks with: ", probing: "Testing …", found: (v, n) => `Connected: Ollama ${v}, ${n} models.`, err: "Error: ",
-          noBrain: "⚠ No brain configured yet – JARVIS cannot answer yet.", brain: (m) => `✓ Brain configured (${m}).`,
+          ok: "Done. {brand} now thinks with: ", probing: "Testing …", found: (v, n) => `Connected: Ollama ${v}, ${n} models.`, err: "Error: ",
+          noBrain: "⚠ No brain configured yet – {brand} cannot answer yet.", brain: (m) => `✓ Brain configured (${m}).`,
           load: (s) => `Downloading speech models: ${s.item || ""} ${s.done_mb || 0} / ${s.total_mb || "?"} MB`, ready: "✓ Speech models ready (recognition and voice).",
+          offline: "No internet connection: the speech models (~530 MB) could not be downloaded. Retrying automatically. Check the container's DNS/proxy/firewall.",
           langOk: "Applied.", dl: (v) => `Applied, downloading voice ${v} …`, modes: { local: "local", auto: "automatic", remote: "Claude" } },
   };
-  let m = MSG.de, S = null;
-  const api = async (path, body) => {
-    const r = await fetch(path, body === undefined ? { cache: "no-store" } : {
-      method: "POST", headers: { "Content-Type": "application/json", "X-Jarvis": "1" }, body: JSON.stringify(body) });
-    if (r.status === 401) { location.href = "/"; throw new Error("login"); }
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.detail || r.status);
-    return d;
-  };
+  let m = MSG.en, S = null;
+  const api = I.api;
   function mode() { return (document.querySelector('input[name="mode"]:checked') || {}).value || "local"; }
   function refresh() {
     document.querySelectorAll(".choice").forEach((c) => c.setAttribute("aria-checked", String(c.dataset.mode === mode())));
@@ -82,7 +96,7 @@
       const d = await api("/api/setup/apply", { mode: mode(), ollama_url: $("url").value.trim(), ollama_model: $("model").value,
         context: Number($("ctx").value), anthropic_key: $("key").value.trim(), remote_model: $("remote").value });
       $("key").value = "";
-      $("msg").className = "ok"; $("msg").textContent = m.ok + d.desc;
+      $("msg").className = "ok"; $("msg").textContent = I.fmt(m.ok) + d.desc;
       $("brainState").className = "ok"; $("brainState").textContent = m.brain(m.modes[mode()]);
     } catch (e) { $("msg").className = "err"; $("msg").textContent = m.err + e.message; }
     $("save").disabled = false;
@@ -92,7 +106,7 @@
   function showModels(x) {
     const st = $("modelState");
     if (x.stt_ready && x.voice_ready && x.state !== "loading") { st.className = "ok"; st.textContent = m.ready; $("bar").hidden = true; return false; }
-    if (x.state === "error") { st.className = "err"; st.textContent = x.error; $("bar").hidden = true; return true; }
+    if (x.state === "error") { st.className = "err"; st.textContent = x.error_code === "offline" ? m.offline : x.error; $("bar").hidden = true; return true; }
     st.className = "muted"; st.textContent = m.load(x);
     $("bar").hidden = !x.total_mb; $("barFill").style.width = (x.total_mb ? Math.min(100, 100 * x.done_mb / x.total_mb) : 0) + "%";
     return true;
@@ -103,15 +117,13 @@
 
   api("/api/setup").then((s) => {
     S = s;
-    if (s.lang === "en") {
-      m = MSG.en; document.documentElement.lang = "en"; document.title = "JARVIS · Setup";
-      document.querySelectorAll("[data-t]").forEach((el) => { if (EN[el.dataset.t]) el.textContent = EN[el.dataset.t]; });
-    }
+    I.init(s, { en: EN, de: DE }, "title");
+    m = MSG[I.lang];
     $("lang").value = s.lang; voices(s.lang, s.voice);
     $("aname").value = s.assistant_name || ""; $("aname").placeholder = s.brand || "";
     $("uname").value = s.user_name || "";
     $("brainState").className = s.done ? "ok" : "warn";
-    $("brainState").textContent = s.done ? m.brain(m.modes[s.brain] || s.brain) : m.noBrain;
+    $("brainState").textContent = s.done ? m.brain(m.modes[s.brain] || s.brain) : I.fmt(m.noBrain);
     showModels(s.models || {}); pollModels();
     $("url").value = s.ollama_url || "";
     $("model").dataset.want = s.ollama_model || "";

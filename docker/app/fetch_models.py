@@ -26,7 +26,7 @@ STT = jc.MODELS / "stt"
 
 
 def log(msg: str) -> None:
-    print(f"[jarvis-models] {msg}", flush=True)
+    print(f"[nuorb-models] {msg}", flush=True)
 
 
 def fetch(url: str, dest: Path) -> None:
@@ -45,7 +45,7 @@ def fetch(url: str, dest: Path) -> None:
                 last = time.time()
                 jc.set_models_status(state="loading", item=dest.name, done_mb=done >> 20, total_mb=total >> 20, error=None)
     os.replace(part, dest)
-    log(f"{dest.name}: fertig ({done >> 20} MB in {time.time() - t0:.0f} s)")
+    log(f"{dest.name}: done ({done >> 20} MB in {time.time() - t0:.0f} s)")
 
 
 def voice_path(name: str) -> str:
@@ -72,7 +72,7 @@ def parakeet() -> None:
     STT.mkdir(parents=True, exist_ok=True)
     arc = STT / f"{PARAKEET}.tar.bz2"
     if not arc.exists():
-        log("Lade Spracherkennung Parakeet (~465 MB, einmalig) …")
+        log("Downloading speech recognition Parakeet (~465 MB, once) …")
         fetch(PARAKEET_URL, arc)
     tmp = STT / f".{PARAKEET}.entpacken"
     shutil.rmtree(tmp, ignore_errors=True)
@@ -85,13 +85,12 @@ def parakeet() -> None:
     arc.unlink(missing_ok=True)
     for f in target.glob("test_wavs"):
         shutil.rmtree(f, ignore_errors=True)
-    log(f"Parakeet bereit in {target}")
+    log(f"Parakeet ready in {target}")
 
 
-OFFLINE = {"de": "Keine Internetverbindung: Die Sprachmodelle (~530 MB) konnten nicht geladen werden. "
-                 "JARVIS versucht es automatisch weiter. Prüfe DNS/Proxy/Firewall des Containers.",
-           "en": "No internet connection: the speech models (~530 MB) could not be downloaded. "
-                 "JARVIS keeps retrying automatically. Check the container's DNS/proxy/firewall."}
+# Die Einrichtungsseite übersetzt anhand von error_code selbst; der Text hier ist für Protokoll und API.
+OFFLINE = ("No internet connection: the speech models (~530 MB) could not be downloaded. "
+           "Retrying automatically. Check the container's DNS/proxy/firewall.")
 
 
 def main() -> int:
@@ -103,14 +102,14 @@ def main() -> int:
                 voices(extra)
             if "stt" in args:
                 parakeet()
-            jc.set_models_status(state="ready", item=None, error=None)
+            jc.set_models_status(state="ready", item=None, error=None, error_code=None)
             return 0
         except Exception as exc:
             wait = min(300, 20 * attempt)
             net = isinstance(exc, (OSError,)) and not isinstance(exc, (PermissionError, FileNotFoundError))
-            msg = OFFLINE[jc.lang()] if net else f"{exc.__class__.__name__}: {exc}"
-            jc.set_models_status(state="error", error=msg[:300], retry_in=wait)
-            log(f"Download fehlgeschlagen ({exc.__class__.__name__}: {exc}); neuer Versuch in {wait} s")
+            msg = OFFLINE if net else f"{exc.__class__.__name__}: {exc}"
+            jc.set_models_status(state="error", error=msg[:300], error_code="offline" if net else "error", retry_in=wait)
+            log(f"Download failed ({exc.__class__.__name__}: {exc}); retrying in {wait} s")
             time.sleep(wait)
     return 1
 

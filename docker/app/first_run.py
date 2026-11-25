@@ -27,7 +27,7 @@ VOICES = jc.MODELS / "voices"
 
 
 def log(msg: str) -> None:
-    print(f"[jarvis-init] {msg}", flush=True)
+    print(f"[nuorb-init] {msg}", flush=True)
 
 
 def hermes(*args: str) -> tuple[int, str]:
@@ -75,7 +75,7 @@ def dirs() -> None:
         link.unlink(missing_ok=True)
         link.symlink_to(VOICES)
     else:
-        log(f"Hinweis: {link} ist ein echter Ordner, Stimmen aus {VOICES} werden dort nicht angezeigt.")
+        log(f"Note: {link} is a real folder, voices from {VOICES} are not shown there.")
 
 
 def api_key() -> None:
@@ -85,12 +85,12 @@ def api_key() -> None:
         want["API_SERVER_KEY"] = secrets.token_hex(32)
     if any(env_get(k) != v for k, v in want.items()):
         env_set(want)
-        log("Hermes-API-Server eingeschaltet (nur 127.0.0.1 im Container).")
+        log("Hermes API server enabled (127.0.0.1 inside the container only).")
         restart_gateways()
     k = jc.env("JARVIS_INIT_ANTHROPIC_API_KEY")
     if k and not env_get("ANTHROPIC_API_KEY"):
         env_set({"ANTHROPIC_API_KEY": k})
-        log("Anthropic-Schlüssel aus der .env übernommen (ab jetzt im Admin-Panel änderbar).")
+        log("Anthropic key taken from .env (change it in the admin panel from now on).")
 
 
 def restart_gateways() -> None:
@@ -99,7 +99,7 @@ def restart_gateways() -> None:
     for slot in (sorted(root.glob("*")) if root.is_dir() else []):
         if (slot / "supervise").exists():
             subprocess.run(["s6-svc", "-r", str(slot)], check=False)
-            log(f"Gateway {slot.name} neu gestartet (neue .env).")
+            log(f"Gateway {slot.name} restarted (new .env).")
 
 
 def voice_name() -> str:
@@ -125,7 +125,7 @@ def first_config() -> None:
     for k, v in sets:
         code, out = hermes("config", "set", k, v)
         if code != 0:
-            log(f"hermes config set {k} fehlgeschlagen: {out[-300:]}")
+            log(f"hermes config set {k} failed: {out[-300:]}")
     # LLM aus der .env (optional; sonst Einrichtung im Admin-Panel)
     url = jc.env("JARVIS_INIT_OLLAMA_URL").rstrip("/").removesuffix("/v1")
     model = jc.env("JARVIS_INIT_OLLAMA_MODEL")
@@ -155,14 +155,14 @@ def first_config() -> None:
             adm.save_brain_saved(ch["saved"])
             ui.update(ch["ui"])
             jc._write_json(jc.CONF / "setup-done.json", {"time": jc.now_iso(), "mode": mode, "via": ".env"})
-            log(f"Gehirn aus der .env: {ch['desc']}")
+            log(f"Brain from .env: {ch['desc']}")
         except Exception as exc:  # z. B. Modus ohne Schlüssel
-            log(f"Gehirn-Einstellung aus der .env übersprungen: {getattr(exc, 'detail', exc)}")
+            log(f"Brain setting from .env skipped: {getattr(exc, 'detail', exc)}")
     code, out = hermes("config", "check")
     log("hermes config check: " + ("ok" if code == 0 else out[-400:]))
     adm.atomic_write(jc.CONF / "ui.json", json.dumps(ui, indent=2, ensure_ascii=False) + "\n", 0o600)
     jc._write_json(MARK, {"time": jc.now_iso(), "lang": lg})
-    log(f"Grundkonfiguration fertig (Sprache {lg}, Stimme {voice_name()}).")
+    log(f"Base configuration done (language {lg}, voice {voice_name()}).")
 
 
 def ensure_mcp() -> None:
@@ -179,7 +179,7 @@ def ensure_mcp() -> None:
     if {k: cur.get(k) for k in want} != want:
         adm.cfg_set(data, "mcp_servers.nuorb", want)
         adm.atomic_write(adm.FILES["config"][0], adm.dump_rt(data))
-        log("MCP-Werkzeug „nuorb“ (Name, Kennenlernen) eingetragen.")
+        log("MCP tool \"nuorb\" (name, onboarding) registered.")
 
 
 def main() -> None:
@@ -191,8 +191,8 @@ def main() -> None:
     try:
         ensure_mcp()
     except Exception as exc:
-        log(f"MCP „nuorb“ nicht eingetragen: {exc}")
-    log(f"Bereit. Heim-CA-Fingerabdruck: {jc.ca_fingerprint() or '(eigenes Zertifikat)'}")
+        log(f"MCP \"nuorb\" not registered: {exc}")
+    log(f"Ready. Home CA fingerprint: {jc.ca_fingerprint() or '(own certificate)'}")
 
 
 if __name__ == "__main__":

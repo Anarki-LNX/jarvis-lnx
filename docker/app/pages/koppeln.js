@@ -1,12 +1,24 @@
-// JARVIS LNX (Docker): „Gerät koppeln“ – Einmal-Code + QR (jarvislnx://pair?…), Geräteliste mit Entkoppeln.
+// NuOrb (Docker): „Gerät koppeln“ – Einmal-Code + QR (jarvislnx://pair?…), Geräteliste mit Entkoppeln.
 (function () {
   const $ = (id) => document.getElementById(id);
+  const I = window.NuI18n;
   const EN = {
-    back: "← Back to admin", title: "Pair device", lead: "Connect the JARVIS app or a browser to this server. The code is valid for 10 minutes and only once.",
+    back: "← Back to admin", title: "Pair device", lead: "Connect the {brand} app or a browser to this server. The code is valid for 10 minutes and only once.",
     new: "Create new pairing code", cap_app: "App: scan the QR code", code_lbl: "Code", manual: "Or enter manually in the app:",
     fp_lbl: "Certificate fingerprint (SHA-256 of the home CA)", browser: "Pair a browser instead of the app", h_dev: "Paired devices",
-    th_name: "Name", th_kind: "Type", th_seen: "Last seen", off: "Pairing is not required (JARVIS_REQUIRE_PAIRING=0): the UI is reachable from the whole LAN without pairing.",
+    th_name: "Name", th_kind: "Type", th_seen: "Last seen",
+    off: "Pairing is not required (JARVIS_REQUIRE_PAIRING=0): the UI is reachable from the whole home network without pairing.",
     h_sec: "Security", sec: "Do not expose ports 8443/8444 to the internet. When away: use a VPN (e.g. WireGuard or Tailscale) into your home network. Unpair a device here if you lose it.",
+    alt_app: "QR code for the app", alt_browser: "QR code for the browser",
+  };
+  const DE = {
+    back: "← Zur Verwaltung", title: "Gerät koppeln", lead: "Verbinde die {brand}-App oder einen Browser mit diesem Server. Der Code gilt 10 Minuten und nur einmal.",
+    new: "Neuen Kopplungscode erzeugen", cap_app: "App: QR-Code scannen", code_lbl: "Code", manual: "Oder in der App von Hand eingeben:",
+    fp_lbl: "Zertifikats-Fingerabdruck (SHA-256 der Heim-CA)", browser: "Browser statt App koppeln", h_dev: "Gekoppelte Geräte",
+    th_name: "Name", th_kind: "Art", th_seen: "Zuletzt",
+    off: "Kopplungspflicht ist aus (JARVIS_REQUIRE_PAIRING=0): Die Oberfläche ist im ganzen Heimnetz ohne Kopplung erreichbar.",
+    h_sec: "Sicherheit", sec: "Öffne die Ports 8443/8444 nicht ins Internet. Für unterwegs: VPN (z. B. WireGuard oder Tailscale) ins Heimnetz. Ein Gerät, das du verlierst, hier entkoppeln.",
+    alt_app: "QR-Code für die App", alt_browser: "QR-Code für den Browser",
   };
   const M = {
     de: { left: (s) => `noch ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")} min gültig`, expired: "abgelaufen", revoke: "Entkoppeln",
@@ -16,15 +28,8 @@
           sure: "Really unpair this device?", none: "No devices paired yet.", noFp: "own certificate – no fingerprint needed",
           cert: (h, n) => `Warning: the certificate does not cover “${h}” (only ${n}). Add the address to JARVIS_HOSTS in .env and restart the container.` },
   };
-  let m = M.de, timer = null;
-  const api = async (path, body) => {
-    const r = await fetch(path, body === undefined ? { cache: "no-store" } : {
-      method: "POST", headers: { "Content-Type": "application/json", "X-Jarvis": "1" }, body: JSON.stringify(body) });
-    if (r.status === 401) { location.href = "/"; throw new Error("login"); }
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.detail || r.status);
-    return d;
-  };
+  let m = M.en, timer = null;
+  const api = I.api;
 
   async function devices() {
     const d = await api("/api/pairing/devices");
@@ -59,10 +64,8 @@
   });
 
   api("/api/setup").then((s) => {
-    if (s.lang === "en") {
-      m = M.en; document.documentElement.lang = "en"; document.title = "JARVIS · Pair device";
-      document.querySelectorAll("[data-t]").forEach((el) => { if (EN[el.dataset.t]) el.textContent = EN[el.dataset.t]; });
-    }
+    I.init(s, { en: EN, de: DE }, "title");
+    m = M[I.lang];
     devices();
   }).catch(() => {});
 })();

@@ -23,6 +23,7 @@ export UI_ALLOWED_NETS="$NETS" ADMIN_ALLOWED_NETS="$NETS"
 export BRAND_NAME="${BRAND_NAME:-NuOrb}" UI_LANG="${UI_LANG:-auto}"
 [ -n "${WAKE_PHRASE:-}" ] && export WAKE_PHRASE
 [ -n "${ASSISTANT_NAME:-}" ] && export ASSISTANT_NAME
+export ADMIN_LANG="${ADMIN_LANG:-en}"   # Admin-Webinterface: en (Standard) oder de
 export JARVIS_ONBOARDING="${JARVIS_ONBOARDING:-1}"   # Begrüßung beim ersten Öffnen (jarvis-ui)
 export JARVIS_MODE=live JARVIS_FEATURE_ZUHAUSE="${JARVIS_FEATURE_ZUHAUSE:-0}" JARVIS_FEATURE_GERAET=0 JARVIS_FEATURE_CLOUD_WEICHE="${JARVIS_FEATURE_CLOUD_WEICHE:-0}"
 export PATH="/opt/hermes/bin:/opt/hermes/.venv/bin:/command:/usr/local/bin:/usr/bin:/bin"

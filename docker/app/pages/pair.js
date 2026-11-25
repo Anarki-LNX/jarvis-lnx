@@ -1,20 +1,23 @@
-// JARVIS LNX: Browser-Kopplung. Code aus dem Admin-Panel (oder ?code= aus dem QR-Link) -> /api/pair -> Cookie -> Oberfläche.
+// NuOrb: Browser-Kopplung. Code aus dem Admin-Panel (oder ?code= aus dem QR-Link) -> /api/pair -> Cookie -> Oberfläche.
 (function () {
   const $ = (id) => document.getElementById(id);
   const T = {
     de: { lead: "Dieses Gerät ist noch nicht gekoppelt. Öffne im Admin-Panel „Gerät koppeln“ und gib den Code ein – oder scanne dort den QR-Code.",
           go: "Koppeln", hint: "Der Code gilt 10 Minuten und nur einmal.", bad: "Code falsch oder abgelaufen.", many: "Zu viele Versuche. Bitte 15 Minuten warten.",
-          net: "Keine Verbindung zum Server.", busy: "Kopple …" },
+          net: "Keine Verbindung zum Server.", busy: "Kopple …", label: "Kopplungscode" },
     en: { lead: "This device is not paired yet. Open “Pair device” in the admin panel and enter the code – or scan the QR code there.",
           go: "Pair", hint: "The code is valid for 10 minutes and only once.", bad: "Wrong or expired code.", many: "Too many attempts. Please wait 15 minutes.",
-          net: "No connection to the server.", busy: "Pairing …" },
+          net: "No connection to the server.", busy: "Pairing …", label: "Pairing code" },
   };
-  let t = T.de;
+  // Sprache der Oberfläche: UI_LANG (de|en), bei „auto“ die Browsersprache; Englisch als Standard
+  let t = T.en;
   fetch("/api/info", { cache: "no-store" }).then((r) => r.json()).then((i) => {
-    if (i.lang === "en") { t = T.en; document.documentElement.lang = "en"; }
+    const ul = i.ui_lang === "de" || i.ui_lang === "en" ? i.ui_lang : ((navigator.language || "").toLowerCase().startsWith("de") ? "de" : "en");
+    t = T[ul]; document.documentElement.lang = ul;
     $("lead").textContent = t.lead; $("go").textContent = t.go; $("hint").textContent = t.hint;
+    $("code").setAttribute("aria-label", t.label);
     if (i.brand) document.querySelector("h1").textContent = i.brand;
-    if (i.name) document.title = i.name + " · " + t.go;
+    document.title = (i.brand || "NuOrb") + " · " + t.go;
     if (i.paired) location.replace("/");
   }).catch(() => {});
 

@@ -1,15 +1,22 @@
-// JARVIS LNX (Docker): ergänzt das Admin-Panel um „Einrichtung“ und „Gerät koppeln“ und blendet die Xiaomi-Handy-Seite aus.
+// NuOrb (Docker): ergänzt das Admin-Panel um „Einrichtung“ und „Gerät koppeln“ und blendet die Xiaomi-Handy-Seite aus.
 // Läuft nach admin.js; ändert nur die Navigation, die Seiten selbst liegen unter /static/docker/.
 (function () {
-  let lang = "de";
+  // Sprache wie im Admin-Panel (i18n.js von jarvis-admin), falls vorhanden; sonst gleiche Regeln wie docker-i18n.js
+  const ok = (v) => (v === "de" || v === "en" ? v : null);
+  const stored = () => { const q = ok(new URLSearchParams(location.search).get("lang")); if (q) return q;
+                         try { return ok(localStorage.getItem("nuorb-admin-lang")); } catch (e) { return null; } };
+  const browser = () => (String(navigator.language || "en").toLowerCase().startsWith("de") ? "de" : "en");
+  let lang = stored() || browser();
   const L = { de: { group: "Docker", setup: "Einrichtung", pair: "Gerät koppeln" }, en: { group: "Docker", setup: "Setup", pair: "Pair device" } };
 
   function addNav() {
     const nav = document.getElementById("nav");
     if (!nav || !nav.children.length || nav.querySelector("[data-docker]")) return;
-    const handy = nav.querySelector('button[data-view="handy"]');
-    if (handy) handy.hidden = true;
-    const t = L[lang];
+    // Xiaomi-Handy und die Link-Kopplung von jarvis-admin gibt es im Image nicht; hier koppelt /static/docker/koppeln.html
+    for (const v of ["handy", "koppeln"]) { const b = nav.querySelector(`button[data-view="${v}"]`); if (b) b.hidden = true; }
+    // Mit i18n.js von jarvis-admin: deutsche Texte einsetzen, die Übersetzung (auch beim Umschalten ohne Neuladen) macht I18N
+    if (window.I18N && window.I18N_EN) { window.I18N_EN["Einrichtung"] ||= "Setup"; window.I18N_EN["Docker"] ||= "Docker"; }
+    const t = window.I18N ? L.de : L[lang];
     const g = document.createElement("div"); g.className = "nav-group"; g.textContent = t.group; g.dataset.docker = "1";
     nav.appendChild(g);
     for (const [href, label] of [["/static/docker/koppeln.html", t.pair], ["/static/docker/einrichtung.html", t.setup]]) {
@@ -22,15 +29,18 @@
 
   async function check() {
     try {
-      const r = await fetch("/api/setup", { cache: "no-store" });
+      const r = await fetch("/api/setup", { cache: "no-store", headers: { "X-UI-Lang": lang } });
       if (!r.ok) return false;              // noch nicht angemeldet
       const s = await r.json();
-      lang = s.lang === "en" ? "en" : "de";
+      lang = (window.I18N && ok(window.I18N.lang)) || stored() || ok(s.ui_lang) || browser();
       addNav();
       if (!s.done && !sessionStorage.getItem("jl.setupSkipped")) location.href = "/static/docker/einrichtung.html";
       return true;
     } catch (e) { return false; }
   }
+  // Direktaufruf der nativen Kopplungsseite (#koppeln) -> Kopplung mit Einmal-Code im Image
+  const redirect = () => { if (location.hash === "#koppeln") location.replace("/static/docker/koppeln.html"); };
+  window.addEventListener("hashchange", redirect); redirect();
   // Nach dem Login baut admin.js die Navigation; so lange beobachten
   const mo = new MutationObserver(() => { if (document.getElementById("nav")?.children.length) check().then((ok) => ok && mo.disconnect()); });
   mo.observe(document.body, { childList: true, subtree: true });

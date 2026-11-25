@@ -8,6 +8,8 @@ services:
     image: ghcr.io/anarki-lnx/jarvis-lnx:${JARVIS_VERSION:-latest}
     build:
       context: .
+      args:
+        JARVIS_LNX_VERSION: ${JARVIS_LNX_VERSION:-dev}
     pull_policy: missing
     restart: unless-stopped
     healthcheck:
