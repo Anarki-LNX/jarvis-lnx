@@ -350,7 +350,7 @@ def device_for_token(token: str, ip: str = "") -> str | None:
     d = devices()
     for did, v in d.items():
         if hmac.compare_digest(v.get("token", ""), h):
-            if time.time() - _seen_cache.get(did, 0) > 300:  # „zuletzt gesehen“ höchstens alle 5 min schreiben
+            if time.time() - _seen_cache.get(did, 0) > 60:  # „zuletzt gesehen“ höchstens einmal pro Minute schreiben (wie die NuOrb-Oberfläche)
                 _seen_cache[did] = time.time()
                 v["last_seen"], v["ip"] = now_iso(), ip
                 _write_json(DEVICES, d)
