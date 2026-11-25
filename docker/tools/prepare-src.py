@@ -47,8 +47,8 @@ except ImportError:
 
 def quelle_layout(q: Path) -> dict[str, Path]:
     if (q / "nuorb-ui").is_dir():
-        return {"ui": q / "nuorb-ui", "admin": q / "nuorb-admin", "stt": q / "scripts/sprache-stt-router.py"}
-    return {"ui": q / "ui", "admin": q / "admin", "stt": q / "scripts/sprache-stt-router.py"}
+        return {"ui": q / "nuorb-ui", "admin": q / "nuorb-admin", "stt": q / "scripts/sprache-stt-router.py", "scripts": q / "scripts"}
+    return {"ui": q / "ui", "admin": q / "admin", "stt": q / "scripts/sprache-stt-router.py", "scripts": q / "scripts"}
 
 
 def kopieren(q: Path) -> None:
@@ -65,6 +65,10 @@ def kopieren(q: Path) -> None:
     shutil.copytree(lay["admin"] / "static", ZIEL / "admin/static", ignore=shutil.ignore_patterns(".*"))
     (ZIEL / "stt").mkdir()
     shutil.copy2(lay["stt"], ZIEL / "stt/stt_router.py")
+    # Smart Home (optional im Image, standardmäßig aus): MCP-Server + Skill vom NuOrb-KI-Backend
+    (ZIEL / "smarthome").mkdir()
+    shutil.copy2(lay["scripts"] / "backend-smarthome-mcp.py", ZIEL / "smarthome/smarthome_mcp.py")
+    shutil.copy2(lay["scripts"] / "backend-smarthome-SKILL.md", ZIEL / "smarthome/SKILL.md")
 
 
 def ersetzen() -> list[str]:

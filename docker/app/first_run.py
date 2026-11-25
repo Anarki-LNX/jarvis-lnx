@@ -14,6 +14,7 @@ import json
 import os
 import re
 import secrets
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -185,6 +186,53 @@ def ensure_mcp() -> None:
         log("MCP tool \"nuorb\" (name, onboarding) registered.")
 
 
+SMARTHOME = Path("/opt/nuorb/smarthome")
+
+
+def ensure_smarthome() -> None:
+    """Smart Home (Home Assistant / ioBroker), optional: Skill + zwei MCP-Einträge aus einem Skript.
+    smarthome (lesen, trust full) und smarthome_schalten (schalten, trust untrusted -> Bestätigungskarte).
+    Standard aus. NUORB_SMARTHOME=1 schaltet ein, wenn die Zugangsdatei existiert; =0 schaltet aus;
+    nicht gesetzt: Schalter bleibt, wie er in der Verwaltung steht. Zugang nur als Datei (600), nie im Image."""
+    script, skill = SMARTHOME / "smarthome_mcp.py", SMARTHOME / "SKILL.md"
+    if not script.is_file():
+        return
+    zugang = Path(os.environ.get("NUORB_SMARTHOME_ZUGANG") or DATA / "smarthome.env")   # dieselbe Datei wie in der Verwaltung
+    dest = DATA / "skills/smart-home/smarthome/SKILL.md"
+    if skill.is_file() and (not dest.is_file() or dest.read_bytes() != skill.read_bytes()):
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(skill, dest)
+    os.environ.setdefault("NUORB_HOME", "/opt/nuorb/home")
+    sys.path.insert(0, "/opt/nuorb/admin")
+    import server as adm
+    data = adm.load_config_rt()
+    servers = adm.to_plain(data.get("mcp_servers") or {})
+    schalter = os.environ.get("NUORB_SMARTHOME", "").strip()
+    if schalter == "1" and not zugang.is_file():
+        log(f"Smart home: NUORB_SMARTHOME=1, but the access file {zugang} is missing - staying off.")
+    changed = False
+    for name, teil, trust in (("smarthome", "lesen", "full"), ("smarthome_schalten", "schalten", "untrusted")):
+        cur = servers.get(name) or {}
+        enabled = bool(cur.get("enabled", False))
+        if schalter == "1":
+            enabled = zugang.is_file()
+        elif schalter == "0":
+            enabled = False
+        want = {"command": "/opt/nuorb/venv/bin/python", "args": ["-I", str(script), teil, "--zugang", str(zugang)],
+                "enabled": enabled, "trust": trust, "timeout": 25, "tools": {"resources": False, "prompts": False}}
+        if teil == "schalten":
+            want["supports_parallel_tool_calls"] = False
+        if {k: cur.get(k) for k in want} != want:
+            adm.cfg_set(data, f"mcp_servers.{name}", {**cur, **want})
+            changed = True
+    if changed:
+        adm.atomic_write(adm.FILES["config"][0], adm.dump_rt(data))
+        on = adm.to_plain(data.get("mcp_servers") or {}).get("smarthome", {}).get("enabled")
+        log(f"Smart home MCP entries updated (smarthome, smarthome_schalten), {'on' if on else 'off'}.")
+    if zugang.is_file() and zugang.stat().st_mode & 0o077:
+        log(f"Smart home: {zugang} is readable by others - please chmod 600.")
+
+
 def migrate_ollama_provider() -> None:
     """Bis v0.3.0 hieß der Ollama-Eintrag „lan-ollama“; die NuOrb-Verwaltung nutzt „pc-ollama“ (eine Quelle der Wahrheit).
     Einmalig umbenennen, in config.yaml und in den gemerkten Gehirn-Einstellungen. Eigene Einträge bleiben unberührt."""
@@ -221,6 +269,10 @@ def main() -> None:
         ensure_mcp()
     except Exception as exc:
         log(f"MCP \"nuorb\" not registered: {exc}")
+    try:
+        ensure_smarthome()
+    except Exception as exc:
+        log(f"Smart home not set up: {exc}")
     log(f"Ready. Home CA fingerprint: {jc.ca_fingerprint() or '(own certificate)'}")
 
 

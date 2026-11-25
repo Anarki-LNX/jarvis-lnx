@@ -8,6 +8,7 @@ FROM busybox:1.37 AS files
 COPY src/ui/ /f/opt/nuorb/ui/
 COPY src/admin/ /f/opt/nuorb/admin/
 COPY src/stt/ /f/opt/nuorb/stt/
+COPY src/smarthome/ /f/opt/nuorb/smarthome/
 COPY app/ /f/opt/nuorb/app/
 COPY rootfs/ /f/
 RUN mkdir -p /f/opt/nuorb/home/.config /f/opt/models
@@ -28,7 +29,7 @@ COPY --from=files /f/ /
 RUN ln -sfn /opt/data /opt/nuorb/home/.hermes \
  && ln -sfn /opt/data/nuorb/config /opt/nuorb/home/.config/nuorb \
  && chown hermes:hermes /opt/models \
- && /opt/nuorb/venv/bin/python -m compileall -q /opt/nuorb/app /opt/nuorb/ui /opt/nuorb/admin /opt/nuorb/stt
+ && /opt/nuorb/venv/bin/python -m compileall -q /opt/nuorb/app /opt/nuorb/ui /opt/nuorb/admin /opt/nuorb/stt /opt/nuorb/smarthome
 
 EXPOSE 8443 8444
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 CMD ["/opt/nuorb/bin/healthcheck"]

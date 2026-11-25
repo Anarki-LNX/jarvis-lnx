@@ -158,10 +158,38 @@ Optionales Weckwort in der App: Die openWakeWord-Dateien (`melspectrogram.tflite
 `hey_nuorb_v0.1.tflite`) können im Volume unter `nuorb/wakeword/` liegen; die App fragt sonst selbst beim
 offiziellen Projekt an.
 
+## Smart Home (optional)
+
+NuOrb kann Licht, Steckdosen, Schalter, Szenen und Sensoren aus **Home Assistant** und/oder **ioBroker** abfragen und
+schalten. Standardmäßig ist das **aus**.
+
+**Einschalten in der Verwaltung:** „Smart Home“ öffnen, Adresse und Zugang eintragen (Home Assistant: Long-Lived
+Access Token aus dem HA-Profil; ioBroker: Adapter `rest-api` mit Benutzer/Passwort oder Token), „Verbindung testen“,
+dann einschalten. Der Zugang landet in `/opt/data/smarthome.env` (nur für den Besitzer lesbar) und wird nie angezeigt.
+
+**Oder per `.env`** (z. B. für automatische Installationen): Zugangsdatei ins Daten-Volume legen oder als
+Docker-Secret einbinden (`NUORB_SMARTHOME_ZUGANG=/run/secrets/…`), dann `NUORB_SMARTHOME=1` und `docker compose up -d`.
+`NUORB_SMARTHOME=0` schaltet beim Start aus; leer lässt die Einstellung der Verwaltung stehen.
+
+```bash
+docker compose exec -T nuorb sh -c 'umask 077; cat > /opt/data/smarthome.env' <<'EOF'
+HA_URL=http://homeassistant.local:8123
+HA_TOKEN=<Long-Lived Access Token>
+EOF
+```
+
+Lesen läuft ohne Rückfrage, **Schalten zeigt immer eine Bestätigungskarte**. Der Container muss Home Assistant
+(Port 8123) bzw. ioBroker (8093) im Netz erreichen.
+
+**Ehrlich zur Zuverlässigkeit:** Mit **Claude** (z. B. Haiku) klappt das zuverlässig (im Test 36 von 37 Fragen
+inhaltlich richtig). Mit einem **lokalen Ollama-Modell** ist es eingeschränkt: im Test etwa 10 von 16 richtig, typische
+Fehler sind „Ich schalte jetzt …“ ohne tatsächlichen Aufruf. Lokal unbedingt unter „Model & Fallback“ die
+Werkzeugsuche (`tools.tool_search`) ausschalten.
+
 ## Nicht enthalten
 
-Steuerung des Xiaomi-Smartphones (NixOS-Kiosk) und Haus-/Wetterstation-Anbindungen des Autors. Eigene Werkzeuge bindest
-du im Admin unter „MCP-Server“ an (z. B. Home Assistant).
+Steuerung des Xiaomi-Smartphones (NixOS-Kiosk) und Haus-/Wetterstation-Anbindungen des Autors. Weitere eigene
+Werkzeuge bindest du im Admin unter „MCP-Server“ an.
 
 ## Fehlersuche
 
@@ -212,6 +240,10 @@ Claude API, or both with automatic fallback.
 **Migrating from the nuorb image:** since v0.3.0 the image is `ghcr.io/anarki-lnx/nuorb`. Change the `image:`
 line in your `compose.yaml` (or take the new one from the repo), then `docker compose pull && docker compose up -d`.
 Volumes, `.env`, certificates and paired devices stay, because the compose project name `nuorb` is unchanged.
+
+**Smart home (optional):** off by default. Enter Home Assistant / ioBroker access under “Smart Home” in the admin panel (or put
+`/opt/data/smarthome.env` in place and set `NUORB_SMARTHOME=1`). Reading needs no confirmation, switching always shows a
+confirmation card. Reliable with Claude; with a local model it is limited (turn off `tools.tool_search`).
 
 Never expose the ports to the internet; use a VPN. The QR code carries the fingerprint of the server's own CA, so the
 app trusts exactly this server.

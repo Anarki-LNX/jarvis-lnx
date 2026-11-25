@@ -50,6 +50,7 @@ const ICONS = {
   phone: '<rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
   log: '<path d="M4 6h16M4 10h16M4 14h10M4 18h7"/>',
+  bulb: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/>',
   backup: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>',
 };
 const ico = (n) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n] || ""}</svg>`;
@@ -134,6 +135,7 @@ const VIEWS = [
   { id: "skills", group: "Fähigkeiten", label: "Skills", icon: "skill", title: "Skills", lead: "Anleitungen, die NuOrb bei Bedarf lädt. Aktivieren, deaktivieren, neue eintragen.", render: viewSkills },
   { id: "zeitplaene", group: "Fähigkeiten", label: "Zeitpläne", icon: "clock", title: "Zeitpläne", lead: "Aufgaben, die NuOrb regelmäßig selbst erledigt.", render: viewJobs },
   { id: "mcp", group: "Fähigkeiten", label: "MCP-Server", icon: "plug", title: "MCP-Server", lead: "Externe Werkzeuge, mit denen sich NuOrb verbindet.", render: viewMcp },
+  { id: "smarthome", group: "Fähigkeiten", label: "Smart Home", icon: "bulb", title: "Smart Home", lead: "Home Assistant und ioBroker anbinden: Zugang, Test, an/aus.", render: viewSmartHome },
   { id: "regeln", group: "Sicherheit", label: "Bestätigungen", icon: "shield", title: "Bestätigungsregeln", lead: "Wann NuOrb vor gefährlichen Aktionen fragen muss.", render: viewApprovals },
   { id: "schluessel", group: "Sicherheit", label: "Schlüssel", icon: "key", title: "Schlüssel & Variablen", lead: "API-Schlüssel werden nie angezeigt – nur, ob sie gesetzt sind. Überschreiben ist jederzeit möglich.", render: viewEnv },
   { id: "sprache", group: "Geräte", label: "Sprache", icon: "wave", title: "Sprache", lead: "Stimme, Sprechtempo und Spracherkennung.", render: viewVoice },
@@ -452,6 +454,41 @@ async function viewMcp(view) {
   $$("[data-rm]", view).forEach((b) => b.onclick = () => change(() => api("/api/mcp/save", { method: "POST", body: { name: b.dataset.rm, action: "remove" } }), () => show("mcp")));
   $("#mcSave").onclick = () => change(() => api("/api/mcp/save", { method: "POST", body: $("#mcType").value === "url"
     ? { name: $("#mcName").value, url: $("#mcUrl").value } : { name: $("#mcName").value, command: $("#mcCmd").value, args: $("#mcArgs").value.split("\n").map((s) => s.trim()).filter(Boolean) } }), () => show("mcp"));
+}
+
+/* ------------------------------------------------------------ Smart Home (Home Assistant + ioBroker) */
+async function viewSmartHome(view) {
+  const sh = await api("/api/smarthome"), a = sh.access, kept = (b) => (b ? T("hinterlegt – leer lassen = unverändert") : "");
+  const st = sh.enabled === true ? `<span class="tag cyan">an</span>` : sh.enabled === "gemischt" ? `<span class="tag amber">teils an</span>` : `<span class="tag">aus</span>`;
+  const local = sh.brain_mode !== "remote", tsOff = String(sh.tool_search).toLowerCase() === "off";
+  if (!sh.installed) { setHTML(view, `<div class="panel span-12"><div class="note">Das Smart-Home-Modul fehlt auf diesem Server.</div></div>`); return; }
+  setHTML(view, `
+    <div class="panel span-12"><div class="panel-head"><h3>Smart Home</h3>${st}</div>
+      <p class="hint">Licht, Steckdosen, Szenen und Sensoren per Sprache. Abfragen gehen direkt; jede Schaltaktion zeigt eine Bestätigungskarte, erst dein Ja schaltet.</p>
+      <div class="inline"><span class="small muted">Smart Home aktiv</span>${sw("smarthome", sh.enabled === true, 'id="shOn"')}<span class="grow"></span>
+        <button class="btn ghost" id="shTest" ${a.exists && (a.ha_on || a.iob_on) ? "" : "disabled"}>Verbindung testen</button></div>
+      <div id="shOut"></div>
+      <div class="note ${local && !tsOff ? "warn" : ""} mt">Mit Claude (Remote/Automatisch) funktioniert Smart Home zuverlässig. Mit dem lokalen Modell nur eingeschränkt und nur bei ausgeschalteter Werkzeugsuche (tools.tool_search.enabled: off).
+        ${local && !tsOff ? `<br><button class="btn small ghost mt" id="shTsOff">Werkzeugsuche ausschalten …</button>` : ""}</div></div>
+    <div class="panel span-6"><div class="panel-head"><h3>Home Assistant</h3>${sw("ha", a.ha_on, 'id="shHaOn"')}</div>
+      <label class="field"><span>Adresse</span><input id="shHaUrl" class="mono" value="${esc(a.ha_url)}" placeholder="http://homeassistant.local:8123" spellcheck="false"></label>
+      <label class="field"><span>Zugriffstoken (Long-Lived Access Token)</span><input id="shHaTok" type="password" autocomplete="off" placeholder="${esc(kept(a.ha_token))}"><small>Home Assistant → Profil → Sicherheit → Langlebige Zugriffstoken.</small></label></div>
+    <div class="panel span-6"><div class="panel-head"><h3>ioBroker</h3>${sw("iob", a.iob_on, 'id="shIobOn"')}</div>
+      <label class="field"><span>Adresse (Adapter rest-api, Port 8093)</span><input id="shIobUrl" class="mono" value="${esc(a.iob_url)}" placeholder="http://iobroker.local:8093" spellcheck="false"></label>
+      <div class="grid2"><label class="field"><span>Benutzer</span><input id="shIobUser" autocomplete="off" placeholder="${esc(kept(a.iob_user))}"></label>
+        <label class="field"><span>Passwort</span><input id="shIobPass" type="password" autocomplete="off" placeholder="${esc(kept(a.iob_pass))}"></label></div>
+      <details><summary class="muted small">Stattdessen ein Token verwenden</summary><label class="field"><span>Token</span><input id="shIobTok" type="password" autocomplete="off" placeholder="${esc(kept(a.iob_token))}"><small>OAuth2-Tokens laufen ab – Benutzer und Passwort sind dauerhafter.</small></label></details></div>
+    <div class="panel span-12"><div class="inline"><span class="small muted">Zugangsdaten werden wie Schlüssel geschützt gespeichert und nie angezeigt.</span><span class="grow"></span><button class="btn primary" id="shSave">Zugang speichern …</button></div></div>`);
+  $("#shSave").onclick = () => change(() => api("/api/smarthome/access", { method: "POST", body: {
+    ha_on: $("#shHaOn").checked, ha_url: $("#shHaUrl").value, ha_token: $("#shHaTok").value,
+    iob_on: $("#shIobOn").checked, iob_url: $("#shIobUrl").value, iob_user: $("#shIobUser").value, iob_pass: $("#shIobPass").value, iob_token: $("#shIobTok").value } }), () => show("smarthome"));
+  $("#shTest").onclick = (e) => busy(e.target, async () => {
+    const r = await api("/api/smarthome/test", { method: "POST", body: {} });
+    setHTML($("#shOut"), `<div class="note ${!r.ok ? "danger" : /Achtung|nicht erreichbar/.test(r.output || "") ? "warn" : ""} mt">${r.ok ? dot(true) + " " : ""}${esc(r.ok ? T("Verbindung ok:") : T("Verbindung fehlgeschlagen:"))} ${esc(r.output || "")}</div>`);
+  });
+  $("#shOn").onchange = (e) => { const want = e.target.checked; e.target.checked = !want;
+    change(() => api("/api/smarthome/toggle", { method: "POST", body: { enabled: want } }), () => show("smarthome")); };
+  if ($("#shTsOff")) $("#shTsOff").onclick = () => change(() => api("/api/config/set", { method: "POST", body: { path: "tools.tool_search.enabled", value: '"off"' } }), () => show("smarthome"));
 }
 
 /* ------------------------------------------------------------ Bestaetigungen */

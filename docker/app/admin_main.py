@@ -151,6 +151,11 @@ async def phone_status(cached: bool = False) -> dict:
 adm.phone_status = phone_status
 
 
+# ------------------------------------------------------------------ Smart Home: Skript liegt im Image, nicht unter ~/.hermes
+if hasattr(adm, "SH_SCRIPT"):
+    adm.SH_SCRIPT = Path("/opt/nuorb/smarthome/smarthome_mcp.py")
+
+
 # ------------------------------------------------------------------ Einrichtungscode: Hinweis für Docker
 _orig_auth_state = adm.auth_state
 
