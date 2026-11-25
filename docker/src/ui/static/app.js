@@ -6,7 +6,7 @@
   const DE = !window.I18N || window.I18N.lang === "de"; // lokale Sprachbefehle (deutsche Muster) nur auf Deutsch
   const LOC = DE ? "de-DE" : "en-GB";
   const $ = (id) => document.getElementById(id);
-  const VERSION = "2026-11-25.52";
+  const VERSION = "2026-11-25.53";
   // Kurzes Client-Log ins Server-Journal (Kiosk hat keine JS-Konsole)
   function clog(msg) {
     try { fetch("/api/clientlog", { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
@@ -1328,7 +1328,15 @@
   // Gibt es hier ueberhaupt ein Weckwort? Kiosk (nuorb-shell mit Wake-Dienst) ja; Android-App laut Bruecke
   // (wakeVerfuegbar, fehlt bei App < 1.2.0 -> ja); normaler Browser nein.
   function wakeAvailable() {
-    if (ANDROID) { try { return !!NATIVE && (typeof NATIVE.wakeVerfuegbar !== "function" || !!NATIVE.wakeVerfuegbar()); } catch (e) { return false; } }
+    // Android: nur ein ausdrueckliches „ja“ der Bruecke zaehlt (Store-Fassungen ohne Weckwort liefern false; Strings wie
+    // „false“/„0“ waeren in JS wahr, deshalb streng auswerten). Fehlt die Methode, gibt es kein Weckwort.
+    if (ANDROID) {
+      try {
+        if (!NATIVE || typeof NATIVE.wakeVerfuegbar !== "function") return false;
+        const v = NATIVE.wakeVerfuegbar();
+        return v === true || v === 1 || /^(true|1|ja|yes)$/i.test(String(v));
+      } catch (e) { return false; }
+    }
     return DEV.available === true;
   }
   function renderWake() {
