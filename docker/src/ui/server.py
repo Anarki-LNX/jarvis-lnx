@@ -43,24 +43,37 @@ STT_URL = os.environ.get("STT_URL", "http://127.0.0.1:8178/v1/audio/transcriptio
 BRAIN_URL = os.environ.get("BRAIN_URL", "http://ollama:11434/api/version")
 HERMES_CONFIG = Path(os.environ.get("HERMES_CONFIG", str(Path.home() / ".hermes/config.yaml")))
 _brain_cache = {"mtime": None, "url": BRAIN_URL}
+_hcfg = {"mtime": None, "data": {}}
+
+
+def hermes_cfg() -> dict:
+    """Hermes-Konfiguration (YAML), bei geaenderter Dateizeit neu gelesen; Fehler -> letzter Stand."""
+    try:
+        mt = HERMES_CONFIG.stat().st_mtime_ns
+        if mt != _hcfg["mtime"]:
+            import yaml
+            _hcfg["data"] = yaml.safe_load(HERMES_CONFIG.read_text(encoding="utf-8")) or {}
+            _hcfg["mtime"] = mt
+    except Exception as exc:
+        if _hcfg["mtime"] != "fehler":
+            print(f"config.yaml nicht lesbar ({exc.__class__.__name__}), nutze letzten Stand", flush=True)
+        _hcfg["mtime"] = "fehler"
+    return _hcfg["data"] if isinstance(_hcfg["data"], dict) else {}
+
+
+def smarthome_enabled() -> bool:
+    """Smart-Home-MCP (Sitzung ki-backend) ist nur aktiv, wenn mcp_servers.smarthome.enabled: true."""
+    srv = (hermes_cfg().get("mcp_servers") or {}).get("smarthome")
+    return isinstance(srv, dict) and srv.get("enabled") is True
 
 
 def brain_url() -> str:
     """Ollama-Pruefadresse: providers.pc-ollama.api aus der Hermes-Konfiguration (die NuOrb-Verwaltung stellt sie ein),
     ohne /v1, plus /api/version. Bei jeder Pruefung frisch (mtime) – kein Neustart noetig. Fehlt der Eintrag oder die
     Datei, gilt der Startwert BRAIN_URL bzw. die zuletzt gelesene Adresse."""
-    try:
-        mt = HERMES_CONFIG.stat().st_mtime_ns
-        if mt != _brain_cache["mtime"]:
-            import yaml
-            data = yaml.safe_load(HERMES_CONFIG.read_text(encoding="utf-8")) or {}
-            api = (((data.get("providers") or {}).get("pc-ollama") or {}).get("api") or "").strip()
-            if re.fullmatch(r"https?://[\w.\-\[\]:]+(/[\w.\-/]*)?", api):
-                base = re.sub(r"/v1/?$", "", api.rstrip("/"))
-                _brain_cache["url"] = base + "/api/version"
-            _brain_cache["mtime"] = mt
-    except Exception as exc:  # Datei fehlt/kaputt: letzte bekannte Adresse behalten
-        print(f"config.yaml nicht lesbar ({exc.__class__.__name__}), Gehirn-Pruefung bleibt bei {_brain_cache['url']}", flush=True)
+    api = str(((hermes_cfg().get("providers") or {}).get("pc-ollama") or {}).get("api") or "").strip()
+    if re.fullmatch(r"https?://[\w.\-\[\]:]+(/[\w.\-/]*)?", api):
+        _brain_cache["url"] = re.sub(r"/v1/?$", "", api.rstrip("/")) + "/api/version"
     return _brain_cache["url"]
 PIPER_VOICE = os.environ.get(
     "PIPER_VOICE", str(HOME / ".hermes/cache/piper-voices/de_DE-thorsten-medium.onnx"))
@@ -125,6 +138,13 @@ def cur_mode() -> str:
     return m if m in ("live", "demo") else MODE
 
 
+SMARTHOME_PERSONA = (
+    "Licht, Steckdosen, Schalter, Szenen und Sensoren im Haus (Home Assistant, ioBroker) sind KEINE Handy-Aktionen: "
+    "Fragen dazu beantwortest du immer mit mcp__smarthome__geraete/zustand/raeume, Schalten mit "
+    "mcp__smarthome_schalten__schalten/szene (der Nutzer bestaetigt auf dem Bildschirm); rufe das Werkzeug ohne "
+    "vorherigen Text auf.")
+
+
 def cur_persona() -> str:
     p = cfg().get("persona")
     p = p.strip()[:4000] if isinstance(p, str) and p.strip() else PERSONA
@@ -133,6 +153,8 @@ def cur_persona() -> str:
         wake = uc["wake_phrase"] or "Hey " + (uc["brand"].capitalize() if uc["brand"].isupper() else uc["brand"])
         p = p.replace("Hey Jarvis", wake).replace("JARVIS", uc["assistant_name"])
         p = f"Du heisst {uc['assistant_name']}; so spricht dich der Nutzer an. " + p
+    if smarthome_enabled():  # nur dann – sonst bleibt der Prompt (und sein Cache) unveraendert
+        p += " " + SMARTHOME_PERSONA
     return p
 
 

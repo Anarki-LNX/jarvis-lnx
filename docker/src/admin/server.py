@@ -92,9 +92,11 @@ FILES = {  # Schlüssel -> (Pfad, Art)
     "user": (HERMES_HOME / "memories/USER.md", "text"),
     "env": (HERMES_HOME / ".env", "env"),
     "ui": (UI_SETTINGS, "json"),
+    "smarthome": (HERMES_HOME / "smarthome.env", "env"),
 }
 FILE_LABELS = {"config": "Hermes-Konfiguration", "soul": "Persönlichkeit (SOUL.md)", "memory": "Gedächtnis (MEMORY.md)",
-               "user": "Nutzerprofil (USER.md)", "env": "Schlüssel (.env)", "ui": "Smartphone-Oberfläche (ui.json)"}
+               "user": "Nutzerprofil (USER.md)", "env": "Schlüssel (.env)", "ui": "Smartphone-Oberfläche (ui.json)",
+               "smarthome": "Smart-Home-Zugang (smarthome.env)"}
 
 DATA.mkdir(parents=True, exist_ok=True)
 BACKUPS.mkdir(parents=True, exist_ok=True)
@@ -202,12 +204,12 @@ def env_is_secret(name: str) -> bool:
     return bool(SECRET_KEY_RE.search(name))
 
 
-def mask_env_text(text: str) -> str:
-    """.env-Inhalt für Diffs: Werte geheimer Variablen nur maskiert."""
+def mask_env_text(text: str, extra: frozenset = frozenset()) -> str:
+    """.env-Inhalt für Diffs: Werte geheimer Variablen (und extra) nur maskiert."""
     lines = []
     for line in text.splitlines():
-        m = re.match(r"^(\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*)(.*)$", line)
-        if m and not line.lstrip().startswith("#") and env_is_secret(m.group(2)):
+        m = re.match(r"^(\s*(?:# aus: )?(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*)(.*)$", line)  # auch abgeschaltete Smart-Home-Zeilen
+        if m and (not line.lstrip().startswith("#") or line.startswith("# aus: ")) and (env_is_secret(m.group(2)) or m.group(2) in extra):
             val = m.group(3).strip().strip("\"'")
             lines.append(f"{m.group(1)}{mask(val)}")
         else:
@@ -532,7 +534,7 @@ def make_preview(key: str, new: str | None, desc: str, effect: str = "", danger:
         if new == old:
             raise HTTPException(409, "Keine Änderung – der Inhalt ist bereits so gespeichert.")
         validate_content(kind, new)
-    show = mask_env_text if kind == "env" else (lambda s: s)
+    show = (lambda s: mask_env_text(s, SH_MASK)) if key == "smarthome" else mask_env_text if kind == "env" else (lambda s: s)
     nl = lambda s: s if (not s or s.endswith("\n")) else s + "\n"
     diff = "".join(difflib.unified_diff(nl(show(old)).splitlines(True), nl(show(new or "")).splitlines(True),
                                         fromfile=f"{path.name} (jetzt)", tofile=f"{path.name} (neu)", n=2))
@@ -1821,6 +1823,176 @@ async def approvals_save(request: Request):
 
 
 # ------------------------------------------------------------------ MCP-Server
+# ------------------------------------------------------------------ Smart Home (Home Assistant + ioBroker)
+# Modul der Backend-Sitzung (scripts/backend-smarthome-mcp.py). Laeuft vom installierten Ort (~/.hermes/projekt-claude,
+# Install-Skript) oder aus der Verwaltung selbst (modules/, kommt mit deploy.sh bzw. dem Image).
+# Block `# >>> nuorb-smarthome` in mcp_servers: smarthome (lesen, trust full) + smarthome_schalten (trust untrusted ->
+# Bestaetigungskarte). Zugang in smarthome.env (600): nie anzeigen. Ein abgeschaltetes System steht dort als `# aus: …`.
+SH_INSTALLED = Path(os.environ.get("NUORB_SMARTHOME_MCP", "") or HERMES_HOME / "projekt-claude/smarthome_mcp.py")
+SH_BUNDLED = BASE / "modules/smarthome_mcp.py"
+SH_SERVERS = ["smarthome", "smarthome_schalten"]
+SH_MASK = frozenset({"HA_TOKEN", "IOB_USER", "IOB_PASS", "IOB_TOKEN"})
+SH_SYS = {"ha": ("HA_URL", "HA_TOKEN"), "iob": ("IOB_URL", "IOB_API", "IOB_USER", "IOB_PASS", "IOB_TOKEN")}
+SH_BLOCK = re.compile(r"^  # >>> nuorb-smarthome[^\n]*\n.*?^  # <<< nuorb-smarthome[^\n]*\n", re.S | re.M)
+SH_OFF = "# aus: "
+
+
+def sh_script() -> Path | None:
+    return next((p for p in (SH_INSTALLED, SH_BUNDLED) if p.exists()), None)
+
+
+def sh_read() -> tuple[dict, dict]:
+    """(Werte, an) – an[ha|iob] = System ist eingetragen und nicht abgeschaltet."""
+    vals, off = {}, set()
+    with contextlib.suppress(OSError):
+        for line in FILES["smarthome"][0].read_text().splitlines():
+            dis = line.startswith(SH_OFF)
+            m = re.match(r"^\s*(?:export\s+)?([A-Z_]+)\s*=\s*(.*?)\s*$", line[len(SH_OFF):] if dis else line)
+            if m and (dis or not line.lstrip().startswith("#")):
+                vals[m.group(1)] = m.group(2).strip("'\"")
+                if dis:
+                    off.add(m.group(1))
+    on = {k: bool(vals.get(keys[0])) and keys[0] not in off for k, keys in SH_SYS.items()}
+    return vals, on
+
+
+def sh_url(raw: str, label: str) -> str:
+    s = raw.strip().rstrip("/")
+    if not s:
+        return ""
+    if "://" not in s:
+        s = "http://" + s
+    u = urllib.parse.urlsplit(s)
+    if u.scheme not in ("http", "https") or not u.hostname or u.username or u.password or u.query or u.fragment or re.search(r"\s", s):
+        raise HTTPException(400, f"{label}: bitte eine Adresse wie http://homeassistant.local:8123 eingeben.")
+    return s
+
+
+async def sh_probe() -> tuple[bool, str]:
+    script = sh_script()
+    if not script:
+        raise HTTPException(409, "Das Smart-Home-Modul fehlt auf diesem Server.")
+    if not FILES["smarthome"][0].exists():
+        raise HTTPException(409, "Noch kein Smart-Home-Zugang gespeichert.")
+    if not any(sh_read()[1].values()):
+        raise HTTPException(409, "Kein Smart-Home-System eingeschaltet.")
+    cmd = ["/usr/bin/python3", str(script), "--satz", "raeume", "{}", "--zugang", str(FILES["smarthome"][0])]
+    p = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT, cwd=str(HOME))
+    try:
+        out, _ = await asyncio.wait_for(p.communicate(), 25)
+    except asyncio.TimeoutError:
+        p.kill()
+        raise HTTPException(504, "Das Smart-Home-System hat nicht rechtzeitig geantwortet.")
+    text = redact_text(out.decode(errors="replace")).strip()
+    for k, v in sh_read()[0].items():
+        if k in SH_MASK and len(v) >= 4:
+            text = text.replace(v, "•••")
+    return p.returncode == 0, text[:2000]
+
+
+def sh_block(script: Path, enabled: bool) -> str:
+    """Block im Format von scripts/backend-smarthome-install.sh."""
+    z, e = FILES["smarthome"][0], "true" if enabled else "false"
+    return (f"  # >>> nuorb-smarthome (NuOrb-Verwaltung)\n"
+            f"  smarthome:\n    command: /usr/bin/python3\n    enabled: {e}\n    args: [{script}, lesen, --zugang, {z}]\n"
+            f"    trust: full\n    timeout: 25\n    tools:\n      resources: false\n      prompts: false\n"
+            f"  smarthome_schalten:\n    command: /usr/bin/python3\n    enabled: {e}\n    args: [{script}, schalten, --zugang, {z}]\n"
+            f"    trust: untrusted\n    timeout: 25\n    supports_parallel_tool_calls: false\n    tools:\n      resources: false\n      prompts: false\n"
+            f"  # <<< nuorb-smarthome\n")
+
+
+def sh_insert(text: str, block: str) -> str:
+    if re.search(r"^  smarthome(_schalten)?:", text, re.M):
+        raise HTTPException(409, "Es gibt schon einen MCP-Server smarthome außerhalb des markierten Blocks – bitte unter „MCP-Server“ bereinigen.")
+    kopf = re.compile(r"^mcp_servers:[ \t]*(\{\}|null|~)?[ \t]*$", re.M).search(text)
+    if kopf:
+        return text[:kopf.start()] + "mcp_servers:\n" + block + text[kopf.end() + 1:]
+    if re.search(r"^mcp_servers:", text, re.M):
+        raise HTTPException(409, "mcp_servers hat eine ungewohnte Form – bitte im Expertenmodus prüfen.")
+    return text.rstrip("\n") + "\nmcp_servers:\n" + block
+
+
+@app.get("/api/smarthome")
+async def smarthome_get():
+    text = read_text(FILES["config"][0])
+    v, on = sh_read()
+    cfg = to_plain(yaml_rt.load(text) or {})
+    ts = ((cfg.get("tools") or {}).get("tool_search") or {}).get("enabled")
+    return {"installed": sh_script() is not None, "block": bool(SH_BLOCK.search(text)),
+            "servers": {n: mcp_enabled_in(text, n) for n in SH_SERVERS}, "enabled": skill_mcp_state(text, SH_SERVERS),
+            "access": {"exists": FILES["smarthome"][0].exists(), "ha_on": on["ha"], "iob_on": on["iob"],
+                       "ha_url": v.get("HA_URL", ""), "ha_token": bool(v.get("HA_TOKEN")),
+                       "iob_url": v.get("IOB_URL", ""), "iob_user": bool(v.get("IOB_USER")), "iob_pass": bool(v.get("IOB_PASS")),
+                       "iob_token": bool(v.get("IOB_TOKEN"))},
+            "tool_search": ts if isinstance(ts, str) else ("off" if ts is False else "auto" if ts is None else str(ts)),
+            "brain_mode": brain_state()["mode"]}
+
+
+@app.post("/api/smarthome/access")
+async def smarthome_access(request: Request):
+    d = await body(request)
+    old, on = sh_read()
+    new = dict(old)
+    for k, label in (("HA_URL", "Home Assistant"), ("IOB_URL", "ioBroker")):
+        if k.lower() in d:
+            new[k] = sh_url(str(d[k.lower()] or ""), label)
+    for k in ("HA_TOKEN", "IOB_USER", "IOB_PASS", "IOB_TOKEN"):
+        val = str(d.get(k.lower()) or "")
+        if val:  # leer = unveraendert
+            if "\n" in val or len(val) > 4096:
+                raise HTTPException(400, "Ungültiger Wert.")
+            new[k] = val
+    for sysk in ("ha", "iob"):
+        if f"{sysk}_on" in d:
+            on[sysk] = bool(d[f"{sysk}_on"])
+    for sysk, keys in SH_SYS.items():
+        if not new.get(keys[0]):
+            on[sysk] = False
+    if new.get("IOB_URL"):
+        new["IOB_API"] = new.get("IOB_API") or "rest-api"
+    if on["ha"] and not new.get("HA_TOKEN"):
+        raise HTTPException(400, "Für Home Assistant fehlt das Zugriffstoken.")
+    if on["iob"] and not (new.get("IOB_TOKEN") or (new.get("IOB_USER") and new.get("IOB_PASS"))):
+        raise HTTPException(400, "Für ioBroker fehlen Benutzer und Passwort (oder ein Token).")
+    lines = ["# NuOrb Smart Home – Zugang (von der NuOrb-Verwaltung geschrieben, nicht weitergeben)"]
+    for sysk, title in (("ha", "Home Assistant"), ("iob", "ioBroker (Adapter rest-api)")):
+        keys = [k for k in SH_SYS[sysk] if new.get(k)]
+        if keys:
+            lines.append(f"# {title}" + ("" if on[sysk] else " – ausgeschaltet"))
+            lines += [("" if on[sysk] else SH_OFF) + f"{k}={new[k]}" for k in keys]
+    return make_preview("smarthome", "\n".join(lines) + "\n", "Smart-Home-Zugang speichern",
+                        "Gilt sofort für „Verbindung testen“ und beim nächsten Werkzeug-Aufruf.")
+
+
+@app.post("/api/smarthome/test")
+async def smarthome_test(request: Request):
+    ok, text = await sh_probe()
+    audit(who(request), f"Smart Home: Verbindungstest {'ok' if ok else 'fehlgeschlagen'}")
+    return {"ok": ok, "output": text}
+
+
+@app.post("/api/smarthome/toggle")
+async def smarthome_toggle(request: Request):
+    d = await body(request)
+    enable = bool(d.get("enabled"))
+    text = read_text(FILES["config"][0])
+    present = all(mcp_enabled_in(text, n) is not None for n in SH_SERVERS)
+    if enable:
+        ok, out = await sh_probe()
+        if not ok:
+            raise HTTPException(409, f"Verbindungstest fehlgeschlagen – Smart Home bleibt aus: {out[:300]}")
+    if not present:
+        if not enable:
+            raise HTTPException(409, "Keine Änderung – Smart Home ist nicht eingetragen.")
+        text = sh_insert(text, sh_block(sh_script(), True))
+    else:
+        for n in SH_SERVERS:
+            if mcp_enabled_in(text, n) != enable:
+                text = mcp_set_enabled(text, n, enable)
+    return make_preview("config", text, f"Smart Home {'einschalten' if enable else 'ausschalten'}",
+                        f"Hermes {'verbindet' if enable else 'trennt'} die Werkzeuge innerhalb ~1 Minute. Schalten fragt immer per Karte nach.")
+
+
 @app.get("/api/mcp")
 async def mcp_get():
     servers = to_plain(load_config_rt()).get("mcp_servers") or {}
@@ -1901,9 +2073,9 @@ def mcp_marked_by(lines: list[str], s: int) -> str | None:
     """Name des Skript-Markers, falls der Eintrag in einem markierten Block (`# >>> jarvis-…` … `# <<< jarvis-…`)
     steht – auch wenn mehrere Server im selben Block liegen."""
     for i in range(s - 1, -1, -1):
-        if re.match(r"^\s*# <<< jarvis-", lines[i]) or re.match(r"^[^\s#]", lines[i]):
+        if re.match(r"^\s*# <<< (jarvis|nuorb)-", lines[i]) or re.match(r"^[^\s#]", lines[i]):
             return None
-        if (m := re.match(r"^\s*# >>> (jarvis-[a-z0-9\-]+)(?:\s*\(([^)]*)\))?", lines[i])):
+        if (m := re.match(r"^\s*# >>> ((?:jarvis|nuorb)-[a-z0-9\-]+)(?:\s*\(([^)]*)\))?", lines[i])):
             return m.group(2) or m.group(1)
     return None
 

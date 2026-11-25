@@ -6,7 +6,7 @@
   const DE = !window.I18N || window.I18N.lang === "de"; // lokale Sprachbefehle (deutsche Muster) nur auf Deutsch
   const LOC = DE ? "de-DE" : "en-GB";
   const $ = (id) => document.getElementById(id);
-  const VERSION = "2026-11-25.56";
+  const VERSION = "2026-11-25.57";
   // Kurzes Client-Log ins Server-Journal (Kiosk hat keine JS-Konsole)
   function clog(msg) {
     try { fetch("/api/clientlog", { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
@@ -106,7 +106,9 @@
     web_search: t("Websuche"), execute_code: "Code", cronjob: t("Zeitplan"), browser_exec: "Browser", patch: t("Datei ändern"),
     search_files: t("Suche"), todo: t("Aufgaben"), skill_view: t("Fähigkeit"), delegate_task: t("Unteragent"),
     mcp_claude_fragen: t("Claude fragen"), mcp_claude_auftrag: t("Claude-Auftrag"), mcp_claude_rueckgaengig: t("Claude: rückgängig"),
-    mcp_claude_aenderungen: t("Claude: Änderungen"), mcp__geraet__anfordern: t("Gerät") }[n] ||
+    mcp_claude_aenderungen: t("Claude: Änderungen"), mcp__geraet__anfordern: t("Gerät"),
+    mcp__smarthome__geraete: t("Smart Home"), mcp__smarthome__zustand: t("Smart Home"), mcp__smarthome__raeume: t("Smart Home"),
+    mcp__smarthome_schalten__schalten: t("Smart Home schalten"), mcp__smarthome_schalten__szene: t("Szene") }[n] ||
     (n && /^mcp_+claude_+/.test(n) ? "Claude · " + n.replace(/^mcp_+claude_+/, "") : n && /^mcp__/.test(n) ? n.slice(5).replace(/__/g, " · ") : n) || t("Werkzeug"));
 
   // ------------------------------------------------------------------ Uhr, Begruessung, Widgets
@@ -820,6 +822,24 @@
       say: a.soll != null ? t("Soll ich {r} auf {s} Grad stellen?", { r: a.raum || t("den Raum"), s: a.soll }) : t("Soll ich {r} auf {z} stellen?", { r: a.raum || t("den Raum"), z: ziel }),
       yes: t("Ja, einstellen"),
       folgen: t("Größere Änderung (über drei Grad) – deshalb diese Rückfrage.") }; } };
+  // Smart Home (Server smarthome_schalten, ki-backend): Home Assistant / ioBroker. Argumente laut Uebergabe:
+  // schalten {name, aktion: an|aus|umschalten, helligkeit 1-100, raum, art, alle}, szene {name}
+  const SH_ZIEL = t("Smart Home (Home Assistant / ioBroker)");
+  KNOWN["smarthome_schalten:schalten"] = { ziel: SH_ZIEL, kosten: t("kostenlos"), fmt: (a) => {
+    const was = a.name ? String(a.name) : a.alle ? (a.art ? t("alle {art}", { art: a.art }) : t("alle Geräte")) + (a.raum ? " " + t("im Raum {r}", { r: a.raum }) : "") : t("Gerät");
+    const hell = a.helligkeit != null && a.aktion !== "aus";
+    const title = hell ? t("{w} auf {h} % dimmen?", { w: was, h: a.helligkeit })
+      : a.aktion === "aus" ? t("{w} ausschalten?", { w: was }) : a.aktion === "umschalten" ? t("{w} umschalten?", { w: was }) : t("{w} einschalten?", { w: was });
+    return { title, facts: [[t("Gerät"), was], a.raum && a.name ? [t("Raum"), a.raum] : null,
+      [t("Aktion"), a.aktion === "aus" ? t("aus") : a.aktion === "umschalten" ? t("umschalten") : t("an")], hell ? [t("Helligkeit"), a.helligkeit + " %"] : null].filter(Boolean),
+      say: hell ? t("Soll ich {w} auf {h} Prozent dimmen?", { w: was, h: a.helligkeit })
+        : a.aktion === "aus" ? t("Soll ich {w} ausschalten?", { w: was }) : a.aktion === "umschalten" ? t("Soll ich {w} umschalten?", { w: was }) : t("Soll ich {w} einschalten?", { w: was }),
+      yes: a.aktion === "aus" ? t("Ja, ausschalten") : hell ? t("Ja, dimmen") : a.aktion === "umschalten" ? t("Ja, umschalten") : t("Ja, einschalten"),
+      folgen: t("Wird über dein Smart Home geschaltet.") }; } };
+  KNOWN["smarthome_schalten:szene"] = { ziel: SH_ZIEL, kosten: t("kostenlos"), fmt: (a) => ({
+    title: t("Szene „{n}“ aktivieren?", { n: a.name || "?" }), facts: [[t("Szene"), a.name || "?"]],
+    say: t("Soll ich die Szene {n} aktivieren?", { n: a.name || "" }), yes: t("Ja, aktivieren"),
+    folgen: t("Die Szene schaltet mehrere Geräte auf einmal.") }) };
   function mcpDetails(cmd) {
     const out = {};
     const c = cmd.match(/Costs?\s+([0-9]+(?:\s*[-–]\s*[0-9]+)?)\s*Cent/i);
@@ -1558,6 +1578,8 @@
     if (mode === "talk" || mode === "speaking" || mode === "thinking" || mode === "approval") add();
     if (mode === "approval") showApproval("demo", { description: "Hermes will einen Ordner rekursiv löschen.", command: "rm -rf ~/projekte/alt-backup" });
     if (mode === "approval-claude") { add(); showApproval("demo", { title: "MCP server 'claude' is asking", command: "MCP tool 'auftrag' on UNTRUSTED server 'claude' wants to run. Costs 5-100 Cent (Claude Sonnet 5.5, lesen und schreiben).\nArguments: {\"auftrag\": \"Mach die Uhr auf dem Startbildschirm etwas größer.\"}", description: "Server 'claude' is configured 'trust: untrusted'." }); mode = "approval"; }
+    if (mode === "approval-smarthome") { add(); showApproval("demo", { command: "MCP tool 'schalten' on UNTRUSTED server 'smarthome_schalten' wants to run.\nArguments: {\"name\": \"Wohnzimmerlicht\", \"aktion\": \"an\", \"helligkeit\": 40, \"raum\": \"Wohnzimmer\"}" }); mode = "approval"; }
+    if (mode === "approval-szene") { add(); showApproval("demo", { command: "MCP tool 'szene' on UNTRUSTED server 'smarthome_schalten' wants to run.\nArguments: {\"name\": \"Gute Nacht\"}" }); mode = "approval"; }
     if (mode === "approval-klima") { add(); showApproval("demo", { command: "MCP tool 'klima_stellen' on UNTRUSTED server 'zuhause_schalten' wants to run.\nArguments: {\"geraet\": \"Schlafzimmer\", \"an\": true, \"modus\": \"heizen\", \"soll\": 22, \"luefter\": \"auto\"}" }); mode = "approval"; }
     if (mode === "offline") { S.brain = false; els.chipBrain.dataset.ok = "false"; els.chipBrain.querySelector(".chip-label").textContent = t("Gehirn offline"); }
     S.demo = mode;

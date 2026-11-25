@@ -8,6 +8,7 @@ FROM busybox:1.37 AS files
 COPY src/ui/ /f/opt/jarvis/ui/
 COPY src/admin/ /f/opt/jarvis/admin/
 COPY src/stt/ /f/opt/jarvis/stt/
+COPY src/smarthome/ /f/opt/jarvis/smarthome/
 COPY app/ /f/opt/jarvis/app/
 COPY rootfs/ /f/
 RUN mkdir -p /f/opt/jarvis/home/.config /f/opt/models
@@ -28,7 +29,7 @@ COPY --from=files /f/ /
 RUN ln -sfn /opt/data /opt/jarvis/home/.hermes \
  && ln -sfn /opt/data/jarvis/config /opt/jarvis/home/.config/jarvis \
  && chown hermes:hermes /opt/models \
- && /opt/jarvis/venv/bin/python -m compileall -q /opt/jarvis/app /opt/jarvis/ui /opt/jarvis/admin /opt/jarvis/stt
+ && /opt/jarvis/venv/bin/python -m compileall -q /opt/jarvis/app /opt/jarvis/ui /opt/jarvis/admin /opt/jarvis/stt /opt/jarvis/smarthome
 
 EXPOSE 8443 8444
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 CMD ["/opt/jarvis/bin/healthcheck"]
