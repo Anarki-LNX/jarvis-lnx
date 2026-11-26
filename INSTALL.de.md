@@ -1,5 +1,7 @@
 # NuOrb installieren
 
+**▶ Lieber als Video?** Hier ist die 3-minütige Installations-Anleitung: https://youtu.be/xUsvfRHpvc8
+
 [English](INSTALL.md)
 
 NuOrb ist ein privater Sprachassistent zum Selbstbetreiben: **ein Docker-Container** auf einem Heimserver, einer
