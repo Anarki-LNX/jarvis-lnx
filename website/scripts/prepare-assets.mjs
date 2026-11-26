@@ -17,10 +17,11 @@ const log = (...a) => console.log("[assets]", ...a);
 
 // 1) Orb
 mkdirSync(join(pub, "orb"), { recursive: true });
-// Kommentare werden entfernt (sie enthalten interne Projekt-Bezeichner); der Code bleibt unverändert.
+// Kommentare werden entfernt (sie enthalten interne Projekt-Bezeichner), außer Lizenzhinweisen; der Code bleibt unverändert.
 for (const f of ["orb.js", "orb.css"]) {
   let src = readFileSync(join(repo, "ui/static", f), "utf8");
-  src = src.replace(/\/\*[\s\S]*?\*\//g, "");                  // Blockkommentare (orb.js/orb.css enthalten keine "/*" in Strings)
+  // Blockkommentare entfernen (orb.js/orb.css enthalten keine "/*" in Strings) – Lizenz-/Copyright-Hinweise bleiben erhalten
+  src = src.replace(/\/\*[\s\S]*?\*\//g, (c) => (/copyright|license/i.test(c) ? c : ""));
   if (f.endsWith(".js")) src = src.replace(/^[ \t]*\/\/.*\n/gm, ""); // reine Zeilenkommentare (auch GLSL)
   src = src.replace(/^\s*\n/, "");
   writeFileSync(join(pub, "orb", f), `/* NuOrb orb – ui/static/${f} from https://github.com/Anarki-LNX/nuorb (MIT) */\n` + src);

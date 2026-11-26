@@ -109,6 +109,11 @@ for (const f of htmlFiles) for (const m of readFileSync(f, "utf8").matchAll(/<a\
   if (/paypal/i.test(m[0]) && !/rel="[^"]*noreferrer/.test(m[0])) err(`PayPal-Link ohne noreferrer in ${relative(dist, f)}`);
 }
 
+// 6c) Lizenzhinweis der übernommenen Shader-Rauschfunktion (webgl-noise, MIT) muss in der ausgelieferten orb.js stehen
+{ const orbJs = join(dist, "orb/orb.js");
+  if (existsSync(orbJs)) { const o = readFileSync(orbJs, "utf8");
+    if (/webgl-noise/.test(readFileSync(join(web, "../ui/static/orb.js"), "utf8")) && !(/webgl-noise/.test(o) && /Permission is hereby granted/.test(o))) err("orb/orb.js: Lizenzhinweis von webgl-noise fehlt"); } }
+
 // 7) Caddyfile im Container setzt genau die Header aus deploy/headers.json (auch der lokale Testserver nutzt sie)
 try {
   const hdr = JSON.parse(readFileSync(join(web, "deploy/headers.json"), "utf8"));

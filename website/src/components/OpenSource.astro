@@ -2,7 +2,7 @@
 // Open Source. Die neueste Release-Version wird NUR beim Build von der GitHub-API geholt (Zeitlimit),
 // nie im Browser des Besuchers. Schlägt das fehl, entfällt die Zeile einfach.
 import { t, type Lang } from "../i18n";
-import { GITHUB } from "../config";
+import { GITHUB, THIRD_PARTY } from "../config";
 import Icon from "./Icon.astro";
 interface Props { lang: Lang }
 const { lang } = Astro.props;
@@ -40,7 +40,7 @@ const links = [
           {release && <a class="rel" href={release.url} rel="noopener"><span>{d.release}</span><b>{release.tag}</b><small>{release.date}</small></a>}
         </div>
         <p class="small">{d.aiNote}</p>
-        <p class="small">{d.credits}</p>
+        <p class="small">{d.credits} <a href={THIRD_PARTY} rel="noopener">{t(lang).footer.licenses}</a></p>
       </div>
       <ul class="links">
         {links.map(([href, label, icon]) => <li><a href={href} rel="noopener"><Icon name={icon} />{label}<Icon name="external" class="ext" /></a></li>)}
