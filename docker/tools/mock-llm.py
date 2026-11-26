@@ -14,6 +14,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 18434
 MODEL = "mock-nuorb"
+# Zweite Bauart für Tests der OpenAI-kompatiblen Server (docs/llm-backends.md): MOCK_KIND=llamacpp -> kein /api/*,
+# dafür /props (n_ctx) und owned_by "llamacpp"; MOCK_API_KEY=… verlangt einen Bearer-Key.
+import os  # noqa: E402
+KIND = os.environ.get("MOCK_KIND", "ollama")
+API_KEY = os.environ.get("MOCK_API_KEY", "")
 
 
 def answer(msgs):
@@ -61,8 +66,25 @@ class H(BaseHTTPRequestHandler):
         self.send_response(code); self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(b))); self.end_headers(); self.wfile.write(b)
 
+    def authed(self):
+        if API_KEY and self.headers.get("Authorization", "") != f"Bearer {API_KEY}":
+            self.js(401, {"error": {"message": "Invalid API Key", "type": "authentication_error"}})
+            return False
+        return True
+
     def do_GET(self):
         p = self.path.split("?")[0].rstrip("/")
+        if KIND == "llamacpp":
+            if p == "/health":
+                return self.js(200, {"status": "ok"})
+            if p.startswith("/api/"):
+                return self.js(404, {"error": "not found"})
+            if not self.authed():
+                return
+            if p == "/props":
+                return self.js(200, {"default_generation_settings": {"n_ctx": 65536}, "build_info": "b0-mock"})
+            if p in ("/v1/models", "/models"):
+                return self.js(200, {"object": "list", "data": [{"id": MODEL, "object": "model", "owned_by": "llamacpp"}]})
         if p == "/api/version":
             return self.js(200, {"version": "0.0.0-mock"})
         if p == "/api/tags":
@@ -77,6 +99,10 @@ class H(BaseHTTPRequestHandler):
         n = int(self.headers.get("Content-Length") or 0)
         body = json.loads(self.rfile.read(n) or b"{}")
         p = self.path.split("?")[0].rstrip("/")
+        if KIND == "llamacpp" and (p.startswith("/api/") or not self.authed()):
+            if p.startswith("/api/"):
+                self.js(404, {"error": "not found"})
+            return
         if p == "/api/generate":
             return self.js(200, {"done": True})
         if p == "/api/show":  # Hermes fragt die echte Kontextgröße ab

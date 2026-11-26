@@ -10,6 +10,7 @@ case "${JARVIS_TLS:-selfsigned}" in off) SCHEME=http ;; *) SCHEME=https ;; esac
 D=/opt/data/jarvis
 export UI_CERT_DIR=$D/certs ADMIN_CERTS=$D/certs
 export NUORB_SMARTHOME_MCP=/opt/jarvis/smarthome/smarthome_mcp.py   # Smart-Home-Modul im Image (Verwaltung: Testen/Schalten)
+export BRAIN_SAVED_FILE=$D/admin/brain.json   # Typ des lokalen Gehirns (ollama|openai) für die Statusanzeige
 export HERMES_CONFIG=/opt/data/config.yaml   # Gehirn-Adresse für die Statusanzeige (providers.pc-ollama.api)
 export UI_CONFIG=$D/config/ui.json JARVIS_UI_SETTINGS=$D/config/ui.json ADMIN_TOKEN_FILE=$D/config/internal.token
 export ADMIN_DATA=$D/admin JARVIS_UI_STATIC=/opt/jarvis/ui/static

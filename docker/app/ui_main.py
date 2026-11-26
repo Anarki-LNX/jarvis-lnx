@@ -213,32 +213,10 @@ for r in app.router.routes:
         _orig_status = r.endpoint
 
 
-_brain_url = {"mtime": None}
-
-
-def _sync_brain_url() -> None:
-    """„Gehirn online“-Probe folgt der Ollama-Adresse aus Hermes' config.yaml (Einrichtung kann sie ändern)."""
-    p = jc.DATA / "config.yaml"
-    try:
-        mt = p.stat().st_mtime_ns
-    except OSError:
-        return
-    if mt == _brain_url["mtime"]:
-        return
-    _brain_url["mtime"] = mt
-    try:
-        from ruamel.yaml import YAML
-        cfg = YAML(typ="safe").load(p.read_text(encoding="utf-8")) or {}
-        provs = cfg.get("providers") or {}
-        api = (provs.get("pc-ollama") or provs.get("lan-ollama") or {}).get("api") or ""   # lan-ollama: Installationen bis v0.3.0
-        if api:
-            ui.BRAIN_URL = api.rstrip("/").removesuffix("/v1") + "/api/version"
-    except Exception as exc:
-        print(f"config.yaml unreadable for brain probe: {exc}", flush=True)
+# Gehirn-Prüfung (Ollama oder OpenAI-kompatibel) macht die NuOrb-Oberfläche selbst aus config.yaml (brain_probe).
 
 
 async def status_plus(request: Request):
-    _sync_brain_url()
     data = dict(await _orig_status())
     data.setdefault("lang", jc.lang())
     data.update(assistant_name=jc.assistant_name(), user_name=jc.user_name() or None, onboarded=jc.onboarded(),

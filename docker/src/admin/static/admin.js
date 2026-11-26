@@ -206,7 +206,7 @@ async function viewOverview(view) {
       <button class="btn small ghost" data-restart="${esc(u.id)}">Neu starten</button></div>`).join("");
   setHTML(view, `
     <div class="panel ${kw} kpi"><span class="label">Gehirn · Modus <b>${esc({ local: "Lokal", auto: "Automatisch", remote: "Remote" }[s.mode] || "–")}</b></span><span class="value">${dot(s.mode === "remote" ? true : s.brain.online)}${s.mode === "remote" ? "Claude" : s.brain.online ? "PC online" : "PC offline"}</span>
-      <span class="sub mono">${esc(s.model.default || "–")}</span><span class="sub">${s.brain.version ? "Ollama " + esc(s.brain.version) : esc(s.brain.url)}</span></div>
+      <span class="sub mono">${esc(s.model.default || "–")}</span><span class="sub">${s.brain.type === "openai" ? `<span data-noi18n>${esc(s.brain.server || "")}</span>` : s.brain.version ? "Ollama " + esc(s.brain.version) : esc(s.brain.url)}</span></div>
     <div class="panel ${kw} kpi"><span class="label">Hermes-Agent</span><span class="value">${dot(s.hermes.online)}${s.hermes.online ? "Bereit" : "Aus"}</span>
       <span class="sub">Bestätigungen: <b>${esc({ manual: "immer fragen", smart: "smart", off: "AUS" }[s.approvals] || s.approvals || "–")}</b></span>
       <span class="sub">Fallback: ${s.fallback.length ? s.fallback.map((f) => esc(f.model)).join(", ") : "keiner"}</span></div>
@@ -217,9 +217,11 @@ async function viewOverview(view) {
         : `<span class="value">${ph.online ? dot(true) : '<span class="dot"></span>'}${ph.online ? `${ph.online} online` : "Nicht aktiv"}</span>
       <span class="sub">${ph.paired} gekoppelt · ${ph.online} online</span>${ph.last ? `<span class="sub">${esc(ph.last.name)} · zuletzt ${esc(fmtAgo(ph.last.last_seen))}</span>` : ""}`}</div>
 
-    <div class="panel ${s.phone ? "span-5" : "span-7"}"><div class="panel-head"><h3>Geladene Modelle (VRAM auf dem PC)</h3>${s.gpu_label ? `<span class="tag">${esc(s.gpu_label)}</span>` : ""}</div>
+    ${s.brain.type === "openai" ? `<div class="panel ${s.phone ? "span-5" : "span-7"}"><h3>Lokales Gehirn</h3>
+      <div class="rows"><div class="row"><div class="grow"><div class="title" data-noi18n>${esc(s.brain.server || "")}</div><div class="meta mono">${esc(s.brain.url || "–")}</div></div>${dot(s.brain.online)}</div></div>
+      <p class="hint small">Geladene Modelle und Grafikspeicher zeigt nur Ollama an.</p></div>` : `<div class="panel ${s.phone ? "span-5" : "span-7"}"><div class="panel-head"><h3>Geladene Modelle (VRAM auf dem PC)</h3>${s.gpu_label ? `<span class="tag">${esc(s.gpu_label)}</span>` : ""}</div>
       <div class="rows">${loaded || `<div class="empty">${s.brain.online ? "Kein Modell geladen – die erste Frage lädt es (~4 s)." : "PC/Ollama nicht erreichbar."}</div>`}</div>
-      <p class="hint small">Tipp: Für Spiele am PC das Modell entladen; JARVIS lädt es bei der nächsten Frage selbst wieder.</p></div>
+      <p class="hint small">Tipp: Für Spiele am PC das Modell entladen; JARVIS lädt es bei der nächsten Frage selbst wieder.</p></div>`}
     <div class="panel ${s.phone ? "span-4" : "span-5"}"><h3>Server</h3>
       <div class="kpi"><span class="label">Arbeitsspeicher ${fmtBytes(memUsed)} / ${fmtBytes(sys.mem_total)}</span><div class="bar"><i data-w="${memUsed / sys.mem_total * 100}"></i></div></div><br>
       <div class="kpi"><span class="label">Speicher ${fmtBytes(diskUsed)} / ${fmtBytes(sys.disk_total)}</span><div class="bar" ${diskUsed / sys.disk_total > .85 ? "data-warn" : ""}><i data-w="${diskUsed / sys.disk_total * 100}"></i></div></div><br>
@@ -261,14 +263,21 @@ async function viewModel(view) {
         <button class="btn ghost small" id="fbCheck">Prüfen</button><button class="btn ghost small" id="fbLive" title="Eine Mini-Anfrage an Claude">Live prüfen (&lt; 0,1 Cent)</button>
         <button class="btn primary" id="brainSave">Übernehmen …</button></div>
       <pre class="out mt" id="fbOut" hidden></pre></div>
-    <div class="panel span-7"><h3>Lokales Modell (PC-Ollama)</h3>
+    <div class="panel span-7"><h3>Lokales Modell</h3>
       ${br.mode === "remote" ? `<div class="note">Im Modus Remote ruht das lokale Modell. Diese Auswahl gilt wieder, sobald du auf Lokal oder Automatisch stellst.</div><br>` : ""}
-      <label class="field"><span>Ollama-Adresse</span><span class="inline"><input id="oUrl" class="mono grow" value="${esc(m.ollama_url || "")}" placeholder="http://192.168.1.50:11434" spellcheck="false"><button class="btn ghost" id="oTest" type="button">Verbindung testen</button></span>
-        <small>Adresse des PCs mit Ollama im Heimnetz. Ohne Port wird 11434 angenommen.</small></label>
+      <label class="field"><span>Server-Typ</span><select id="lType">
+        <option value="ollama" ${m.llm_type !== "openai" ? "selected" : ""}>Ollama</option>
+        <option value="openai" ${m.llm_type === "openai" ? "selected" : ""}>${esc(T("OpenAI-kompatibel (llama.cpp, vLLM, LM Studio …)"))}</option></select></label>
+      <label class="field"><span>Adresse</span><span class="inline"><input id="oUrl" class="mono grow" value="${esc(m.ollama_url || "")}" spellcheck="false"><button class="btn ghost" id="oTest" type="button">Verbindung testen</button></span>
+        <small id="oHint"></small></label>
+      <label class="field" id="lKeyF"><span>API-Key (optional)</span><input id="lKey" type="password" autocomplete="off" placeholder="${esc(m.api_key_set ? T("hinterlegt – leer lassen = unverändert") : T("nur wenn der Server einen verlangt"))}">
+        ${m.api_key_set ? `<label class="small muted"><input type="checkbox" id="lKeyClr"> ${esc(T("Gespeicherten Key entfernen"))}</label>` : ""}</label>
       <div id="oRes" class="small"></div>
-      <label class="field"><span>Modell auf dem PC (Ollama <span id="oState">${m.online ? "erreichbar" : "nicht erreichbar"}</span>)</span><select id="mDefault" ${br.mode === "remote" ? "disabled" : ""}>${opts}</select></label>
+      <label class="field"><span>Modell auf dem Server (<span data-noi18n id="oSrv">${esc(m.llm_server || "Ollama")}</span> <span id="oState">${m.online ? "erreichbar" : "nicht erreichbar"}</span>)</span><select id="mDefault" ${br.mode === "remote" ? "disabled" : ""}>${opts}</select></label>
+      <div id="lHelp" class="note small" hidden>Für Tool-Aufrufe: llama.cpp mit <code>--jinja</code> starten, vLLM mit <code>--enable-auto-tool-choice --tool-call-parser …</code>. NuOrb braucht mindestens 64k Kontext: llama.cpp <code>-c 65536</code>, vLLM <code>--max-model-len 65536</code>.
+        <br><button class="btn small ghost mt" id="lTools" type="button">Werkzeuge prüfen</button> <span id="lToolsRes"></span></div><br>
       <div class="grid2">
-        <label class="field"><span>Kontextlänge (Token)</span><input id="mCtx" type="number" min="2048" step="1024" value="${esc(m.model.context_length || "")}"><small>64k = 65536. Mehr Kontext braucht mehr VRAM.</small></label>
+        <label class="field"><span>Kontextlänge (Token)</span><input id="mCtx" type="number" min="2048" step="1024" value="${esc(m.model.context_length || "")}"><small>64k = 65536. Mehr Kontext braucht mehr VRAM. NuOrb braucht mindestens 64k.</small></label>
         <label class="field"><span>Denktiefe (global)</span><select id="mReason">${["none", "low", "medium", "high"].map((r) => `<option ${r === m.reasoning ? "selected" : ""} value="${r}">${{ none: "aus", low: "niedrig", medium: "mittel", high: "hoch" }[r]}</option>`).join("")}</select>
           <small>Sprachfragen vom Smartphone denken immer ohne – das hält die Antwort schnell.</small></label></div>
       <div class="note warn">Modelle, die nicht in den Grafikspeicher passen, machen den PC träge.</div><br>
@@ -279,18 +288,36 @@ async function viewModel(view) {
   const upd = () => { const md = $("input[name=bmode]:checked", view)?.value; $("#pickRemote").hidden = md !== "remote"; $("#pickFallback").hidden = md !== "auto"; $("#privacyNote").hidden = md === "local"; };
   $$("input[name=bmode]", view).forEach((r) => r.onchange = upd); upd();
   $("#brainSave").onclick = () => change(() => api("/api/brain/save", { method: "POST", body: { mode: $("input[name=bmode]:checked", view).value, remote_model: $("input[name=bremote]:checked", view)?.value, fallback_model: $("input[name=bfallback]:checked", view)?.value } }), () => { show("modell"); pollStatus(); });
+  const lt = () => $("#lType").value;
+  const typeUi = () => {
+    const o = lt() === "openai";
+    $("#oUrl").placeholder = o ? "http://192.168.1.50:8080" : "http://192.168.1.50:11434";
+    $("#oHint").textContent = o ? T("Basis-Adresse des Servers, ohne /v1. Port angeben: llama.cpp 8080, vLLM 8000, LM Studio 1234, LocalAI 8080.")
+      : T("Adresse des PCs mit Ollama im Heimnetz. Ohne Port wird 11434 angenommen.");
+    $("#lKeyF").hidden = !o && !m.api_key_set; $("#lHelp").hidden = !o;
+  };
+  $("#lType").onchange = typeUi; typeUi();
+  const llmBody = () => ({ type: lt(), url: $("#oUrl").value, api_key: $("#lKey").value, api_key_clear: !!($("#lKeyClr") && $("#lKeyClr").checked) });
   $("#oTest").onclick = (e) => busy(e.target, async () => {
     const res = $("#oRes");
     try {
-      const r = await api("/api/ollama/test", { method: "POST", body: { url: $("#oUrl").value } });
-      $("#oUrl").value = r.url;
-      setHTML(res, `<div class="note">${dot(true)} ${esc(T("Erreichbar: Ollama {0} · {1} Modelle", [r.version, r.count]))}</div>${r.warn ? `<div class="note warn">${esc(r.warn)}</div>` : ""}`);
-      const keep = $("#mDefault").value;
-      setHTML($("#mDefault"), [...new Set([keep, ...r.models].filter(Boolean))].map((n) => `<option ${n === keep ? "selected" : ""} value="${esc(n)}">${esc(n)}${r.sizes[n] ? ` (${fmtBytes(r.sizes[n])})` : ""}</option>`).join(""));
+      const r = await api("/api/llm/test", { method: "POST", body: llmBody() });
+      if (r.base) $("#oUrl").value = r.base;
+      const warn = r.warn ? `<div class="note warn">${esc(r.warn)}</div>` : "";
+      if (!r.ok) { setHTML(res, `<div class="note danger">${esc(r.error)}</div>${warn}`); $("#oState").textContent = T("nicht erreichbar"); return; }
+      const facts = [r.version && `${r.server} ${r.version}`, !r.version && r.server, (r.models.length === 1 ? T("1 Modell") : T("{0} Modelle", [r.models.length])), r.ctx && T("Kontext {0}", [r.ctx])].filter(Boolean).join(" · ");
+      setHTML(res, `<div class="note">${dot(true)} <span data-noi18n>${esc(T("Erkannt:"))} ${esc(facts)}</span></div>${warn}`);
+      $("#oSrv").textContent = r.server;
+      const keep = r.models.includes($("#mDefault").value) ? $("#mDefault").value : r.models[0] || $("#mDefault").value;
+      setHTML($("#mDefault"), [...new Set([keep, ...r.models].filter(Boolean))].map((n) => `<option ${n === keep ? "selected" : ""} value="${esc(n)}">${esc(n)}${r.sizes && r.sizes[n] ? ` (${fmtBytes(r.sizes[n])})` : ""}</option>`).join(""));
       $("#oState").textContent = T("erreichbar");
     } catch (ex) { setHTML(res, `<div class="note danger">${esc(ex.message)}</div>`); $("#oState").textContent = T("nicht erreichbar"); }
   });
-  $("#saveModel").onclick = () => change(() => api("/api/models/save", { method: "POST", body: { ollama_url: $("#oUrl").value, ...(br.mode === "remote" ? {} : { default: $("#mDefault").value }), context_length: $("#mCtx").value ? +$("#mCtx").value : null, reasoning: $("#mReason").value } }), () => show("modell"));
+  $("#lTools").onclick = (e) => busy(e.target, async () => {
+    const r = await api("/api/llm/tools", { method: "POST", body: { ...llmBody(), model: $("#mDefault").value } });
+    setHTML($("#lToolsRes"), r.ok ? `${dot(true)} ${esc(T("Tool-Aufrufe funktionieren."))}` : `<span class="dot" data-ok="warn"></span> ${esc(T(r.error || ""))} ${esc(T("Startoptionen oben prüfen."))}`);
+  });
+  $("#saveModel").onclick = () => change(() => api("/api/models/save", { method: "POST", body: { llm_type: lt(), url: $("#oUrl").value, api_key: $("#lKey").value, api_key_clear: !!($("#lKeyClr") && $("#lKeyClr").checked), ...(br.mode === "remote" ? {} : { default: $("#mDefault").value }), context_length: $("#mCtx").value ? +$("#mCtx").value : null, reasoning: $("#mReason").value } }), () => show("modell"));
   if ($("#pcSave")) $("#pcSave").onclick = () => change(() => api("/api/brain/projekt", { method: "POST", body: { model: $("input[name=pclaude]:checked", view).value } }), () => show("modell"));
   const check = (live) => (e) => busy(e.target, async () => { const o = $("#fbOut"); o.hidden = false; o.textContent = T("Prüfe …"); const r = await api("/api/models/check", { method: "POST", body: { live } }); o.textContent = (r.ok ? T("✓ Nutzbar") : T("✗ Probleme gefunden")) + "\n\n" + r.output; });
   $("#fbCheck").onclick = check(false); $("#fbLive").onclick = check(true);

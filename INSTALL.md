@@ -12,7 +12,7 @@ your PC. Your phone (NuOrb app) or any browser in your home network talks to it.
 | Machine | Linux, amd64 or arm64, 4 CPU cores, 4 GB free RAM, 8 GB disk |
 | Software | Docker with Compose v2 (the installer tells you the exact command if it is missing) |
 | Internet | once, for the image (~1.2 GB) and the speech models (~530 MB) |
-| Brain | an [Ollama](https://ollama.com) server **or** an [Anthropic API key](https://console.anthropic.com) (Claude) – or both |
+| Brain | an [Ollama](https://ollama.com) server or any OpenAI-compatible server (llama.cpp, vLLM, LM Studio) **or** an [Anthropic API key](https://console.anthropic.com) (Claude) – or both |
 | Network | phone and server in the same home network, or connected by VPN (WireGuard, Tailscale) |
 
 Proxmox LXC: enable nesting and keyctl first – on the Proxmox host: `pct set <ID> -features nesting=1,keyctl=1`.
@@ -71,6 +71,42 @@ On the computer running Ollama:
 - in the setup, enter the **IP address** of that computer, e.g. `http://192.168.1.50:11434` – also when it is the
   same machine. Names like `pc.local` often do not resolve inside the container.
 - good models: ones with tool use, e.g. Gemma, Qwen, Llama 3.x (8B+).
+
+### llama.cpp, vLLM, LM Studio instead of Ollama
+
+NuOrb works with **any server that speaks the OpenAI chat API**. In the setup choose
+**“OpenAI-compatible”**, enter the address (with port, without `/v1`) and – if the server needs one – the API key.
+The installer detects such servers on the same machine (ports 8080, 8000, 1234) on its own.
+
+Requirements for every server: **tool calling** must work, **context ≥ 64k (65536)**, it must **listen on the network**
+(not only 127.0.0.1), and its port must be open in the firewall of that computer (from Docker: `172.16.0.0/12`).
+
+**llama.cpp** (`llama-server`, port 8080):
+```bash
+llama-server -m Qwen3-8B-Q4_K_M.gguf --alias qwen3-8b --host 0.0.0.0 --port 8080 -c 65536 -ngl 99 --jinja \
+  -ctk q8_0 -ctv q8_0 --api-key YOUR_KEY        # --api-key is optional
+```
+- `--alias` gives the model a short name (otherwise it is called like the file path).
+- Model with a native 32k window (e.g. Qwen3 ≤ 32B): add `--rope-scaling yarn --rope-scale 2 --yarn-orig-ctx 32768`.
+- Context does not fit into VRAM: keep `-ctk q8_0 -ctv q8_0` (half the KV cache) or use a smaller model.
+- Tested: Qwen3-4B Q4_K_M with 64k context – knowledge questions, clock and notes via tools work.
+
+**vLLM** (port 8000):
+```bash
+vllm serve Qwen/Qwen3-8B --host 0.0.0.0 --port 8000 --max-model-len 65536 \
+  --enable-auto-tool-choice --tool-call-parser hermes
+```
+- Tool parser per model family: Qwen2.5/3 → `hermes`, Llama 3.1+ → `llama3_json`, Mistral → `mistral`, gpt-oss → `openai`.
+- Without `--enable-auto-tool-choice` vLLM rejects requests with tools (HTTP 400) and NuOrb does not answer.
+
+**LM Studio** (port 1234): Developer tab → start the server, switch on *Serve on Local Network*. When loading the
+model set **Context Length ≥ 65536** (the default is often 4096). Headless: `lms server start --port 1234` and
+`lms load <model> --context-length 65536`.
+
+**LocalAI** (port 8080): in the model YAML set `context_size: 65536` and enable the function template.
+
+Not every server is tested equally: llama.cpp and Ollama were tested with NuOrb; vLLM, LM Studio and LocalAI follow
+their documentation. Existing Ollama installations keep working unchanged.
 
 ### Claude (no own GPU needed, costs per question)
 
@@ -134,7 +170,10 @@ The settings names start with `JARVIS_` for historical reasons; they are explain
 | Containers have no network at all | `/etc/docker/daemon.json` contains `"iptables": false` or `"bridge": "none"` – remove both, `sudo systemctl restart docker`. |
 | `unable to derive the IP value for host-gateway` | Your Docker has no default bridge; do not use `host.docker.internal`, use the machine's IP. |
 | Ollama *not reachable* / ConnectTimeout | Ollama listens only on 127.0.0.1 → `OLLAMA_HOST=0.0.0.0`; firewall on the Ollama machine → allow 11434 (from Docker `172.16.0.0/12` if it is the same machine); use the IP, not `.local`. |
-| *context window … below 64,000* | Ollama context too small → `OLLAMA_CONTEXT_LENGTH=65536` and restart Ollama. |
+| *context window … below 64,000* | Context too small → Ollama `OLLAMA_CONTEXT_LENGTH=65536`, llama.cpp `-c 65536`, vLLM `--max-model-len 65536`, LM Studio Context Length 65536; restart the server. |
+| llama.cpp/vLLM/LM Studio *not reachable* (Timeout) | The server listens only on 127.0.0.1 → `--host 0.0.0.0` / *Serve on Local Network*; open its port in the PC firewall (`sudo ufw allow from 172.16.0.0/12 to any port 8080 proto tcp`). |
+| *The server requires an API key* | The server was started with `--api-key` → enter the same key in the setup. |
+| vLLM: NuOrb does not answer, server log shows HTTP 400 | Start vLLM with `--enable-auto-tool-choice --tool-call-parser …`. |
 | Browser: *connection not private* | Expected with NuOrb's own certificate – continue, or import `https://<server-ip>:8443/nuorb-ca.crt`. |
 | App: certificate error after changing the IP | The IP is missing in `JARVIS_HOSTS` in `~/nuorb/.env` → add it, `docker compose up -d`, pair again. |
 | Phone cannot connect | Same network/VPN? Firewall rule for 8443 (see 5)? Address in the app = `https://<server-ip>:8443`. |
