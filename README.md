@@ -213,23 +213,36 @@ Note: the Hermes gateway unit name (`hermes-gateway-<id>.service`) is instance-s
 - Ollama has no authentication – do not expose port 11434 beyond the hosts that need it.
 - Everything here is provided as-is, without warranty. You can brick your phone. Your responsibility.
 
-## Credits & upstream
+## Credits & licenses
 
-- [ElXreno/nixos-courbet](https://github.com/ElXreno/nixos-courbet) and [ElXreno/linux](https://github.com/ElXreno/linux)
-  (`courbet-7.3`) – the mainline port that makes all of this possible. Huge thanks.
-- [NixOS](https://nixos.org), [cage](https://github.com/cage-kiosk/cage), [Epiphany / WebKitGTK](https://webkitgtk.org)
-- [Hermes Agent](https://github.com/NousResearch/hermes-agent) by Nous Research
-- [Ollama](https://ollama.com), Google [Gemma](https://ai.google.dev/gemma)
-- [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) and NVIDIA [Parakeet-TDT-0.6B-v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3)
-- [Piper](https://github.com/OHF-Voice/piper1-gpl) and the [Thorsten voice](https://www.thorsten-voice.de) by Thorsten Müller (CC0)
-- [Mozilla Common Voice](https://commonvoice.mozilla.org) – German sentences for the voice corpus (CC0)
+NuOrb's own code is [MIT](LICENSE). Every third-party component keeps its license; the full list with versions and
+obligations is in **[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)** and, inside the Docker image, in
+`/usr/share/doc/nuorb/`. The most important points:
+
+- [Hermes Agent](https://github.com/NousResearch/hermes-agent) by Nous Research – the agent and base image (MIT).
+- [Piper](https://github.com/OHF-Voice/piper1-gpl) with eSpeak NG – text-to-speech, **GPL-3.0**. It runs inside the
+  NuOrb container; whoever passes the image on must also pass on the GPL and its sources (links in the license file).
+- [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) (Apache-2.0) and NVIDIA
+  [Parakeet-TDT-0.6B-v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) – speech recognition, model under
+  **CC-BY-4.0** (attribution).
+- Voices from [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices): the German default
+  [Thorsten](https://www.thorsten-voice.de) by Thorsten Müller is CC0. Some optional voices are **not cleared for
+  commercial use** – see the voice table in THIRD_PARTY_LICENSES.md.
+- Orb shader noise: [webgl-noise](https://github.com/stegu/webgl-noise) by Ashima Arts and Stefan Gustavson (MIT).
 - Fonts: [Inter](https://github.com/rsms/inter), [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono),
-  [Space Grotesk](https://github.com/floriankarsten/space-grotesk) – SIL OFL 1.1, license files in `ui/static/fonts/`
-- Optional cloud model: [Claude](https://www.anthropic.com) by Anthropic
+  [Space Grotesk](https://github.com/floriankarsten/space-grotesk) – SIL OFL 1.1, license files in `ui/static/fonts/`.
+- [Mozilla Common Voice](https://commonvoice.mozilla.org) – German sentences for the voice corpus (CC0).
+- Phone port: [ElXreno/nixos-courbet](https://github.com/ElXreno/nixos-courbet) and
+  [ElXreno/linux](https://github.com/ElXreno/linux) (`courbet-7.3`) – huge thanks; [NixOS](https://nixos.org),
+  [cage](https://github.com/cage-kiosk/cage), [Epiphany / WebKitGTK](https://webkitgtk.org).
+- Brains you connect yourself – [Ollama](https://ollama.com), llama.cpp, vLLM, LM Studio, the models you run there
+  (e.g. Google [Gemma](https://ai.google.dev/gemma)) and [Claude](https://www.anthropic.com) by Anthropic – are not
+  part of NuOrb; their own licenses and terms apply.
 
 ## License
 
-Code: [MIT](LICENSE) © 2026 Anarki-LNX. Third-party files keep their own licenses (see `LICENSE`).
+Code: [MIT](LICENSE) © 2026 Anarki-LNX. Third-party files keep their own licenses (see
+[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)).
 
 ## Disclaimer
 

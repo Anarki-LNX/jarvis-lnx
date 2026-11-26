@@ -11,6 +11,7 @@ COPY src/stt/ /f/opt/nuorb/stt/
 COPY src/smarthome/ /f/opt/nuorb/smarthome/
 COPY app/ /f/opt/nuorb/app/
 COPY rootfs/ /f/
+COPY licenses/ /f/usr/share/doc/nuorb/
 RUN mkdir -p /f/opt/nuorb/home/.config /f/opt/models
 
 FROM ${HERMES_IMAGE}
@@ -29,7 +30,13 @@ COPY --from=files /f/ /
 RUN ln -sfn /opt/data /opt/nuorb/home/.hermes \
  && ln -sfn /opt/data/nuorb/config /opt/nuorb/home/.config/nuorb \
  && chown hermes:hermes /opt/models \
- && /opt/nuorb/venv/bin/python -m compileall -q /opt/nuorb/app /opt/nuorb/ui /opt/nuorb/admin /opt/nuorb/stt /opt/nuorb/smarthome
+ && /opt/nuorb/venv/bin/python -m compileall -q /opt/nuorb/app /opt/nuorb/ui /opt/nuorb/admin /opt/nuorb/stt /opt/nuorb/smarthome \
+ && /opt/nuorb/venv/bin/python -I /opt/nuorb/app/license_inventory.py /usr/share/doc/nuorb
+# Lizenzen: /usr/share/doc/nuorb/ (THIRD_PARTY_LICENSES.md, LICENSE-NuOrb.txt, Python-Paketliste + Lizenzdateien);
+# Debian-Pakete: /usr/share/doc/<paket>/copyright, Lizenztexte: /usr/share/common-licenses/
+LABEL org.opencontainers.image.licenses="MIT AND GPL-3.0-or-later AND LGPL-2.1-or-later" \
+      org.opencontainers.image.source="https://github.com/Anarki-LNX/nuorb" \
+      org.opencontainers.image.title="NuOrb"
 
 EXPOSE 8443 8444
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 CMD ["/opt/nuorb/bin/healthcheck"]
