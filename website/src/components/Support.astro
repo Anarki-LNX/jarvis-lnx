@@ -1,5 +1,5 @@
 ---
-// Unterstützung. PayPal-Button nur aktiv, wenn PAYPAL_URL in config.ts gesetzt und gültig ist (paypal.com / paypal.me).
+// Unterstützung. PayPal-Button nur aktiv, wenn PAYPAL_URL in config.ts gesetzt und gültig ist (paypal.com / paypal.me); externer Link ohne Referrer und ohne Tracking-Parameter.
 import { t, type Lang } from "../i18n";
 import { GITHUB, PAYPAL_URL, validPaypal } from "../config";
 import Icon from "./Icon.astro";
@@ -16,7 +16,7 @@ const pp = validPaypal(PAYPAL_URL) ? PAYPAL_URL : null;
       <h2 id="support-title">{d.title}</h2>
       <p class="lead">{d.text}</p>
       {pp ? (
-        <a class="btn btn--primary" href={pp} rel="noopener">{d.button}<Icon name="external" /></a>
+        <a class="btn btn--primary" href={pp} rel="noopener noreferrer" target="_blank">{d.button}<Icon name="external" /></a>
       ) : (
         <>
           <span class="btn btn--primary" role="link" aria-disabled="true">{d.button}</span>

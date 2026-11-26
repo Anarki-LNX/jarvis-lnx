@@ -15,7 +15,7 @@ export default defineConfig({
       filter: (page) => !/\/404/.test(page),
       // Sprachpaare explizit (die eingebaute i18n-Option hielte "/" für Englisch)
       serialize(item) {
-        const pairs = [["/en/", "/de/"], ["/en/privacy/", "/de/datenschutz/"]];
+        const pairs = [["/en/", "/de/"], ["/en/privacy/", "/de/datenschutz/"], ["/en/imprint/", "/de/impressum/"]];
         const path = new URL(item.url).pathname;
         const pair = pairs.find((p) => p.includes(path));
         if (pair) item.links = [{ lang: "en", url: SITE + pair[0] }, { lang: "de", url: SITE + pair[1] }, { lang: "x-default", url: SITE + "/" }];

@@ -1,0 +1,51 @@
+---
+// Impressum (§ 5 DDG). Angaben ausschließlich aus IMPRINT in config.ts – vom Betreiber selbst eingetragen.
+// Platzhalter ("[…]") werden sichtbar markiert; ein Release-Build mit Platzhaltern bricht ab (scripts/check.mjs).
+import Base from "../layouts/Base.astro";
+import Nav from "./Nav.astro";
+import Footer from "./Footer.astro";
+import { t, other, imprintPath, type Lang } from "../i18n";
+import { IMPRINT, GITHUB, isPlaceholder, imprintComplete } from "../config";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const d = t(lang);
+const p = d.imprint;
+const ok = imprintComplete();
+const v = (s: string) => ({ text: s, ph: isPlaceholder(s) });
+---
+<Base lang={lang} title={`${p.title} – NuOrb`} description={p.basis} path={imprintPath(lang)} alternates={{ en: imprintPath("en"), de: imprintPath("de") }}>
+  <Nav lang={lang} altPath={imprintPath(other(lang))} home={false} />
+  <main id="main" class="wrap legal">
+    <h1>{p.title}</h1>
+    {!ok && <p class="warn" role="note">{p.incomplete}</p>}
+    <section>
+      <h2>{p.basis}</h2>
+      <p class="addr">
+        {[v(IMPRINT.name), v(IMPRINT.street), v(IMPRINT.city), v(IMPRINT.country)].map((x) => <span class={x.ph ? "ph" : undefined}>{x.text}</span>)}
+      </p>
+    </section>
+    <section>
+      <h2>{p.contact}</h2>
+      <p>{p.email}: {isPlaceholder(IMPRINT.email) ? <span class="ph">{IMPRINT.email}</span> : <a href={`mailto:${IMPRINT.email}`}>{IMPRINT.email}</a>}</p>
+    </section>
+    {IMPRINT.editorial && (
+      <section><h2>{p.editorial}</h2><p class={isPlaceholder(IMPRINT.editorial) ? "ph" : undefined}>{IMPRINT.editorial}</p></section>
+    )}
+    <section><p>{p.project} <a href={GITHUB.issues} rel="noopener">GitHub Issues</a></p></section>
+    <section><p class="muted">{p.links}</p></section>
+    <p class="links"><a href={`/${lang}/`}>{d.policy.back}</a></p>
+  </main>
+  <Footer lang={lang} home={false} />
+  <script>import "../scripts/site.ts";</script>
+</Base>
+<style>
+  .legal { max-width: 820px; padding-block: clamp(3rem, 8vw, 6rem); }
+  h1 { font-size: clamp(2rem, 5vw, 3rem); margin-bottom: 2rem; }
+  section { padding: 1.3rem 0; border-top: 1px solid var(--line); }
+  h2 { font-size: 1.15rem; margin-bottom: .5rem; }
+  section p { color: var(--text-2); }
+  .addr span { display: block; }
+  .ph { color: var(--amber); font-family: var(--f-mono); font-size: .9em; }
+  .warn { padding: 1rem 1.2rem; border: 1px solid rgba(255, 180, 84, .4); background: rgba(255, 180, 84, .07); border-radius: var(--r-sm); color: var(--amber); margin-bottom: 1rem; }
+  .links { margin-top: 2rem; }
+</style>

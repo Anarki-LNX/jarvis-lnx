@@ -61,7 +61,7 @@ const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, 
                 {dev === "desktop" && <div class="chrome" aria-hidden="true"><i></i><i></i><i></i><span>NuOrb</span></div>}
                 <div class="screen">
                   {c ? (
-                    <video class="vid" playsinline muted={c.loop} loop={c.loop} preload="none" controls poster={dev === first ? (c.poster.webp || c.poster.jpg) : undefined} aria-label={c.alt[lang] || c.alt.en} data-video>
+                    <video class="vid" playsinline muted={c.loop} loop={c.loop} preload="none" controls data-lazy-poster={dev === first ? (c.poster.webp || c.poster.jpg) : undefined} aria-label={c.alt[lang] || c.alt.en} data-video>
                       {pick(c.video, ssrWidth[dev]).map((v) => <source src={v.src} type={v.type} />)}
                       {!c.loop && c.tracks.map((tr) => <track kind="subtitles" src={tr.src} srclang={tr.srclang} label={tr.label} />)}
                     </video>
