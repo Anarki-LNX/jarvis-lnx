@@ -20,6 +20,10 @@ services:
       start_period: 90s
       retries: 3
     env_file: .env
+    # Optional: Ollama auf demselben Rechner als http://host.docker.internal:11434 ansprechen. Nicht standardmäßig an:
+    # Ohne Standard-Bridge docker0 (z. B. "bridge": "none" in daemon.json) startet der Container damit nicht.
+    # Einfacher ist die IP des Rechners. Bei Bedarf die nächste Zeile aktivieren:
+    # extra_hosts: ["host.docker.internal:host-gateway"]
     ports:
       # Nur im Heimnetz/VPN nutzen – diese Ports NICHT im Router ins Internet freigeben.
       - "${JARVIS_BIND:-0.0.0.0}:${JARVIS_UI_PORT_PUBLIC:-8443}:8443"    # Oberfläche + App-API

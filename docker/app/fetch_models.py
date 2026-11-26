@@ -9,6 +9,9 @@ from __future__ import annotations
 
 import os
 import shutil
+import socket
+import threading
+import urllib.parse
 import sys
 import tarfile
 import time
@@ -29,7 +32,34 @@ def log(msg: str) -> None:
     print(f"[nuorb-models] {msg}", flush=True)
 
 
+_reachable: set[str] = set()
+
+
+def preflight(url: str) -> None:
+    """Vor dem ersten Download vom Host: DNS + TCP in höchstens ~12 s prüfen. Eine Firewall, die weiterleitende Pakete
+    verwirft (ufw DEFAULT_FORWARD_POLICY=DROP, firewalld), ließe den Download sonst minutenlang ohne Meldung hängen."""
+    host = urllib.parse.urlsplit(url).hostname or ""
+    if host in _reachable:
+        return
+    res: dict = {}
+
+    def probe() -> None:
+        try:
+            socket.create_connection((host, 443), timeout=8).close()
+            res["ok"] = True
+        except OSError as exc:
+            res["err"] = exc
+    t = threading.Thread(target=probe, daemon=True)
+    t.start()
+    t.join(12)
+    if not res.get("ok"):
+        raise ConnectionError(f"no connection to {host}:443 ({res.get('err') or 'timeout, DNS or firewall'})")
+    _reachable.add(host)
+
+
 def fetch(url: str, dest: Path) -> None:
+    jc.set_models_status(state="loading", item=dest.name, done_mb=0, total_mb=0, error=None, error_code=None)
+    preflight(url)
     part = dest.with_name(dest.name + ".part")
     t0, last = time.time(), 0.0
     req = urllib.request.Request(url, headers={"User-Agent": "jarvis-lnx-docker"})
@@ -89,8 +119,8 @@ def parakeet() -> None:
 
 
 # Die Einrichtungsseite übersetzt anhand von error_code selbst; der Text hier ist für Protokoll und API.
-OFFLINE = ("No internet connection: the speech models (~530 MB) could not be downloaded. "
-           "Retrying automatically. Check the container's DNS/proxy/firewall.")
+OFFLINE = ("No internet connection from the container: the speech models (~530 MB) could not be downloaded. "
+           "Retrying automatically. Check DNS/proxy/firewall; with ufw: sudo ufw default allow routed && sudo ufw reload.")
 
 
 def main() -> int:
