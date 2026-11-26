@@ -1,5 +1,5 @@
 #!/bin/sh
 . /opt/nuorb/bin/nuorb-env
-export PIPER_VOICE=/opt/models/voices/${NUORB_VOICE:-$( [ "$NUORB_LANG" = en ] && echo en_GB-alan-medium || echo de_DE-thorsten-medium )}.onnx
+export PIPER_VOICE=/opt/models/voices/${NUORB_VOICE:-$( [ "$NUORB_LANG" = en ] && echo en_US-joe-medium || echo de_DE-thorsten-medium )}.onnx
 cd /opt/nuorb/ui
 exec $PY -I /opt/nuorb/app/ui_main.py

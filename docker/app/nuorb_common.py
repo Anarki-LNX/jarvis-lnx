@@ -17,6 +17,7 @@ import json
 import urllib.error
 import contextvars
 import os
+import re
 import secrets
 import time
 from pathlib import Path
@@ -80,19 +81,30 @@ def tr(de: str, en: str) -> str:
     return de if ui_lang() == "de" else en
 
 
-DEFAULT_VOICE = {"de": "de_DE-thorsten-medium", "en": "en_GB-alan-medium"}
-# Stimmen, die der Assistent zur Auswahl anbietet (Piper, rhasspy/piper-voices); Lizenz je Stimme siehe README
+DEFAULT_VOICE = {"de": "de_DE-thorsten-medium", "en": "en_US-joe-medium"}
+# Stimmen, die der Assistent zur Auswahl anbietet (Piper, rhasspy/piper-voices). Nur Stimmen, deren Daten UND
+# Basismodell CC0/CC-BY sind (Lizenzkette siehe THIRD_PARTY_LICENSES.md).
 VOICE_CHOICES = {
-    "de": [("de_DE-thorsten-medium", "Thorsten (male, CC0)"), ("de_DE-thorsten-high", "Thorsten, high quality"),
-           ("de_DE-kerstin-low", "Kerstin (weiblich)")],
-    "en": [("en_GB-alan-medium", "Alan (British, male)"), ("en_US-ryan-high", "Ryan (US, male)"),
-           ("en_US-amy-medium", "Amy (US, female)")],
+    "de": [("de_DE-thorsten-medium", "Thorsten (male, CC0)")],
+    "en": [("en_US-joe-medium", "Joe (US, male, CC0)")],
 }
+# Nicht für kommerzielle Nutzung freigegeben (Forschungs-/NC-Daten oder -Basismodell): werden ersetzt und gelöscht.
+# lessac (Blizzard 2013, nur Forschung) und alles darauf Aufbauende, ryan (CC-BY-NC-SA) und Abgeleitete, amy (unklar).
+RESTRICTED_VOICE = re.compile(r"^(en_GB-alan-.*|en_US-ryan-.*|en_US-amy-.*|en_US-lessac-.*|en_US-libritts_r-.*"
+                              r"|de_DE-kerstin-low|de_DE-thorsten-high)$")
+
+
+def voice_replacement(name: str) -> str | None:
+    """Ersatz für eine nicht freigegebene Stimme (EN → Joe, sonst Thorsten), None wenn die Stimme in Ordnung ist."""
+    if not isinstance(name, str) or not RESTRICTED_VOICE.match(name):
+        return None
+    return DEFAULT_VOICE["en"] if name.startswith("en_") else DEFAULT_VOICE["de"]
 
 
 def voice_name() -> str:
     v = _read_json(CONF / "ui.json", {}).get("piper_voice") if (CONF / "ui.json").exists() else None
-    return v if isinstance(v, str) and v else (env("NUORB_VOICE") or DEFAULT_VOICE[lang()])
+    v = v if isinstance(v, str) and v else (env("NUORB_VOICE") or DEFAULT_VOICE[lang()])
+    return voice_replacement(v) or v
 
 
 MODELS_STATUS = J / "models-status.json"

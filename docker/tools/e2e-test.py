@@ -284,6 +284,34 @@ def main() -> int:
         check("Spracherkennung (Parakeet) erkennt TTS-Satz", st == 200 and "systeme" in str(t.get("text", "")).lower(),
               str(t)[:100])
 
+    # ---------------------------------------------------------------- Stimmen (nur CC0/CC-BY, v0.6.3)
+    st, su = adm.req("GET", "/api/setup")
+    ch = su.get("voice_choices") or {}
+    names = [v for lg in ch.values() for v, _ in lg]
+    check("Stimmenauswahl nur Thorsten und Joe", sorted(names) == ["de_DE-thorsten-medium", "en_US-joe-medium"], str(names))
+    st, d = adm.req("POST", "/api/setup/language", {"lang": "en", "voice": "en_GB-alan-medium"})
+    check("Nicht freigegebene Stimme abgelehnt", st == 400, str(d)[:90])
+    st, d = adm.req("POST", "/api/setup/language", {"lang": "en", "voice": "en_US-joe-medium"}, timeout=120)
+    ok = st == 200
+    for _ in range(60):   # Stimme wird bei Bedarf geladen
+        st2, su = adm.req("GET", "/api/setup")
+        if (su.get("models") or {}).get("voice_ready"):
+            break
+        time.sleep(3)
+    check("Englisch mit Joe eingestellt", ok and su.get("voice") == "en_US-joe-medium" and bool((su.get("models") or {}).get("voice_ready")),
+          f"{st} voice={su.get('voice')} ready={(su.get('models') or {}).get('voice_ready')}")
+    st, wav = app.req("POST", "/api/tts", {"text": "Good evening. All systems are running."}, timeout=60)
+    if st == 200 and isinstance(wav, bytes) and wav[:4] == b"RIFF":
+        body, ct = multipart("audio", "test.wav", wav, "audio/wav")
+        st, t = app.req("POST", "/api/stt", raw=body, ctype=ct, timeout=60)
+        check("Joe spricht Englisch verständlich (TTS → Parakeet)", st == 200 and "systems" in str(t.get("text", "")).lower(),
+              str(t)[:100])
+    else:
+        check("Joe spricht Englisch verständlich (TTS → Parakeet)", False, f"TTS {st}")
+    st, d = adm.req("POST", "/api/setup/language", {"lang": "de", "voice": "de_DE-thorsten-medium"}, timeout=120)
+    st2, wav = app.req("POST", "/api/tts", {"text": "Zurück auf Deutsch."}, timeout=60)
+    check("Zurück auf Deutsch mit Thorsten", st == 200 and st2 == 200 and isinstance(wav, bytes) and wav[:4] == b"RIFF", str(st))
+
     # ---------------------------------------------------------------- Browser
     br = Client(a.ui, insecure)
     st, page = br.req("GET", "/")

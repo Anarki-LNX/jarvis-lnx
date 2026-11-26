@@ -233,7 +233,10 @@ async def setup_language(request: Request):
     if lg not in ("de", "en"):
         raise HTTPException(400, jc.tr("Sprache de oder en.", "Language must be de or en."))
     if not re.fullmatch(r"[a-z]{2}_[A-Z]{2}-[a-z0-9_]+-(x_low|low|medium|high)", voice):
-        raise HTTPException(400, jc.tr("Ungültiger Stimmenname (z. B. de_DE-thorsten-medium).", "Invalid voice name (e.g. en_GB-alan-medium)."))
+        raise HTTPException(400, jc.tr("Ungültiger Stimmenname (z. B. de_DE-thorsten-medium).", "Invalid voice name (e.g. en_US-joe-medium)."))
+    if jc.voice_replacement(voice):
+        raise HTTPException(400, jc.tr(f"Die Stimme {voice} ist nicht für kommerzielle Nutzung freigegeben (Lizenz).",
+                                       f"The voice {voice} is not licensed for commercial use."))
     ui = adm.read_ui_settings()
     fields = {"lang": lg, "piper_voice": voice}
     if not ui.get("persona") or ui.get("persona") in personas.PERSONA.values():

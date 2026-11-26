@@ -225,9 +225,10 @@ obligations is in **[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)** and, in
 - [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) (Apache-2.0) and NVIDIA
   [Parakeet-TDT-0.6B-v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) – speech recognition, model under
   **CC-BY-4.0** (attribution).
-- Voices from [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices): the German default
-  [Thorsten](https://www.thorsten-voice.de) by Thorsten Müller is CC0. Some optional voices are **not cleared for
-  commercial use** – see the voice table in THIRD_PARTY_LICENSES.md.
+- Voices from [rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices):
+  [Thorsten](https://www.thorsten-voice.de) by Thorsten Müller (German) and Joe from
+  [OHF-Voice/voice-datasets](https://github.com/OHF-Voice/voice-datasets) (English), both CC0 – free to use, also
+  commercially.
 - Orb shader noise: [webgl-noise](https://github.com/stegu/webgl-noise) by Ashima Arts and Stefan Gustavson (MIT).
 - Fonts: [Inter](https://github.com/rsms/inter), [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono),
   [Space Grotesk](https://github.com/floriankarsten/space-grotesk) – SIL OFL 1.1, license files in `ui/static/fonts/`.

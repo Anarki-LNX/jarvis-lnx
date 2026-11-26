@@ -10,7 +10,7 @@ docker compose exec nuorb ls /usr/share/doc/nuorb
 docker compose exec nuorb cat /usr/share/doc/nuorb/python-packages.tsv
 ```
 
-Checked for NuOrb 0.6.x (image 0.6.2, base `nousresearch/hermes-agent:v0.23.4`). This is a best-effort inventory, not
+Checked for NuOrb 0.6.3 (inventory of image 0.6.2, base `nousresearch/hermes-agent:v0.23.4`). This is a best-effort inventory, not
 legal advice. Corrections are welcome as an issue.
 
 ## 1. Components that come with obligations
@@ -34,18 +34,15 @@ from the voice they were fine-tuned from (see each voice's `MODEL_CARD`).
 
 | Voice | Offered as | Training data (license) | Fine-tuned from | Use |
 |---|---|---|---|---|
-| `de_DE-thorsten-medium` | **German default** | Thorsten-Voice (CC0) | rdh (CC0) | free, also commercially |
-| `de_DE-thorsten-high` | German option | Thorsten-Voice (CC0) | **lessac** (Blizzard 2013, research licence) | research/private only (see note) |
-| `de_DE-kerstin-low` | German option | Kerstin (CC0) | **ryan-low** (RyanSpeech, CC-BY-NC-SA 4.0) | non-commercial only (see note) |
-| `en_GB-alan-medium` | **English default** | Mycroft mimic3 "apope" ("All Rights Reserved") | **lessac** (research licence) | unclear/restricted (see note) |
-| `en_US-ryan-high` | English option | RyanSpeech (**CC-BY-NC-SA 4.0**) | – | non-commercial only |
-| `en_US-amy-medium` | English option | Mycroft mimic3 "amy" (license only by URL, not verifiable) | hifi_tts_92 (CC-BY-4.0) | unclear |
+| `de_DE-thorsten-medium` | **German default** | [Thorsten-Voice](https://www.thorsten-voice.de) by Thorsten Müller (CC0) | rdh (CC0) | free, also commercially |
+| `en_US-joe-medium` | **English default** | [OHF-Voice/voice-datasets](https://github.com/OHF-Voice/voice-datasets) (CC0) | rdh (CC0) | free, also commercially |
 
-**Note:** the lessac base voice comes from the Blizzard Challenge 2013 data, whose licence allows research purposes
-only. RyanSpeech is CC-BY-NC-SA 4.0. Voices derived from them are therefore not cleared for commercial use. For
-anything beyond private use pick a voice with a CC0 or CC-BY dataset and a CC0/CC-BY base, for example
-`de_DE-thorsten-medium`, `de_DE-kerstin-medium`, `en_US-joe-medium`, `en_US-mike-medium`, `en_US-kathleen-medium`
-(all CC0) or `en_GB-cori-medium` (CC-BY-4.0, Hi-Fi TTS by NVIDIA). Set it with `NUORB_VOICE` in `.env`.
+NuOrb offers only voices whose recordings **and** base voice are CC0 or CC-BY. Up to version 0.6.2 it also offered
+`en_GB-alan-medium` (English default), `en_US-ryan-high`, `en_US-amy-medium`, `de_DE-kerstin-low` and
+`de_DE-thorsten-high`. They are built on the lessac voice (Blizzard Challenge 2013 data, research licence only) or on
+RyanSpeech (CC-BY-NC-SA 4.0), or their license cannot be verified. Since 0.6.3 NuOrb no longer offers or downloads them;
+installations that used one switch automatically to Joe (English) or Thorsten (German) and the old voice files are
+deleted from the models volume.
 
 Audio that NuOrb speaks is generated on your machine; the voice license decides what you may do with it.
 
@@ -76,13 +73,20 @@ Elazar Gershuni, MIT; `piper/tashkeel/model.onnx`, libtashkeel, MIT). NuOrb does
 - `tools/wakewords/hey_hermes.tflite` – Hermes' own wake-word model; Hermes states it may be redistributed. NuOrb does
   not use it (the engine is not installed).
 
-## 4. Brains you connect yourself
+## 4. Telemetry
+
+onnxruntime 1.32 (PyPI build) contains Microsoft's 1DS telemetry client and, unless switched off, sends usage events
+to `mobile.events.data.microsoft.com`. The NuOrb image sets `ORT_DISABLE_TELEMETRY=1` for every process (image `ENV`)
+and the web UI sets it again before loading Piper. Measured offline with `docker/tools/telemetry-check.sh`: with the
+image defaults there are no connection attempts; with the switch removed there are several within 45 seconds.
+
+## 5. Brains you connect yourself
 
 Ollama, llama.cpp, vLLM, LM Studio, LocalAI and the language models you run with them are **not** part of NuOrb.
 Their licenses (e.g. Gemma Terms of Use, Llama Community License, Qwen/Apache-2.0) apply to you directly. The same
 goes for the Anthropic API (Claude): its terms apply when you enter your own key.
 
-## 5. Phone app and wake word
+## 6. Phone app and wake word
 
 The NuOrb Android app and its "Hey NuOrb" wake-word models are not part of the server image; the app documents its
 own licenses. The NuOrb server only passes wake-word files to the app if the operator puts them into

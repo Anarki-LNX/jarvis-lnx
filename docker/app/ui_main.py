@@ -10,6 +10,12 @@ Lädt nuorb-ui/server.py unverändert als Modul und ergänzt nur:
 """
 from __future__ import annotations
 
+import os
+
+# Keine Telemetrie (vor dem ersten Import von onnxruntime über Piper): onnxruntime 1.32 schickt sonst
+# Nutzungsdaten an Microsoft. Gilt auch, wenn jemand den Prozess ohne nuorb-env/Image-ENV startet.
+os.environ["ORT_DISABLE_TELEMETRY"] = "1"
+
 import ipaddress
 import re
 import sys
