@@ -1,0 +1,170 @@
+---
+// Video-Demo mit Geräte-Mockups. Nur vorproduzierte Aufnahmen aus src/data/media.json (von prepare-assets.mjs erzeugt).
+// Ohne JS: native <video controls>. Mit JS (site.ts): eigene Steuerung, Szenenwechsel, Abspielen nur wenn sichtbar.
+import { t, type Lang } from "../i18n";
+import { YOUTUBE } from "../config";
+import Icon from "./Icon.astro";
+import media from "../data/media.json";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const d = t(lang).demo;
+
+type V = { src: string; type: string; w: number; h: number };
+type Clip = { id: string; device: string; lang: string; title: Record<string, string>; desc: Record<string, string>; alt: Record<string, string>;
+  duration: number; loop: boolean; video: V[]; sound: V[]; poster: Record<string, string>; tracks: { src: string; srclang: string; label: string }[] };
+const all = (media as unknown as { clips: Clip[] }).clips;
+const devices = ["desktop", "tablet", "phone"] as const;
+// Szenen je Gerät: Seitensprache bevorzugt; gibt es eine Szene nur in der anderen Sprache, wird sie (gekennzeichnet) ergänzt.
+// Stumme Loops zuerst, Filme mit Ton danach. Installations-Tutorials stehen im Abschnitt Installation.
+const base = (id: string) => id.replace(/-(en|de)$/, "");
+const scenes = Object.fromEntries(devices.map((dev) => {
+  const list = all.filter((c) => c.device === dev && !c.id.startsWith("install-tutorial"));
+  const mine = list.filter((c) => c.lang === lang);
+  const extra = list.filter((c) => c.lang !== lang && !mine.some((m) => base(m.id) === base(c.id)));
+  return [dev, [...mine, ...extra].sort((a, b) => Number(b.loop) - Number(a.loop))];
+})) as Record<(typeof devices)[number], Clip[]>;
+const name = (c: Clip) => c.title?.[lang] || c.title?.en || c.id;
+const first = devices.find((dev) => scenes[dev].length) ?? "desktop";
+const pick = (vs: V[], max: number) => {
+  const byType = (ty: string) => vs.filter((v) => v.type.startsWith(ty)).sort((a, b) => a.w - b.w);
+  return ["video/webm", "video/mp4"].map((ty) => byType(ty).find((v) => v.w >= max) ?? byType(ty).at(-1)).filter(Boolean) as V[];
+};
+const ssrWidth = { desktop: 1280, tablet: 1024, phone: 720 };
+const clipData = (c: Clip) => JSON.stringify({ id: c.id, loop: c.loop, video: c.video, sound: c.sound, poster: c.poster, tracks: c.tracks, alt: c.alt[lang] || c.alt.en });
+const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+---
+<section class="section demo" id="demo" aria-labelledby="demo-title">
+  <div class="wrap wrap--wide">
+    <div class="head reveal">
+      <p class="kicker">{d.kicker}</p>
+      <h2 id="demo-title">{d.title}</h2>
+      <p class="lead">{d.text}</p>
+    </div>
+
+    <div class="demo__ui" data-demo data-i18n={JSON.stringify({ play: d.play, pause: d.pause, sound: d.sound, mute: d.mute, captions: d.captions })}>
+      <div class="tabs" role="tablist" aria-label={d.devicesLabel}>
+        {devices.map((dev) => (
+          <button type="button" role="tab" id={`tab-${dev}`} aria-controls={`panel-${dev}`} aria-selected={dev === first ? "true" : "false"}
+            tabindex={dev === first ? 0 : -1} data-tab={dev}>
+            <Icon name={dev === "phone" ? "phone" : dev === "tablet" ? "sliders" : "server"} />{d.devices[dev]}
+          </button>
+        ))}
+      </div>
+
+      {devices.map((dev) => {
+        const list = scenes[dev];
+        const c = list[0];
+        return (
+          <div class="panel" role="tabpanel" id={`panel-${dev}`} aria-labelledby={`tab-${dev}`} hidden={dev !== first} data-panel={dev}>
+            <div class={`stage stage--${dev}`}>
+              <div class={`device device--${dev}`}>
+                {dev === "desktop" && <div class="chrome" aria-hidden="true"><i></i><i></i><i></i><span>NuOrb</span></div>}
+                <div class="screen">
+                  {c ? (
+                    <video class="vid" playsinline muted={c.loop} loop={c.loop} preload="none" controls poster={c.poster.jpg || c.poster.webp} aria-label={c.alt[lang] || c.alt.en} data-video>
+                      {pick(c.video, ssrWidth[dev]).map((v) => <source src={v.src} type={v.type} />)}
+                      {!c.loop && c.tracks.map((tr) => <track kind="subtitles" src={tr.src} srclang={tr.srclang} label={tr.label} />)}
+                    </video>
+                  ) : (
+                    <div class="empty"><Icon name="play" /><p>{d.unavailable}</p><a class="btn btn--glass btn--sm" href={YOUTUBE.trailer} rel="noopener"><Icon name="youtube" />{d.trailer}</a></div>
+                  )}
+                </div>
+              </div>
+              {c && (
+                <div class="ctrl" data-ctrl hidden>
+                  <button type="button" class="cb" data-act="play" aria-label={d.play}><Icon name="play" class="i-play" /><Icon name="pause" class="i-pause" /></button>
+                  <button type="button" class="cb" data-act="replay" aria-label={d.replay}><Icon name="replay" /></button>
+                  <button type="button" class="cb" data-act="sound" aria-label={d.sound} aria-pressed="false" hidden><Icon name="mute" class="i-mute" /><Icon name="sound" class="i-sound" /></button>
+                  <button type="button" class="cb" data-act="cc" aria-label={d.captions} aria-pressed="false" hidden><Icon name="cc" /></button>
+                  <span class="bar" aria-hidden="true"><i data-progress></i></span>
+                  <button type="button" class="cb" data-act="fs" aria-label={d.fullscreen}><Icon name="expand" /></button>
+                </div>
+              )}
+            </div>
+            <div class="side">
+              <p class="label"><Icon name="shield" />{d.label}</p>
+              {list.length > 0 && (
+                <>
+                  <h3 class="side__t">{d.scenesLabel}</h3>
+                  <ul class="scenes">
+                    {list.map((s, i) => (
+                      <li>
+                        <button type="button" class="scene" aria-pressed={i === 0 ? "true" : "false"} data-scene={clipData(s)} data-desc={s.desc[lang] || s.desc.en}>
+                          <span class="scene__n">{String(i + 1).padStart(2, "0")}</span>
+                          <span class="scene__t">{name(s)}{s.lang !== lang && <em lang={s.lang}> · {s.lang.toUpperCase()}</em>}</span>
+                          <span class="scene__d">{!s.loop && <Icon name="sound" class="snd" />}{s.duration > 0 && mmss(s.duration)}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <p class="desc" data-desc>{c.desc[lang] || c.desc.en}</p>
+                </>
+              )}
+              <p class="reduced" data-reduced hidden>{d.reduced}</p>
+              <a class="yt" href={YOUTUBE.trailer} rel="noopener"><Icon name="youtube" />{d.trailer}<Icon name="external" /></a>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+</section>
+
+<style>
+  .demo { background: linear-gradient(180deg, transparent, rgba(56, 217, 255, .03) 40%, transparent); }
+  .tabs { display: inline-flex; gap: .3rem; padding: .3rem; border: 1px solid var(--line-2); border-radius: 14px; background: var(--glass); margin-bottom: 2rem; flex-wrap: wrap; }
+  .tabs button { display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; padding: .5rem 1rem; border: 0; border-radius: 10px; background: transparent; color: var(--text-2); font: 600 .95rem/1 var(--f-text); cursor: pointer; }
+  .tabs button :global(svg) { width: 18px; height: 18px; }
+  .tabs button[aria-selected="true"] { background: var(--text); color: var(--ink-0); }
+  .tabs button:hover:not([aria-selected="true"]) { color: var(--text); background: var(--glass-2); }
+  .panel { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(260px, .8fr); gap: clamp(1.5rem, 4vw, 3.5rem); align-items: start; }
+  .panel[hidden] { display: none; }
+  .stage { display: grid; gap: .9rem; justify-items: center; }
+  .device { position: relative; width: 100%; background: #0b0f1a; border: 1px solid var(--line-2); box-shadow: 0 40px 120px -30px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.02) inset, 0 0 80px rgba(56,217,255,.06); }
+  .device--desktop { border-radius: 14px; padding: 0 0 0; overflow: hidden; }
+  .chrome { display: flex; align-items: center; gap: .4rem; height: 34px; padding: 0 .9rem; border-bottom: 1px solid var(--line); background: #0e1320; }
+  .chrome i { width: 10px; height: 10px; border-radius: 50%; background: #2a3247; }
+  .chrome span { margin-left: .8rem; font: 500 .75rem/1 var(--f-mono); color: var(--text-3); }
+  .device--desktop .screen { aspect-ratio: 16 / 9; }
+  .device--tablet { max-width: 760px; border-radius: 28px; padding: 18px; }
+  .device--tablet .screen { aspect-ratio: 4 / 3; border-radius: 12px; overflow: hidden; }
+  .device--phone { max-width: 320px; border-radius: 44px; padding: 12px; }
+  .device--phone .screen { aspect-ratio: 9 / 19.5; border-radius: 34px; overflow: hidden; }
+  .screen { position: relative; background: #05060a; }
+  .vid { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #05060a; }
+  .device--desktop .vid, .device--tablet .vid { object-fit: contain; }
+  .empty { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 1rem; padding: 1.5rem; text-align: center; color: var(--text-2); font-size: .95rem; }
+  .empty > :global(svg) { width: 40px; height: 40px; color: var(--cyan); opacity: .6; }
+  .ctrl { display: flex; align-items: center; gap: .4rem; width: min(100%, 560px); padding: .4rem; border: 1px solid var(--line-2); border-radius: 14px; background: rgba(10, 14, 26, .8); }
+  .ctrl[hidden] { display: none; }
+  .stage--phone .ctrl { width: min(100%, 320px); }
+  .cb { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border: 0; border-radius: 10px; background: transparent; color: var(--text); cursor: pointer; }
+  .cb:hover { background: var(--glass-2); }
+  .cb[hidden] { display: none; }
+  .cb :global(svg) { width: 20px; height: 20px; }
+  .cb[aria-pressed="true"] { background: rgba(56, 217, 255, .15); color: var(--cyan); }
+  .cb :global(.i-pause), .cb :global(.i-sound) { display: none; }
+  .is-playing .cb :global(.i-play) { display: none; } .is-playing .cb :global(.i-pause) { display: block; }
+  .cb[aria-pressed="true"] :global(.i-mute) { display: none; } .cb[aria-pressed="true"] :global(.i-sound) { display: block; }
+  .bar { flex: 1; height: 3px; border-radius: 3px; background: var(--line-2); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--cyan); }
+  .side { display: grid; gap: 1.1rem; }
+  .label { display: flex; gap: .6rem; align-items: flex-start; padding: .85rem 1rem; border-radius: var(--r-sm); border: 1px solid rgba(78, 230, 168, .3); background: rgba(78, 230, 168, .06); font-size: .9rem; color: var(--text); }
+  .label :global(svg) { width: 20px; height: 20px; flex: none; color: var(--mint); margin-top: .05rem; }
+  .side__t { font: 500 .78rem/1 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); margin-top: .4rem; }
+  .scenes { list-style: none; padding: 0; margin: 0; display: grid; gap: .35rem; }
+  .scene { width: 100%; display: grid; grid-template-columns: auto 1fr auto; gap: .8rem; align-items: center; min-height: 48px; padding: .65rem .85rem; border: 1px solid var(--line); border-radius: var(--r-sm); background: transparent; color: var(--text-2); font: 500 .95rem/1.3 var(--f-text); text-align: left; cursor: pointer; }
+  .scene:hover { border-color: var(--line-2); color: var(--text); }
+  .scene[aria-pressed="true"] { border-color: rgba(56, 217, 255, .5); background: rgba(56, 217, 255, .07); color: var(--text); }
+  .scene__n { font: 500 .75rem/1 var(--f-mono); color: var(--cyan); }
+  .scene__t em { font-style: normal; font: 500 .72rem/1 var(--f-mono); color: var(--text-3); }
+  .scene__d { display: inline-flex; align-items: center; gap: .35rem; font: 500 .75rem/1 var(--f-mono); color: var(--text-3); }
+  .scene__d :global(.snd) { width: 14px; height: 14px; }
+  .desc { font-size: .92rem; color: var(--text-2); min-height: 3em; }
+  .reduced { font-size: .85rem; color: var(--text-3); }
+  .yt { display: inline-flex; align-items: center; gap: .5rem; font-weight: 600; text-decoration: none; min-height: 44px; }
+  .yt :global(svg) { width: 20px; height: 20px; } .yt :global(svg:last-child) { width: 14px; height: 14px; opacity: .7; }
+  :global(.demo-fs) .vid { object-fit: contain; }
+  @media (max-width: 960px) { .panel { grid-template-columns: 1fr; } }
+  @media (max-width: 520px) { .tabs { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; } .tabs button { justify-content: center; padding: .5rem .4rem; font-size: .88rem; gap: .35rem; } }
+</style>

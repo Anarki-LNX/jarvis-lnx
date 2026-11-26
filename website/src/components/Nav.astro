@@ -1,0 +1,77 @@
+---
+import { GITHUB } from "../config";
+import { t, other, type Lang } from "../i18n";
+import Icon from "./Icon.astro";
+interface Props { lang: Lang; altPath: string; home?: boolean }
+const { lang, altPath, home = true } = Astro.props;
+const d = t(lang);
+const base = home ? "" : `/${lang}/`;
+const links = [
+  ["features", d.nav.features], ["how", d.nav.how], ["demo", d.nav.demo],
+  ["privacy", d.nav.privacy], ["install", d.nav.install], ["faq", d.nav.faq],
+];
+---
+<header class="nav" data-nav>
+  <div class="wrap wrap--wide nav__in">
+    <a class="logo" href={`/${lang}/`} aria-label={d.nav.home}>
+      <span class="logo__orb" aria-hidden="true"></span><span class="logo__txt">NuOrb</span>
+    </a>
+    <nav class="nav__links" aria-label="Main">
+      <ul>{links.map(([id, label]) => <li><a href={`${base}#${id}`}>{label}</a></li>)}</ul>
+    </nav>
+    <div class="nav__tools">
+      <a class="nav__gh" href={GITHUB.repo} rel="noopener" aria-label="GitHub (Anarki-LNX/nuorb)"><Icon name="github" /><span>{d.nav.github}</span></a>
+      <div class="lang" role="group" aria-label={d.nav.language}>
+        <a href={lang === "en" ? Astro.url.pathname : altPath} data-lang="en" hreflang="en" lang="en" aria-current={lang === "en" ? "true" : undefined}>EN</a>
+        <a href={lang === "de" ? Astro.url.pathname : altPath} data-lang="de" hreflang="de" lang="de" aria-current={lang === "de" ? "true" : undefined}>DE</a>
+      </div>
+      <a class="btn btn--primary btn--sm nav__cta" href={`${base}#install`}>{d.nav.cta}</a>
+      <button class="nav__burger" type="button" aria-expanded="false" aria-controls="mobile-menu" data-menu-open>
+        <span class="sr-only">{d.nav.menu}</span><span aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+  <div class="sheet" id="mobile-menu" hidden data-menu>
+    <div class="sheet__in">
+      <button class="sheet__close" type="button" data-menu-close><span class="sr-only">{d.nav.close}</span><span aria-hidden="true">×</span></button>
+      <ul>{links.map(([id, label]) => <li><a href={`${base}#${id}`} data-menu-link>{label}</a></li>)}</ul>
+      <div class="sheet__foot">
+        <a class="btn btn--primary" href={`${base}#install`} data-menu-link>{d.nav.cta}</a>
+        <a class="btn btn--glass" href={GITHUB.repo} rel="noopener"><Icon name="github" />GitHub</a>
+        <a class="btn btn--glass" href={altPath} data-lang={other(lang)} hreflang={other(lang)} lang={other(lang)}>{other(lang) === "de" ? "Deutsch" : "English"}</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<style>
+  .nav { position: sticky; top: 0; z-index: 50; transition: background .3s var(--ease), border-color .3s; border-bottom: 1px solid transparent; }
+  .nav.is-scrolled { background: rgba(5, 6, 10, .62); backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%); border-color: var(--line); }
+  .nav__in { height: 68px; display: flex; align-items: center; gap: 1.5rem; }
+  .logo { display: inline-flex; align-items: center; gap: .6rem; min-height: 44px; color: var(--text); text-decoration: none; font: 700 1.2rem/1 var(--f-display); letter-spacing: -.01em; }
+  .logo__orb { width: 22px; height: 22px; border-radius: 50%; background: radial-gradient(circle at 50% 38%, rgba(56,217,255,.5), #02101a 62%, rgba(56,217,255,.7) 92%);
+    box-shadow: 0 0 0 1.5px rgba(56,217,255,.9), 0 0 16px rgba(56,217,255,.5); }
+  .nav__links { margin-left: auto; }
+  .nav__links ul { display: flex; gap: .2rem; list-style: none; margin: 0; padding: 0; }
+  .nav__links a { display: block; padding: .55rem .7rem; color: var(--text-2); text-decoration: none; font-size: .95rem; border-radius: 8px; }
+  .nav__links a:hover { color: var(--text); background: var(--glass); }
+  .nav__tools { display: flex; align-items: center; gap: .6rem; }
+  .nav__gh { display: inline-flex; align-items: center; gap: .4rem; color: var(--text-2); text-decoration: none; padding: .5rem .6rem; border-radius: 8px; font-size: .95rem; min-height: 44px; }
+  .nav__gh:hover { color: var(--text); background: var(--glass); }
+  .nav__gh :global(svg) { width: 20px; height: 20px; }
+  .lang { display: inline-flex; border: 1px solid var(--line-2); border-radius: 10px; padding: 3px; }
+  .lang a { display: grid; place-items: center; min-width: 40px; min-height: 36px; padding: 0 .5rem; color: var(--text-2); text-decoration: none; font: 600 .8rem/1 var(--f-mono); border-radius: 7px; }
+  .lang a[aria-current="true"] { background: var(--glass-2); color: var(--text); }
+  .nav__burger { display: none; width: 44px; height: 44px; border: 1px solid var(--line-2); background: var(--glass); border-radius: 10px; cursor: pointer; position: relative; }
+  .nav__burger span[aria-hidden], .nav__burger span[aria-hidden]::before, .nav__burger span[aria-hidden]::after { position: absolute; left: 12px; right: 12px; height: 1.5px; background: var(--text); content: ""; }
+  .nav__burger span[aria-hidden] { top: 21px; } .nav__burger span[aria-hidden]::before { top: -6px; left: 0; right: 0; } .nav__burger span[aria-hidden]::after { top: 6px; left: 0; right: 0; }
+  .sheet { position: fixed; inset: 0; z-index: 60; background: rgba(5, 6, 10, .96); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+  .sheet__in { height: 100%; display: flex; flex-direction: column; padding: 1.25rem var(--pad) 2rem; overflow-y: auto; }
+  .sheet__close { align-self: flex-end; width: 44px; height: 44px; border: 1px solid var(--line-2); background: var(--glass); color: var(--text); border-radius: 10px; font-size: 1.6rem; cursor: pointer; }
+  .sheet ul { list-style: none; padding: 0; margin: 1.5rem 0 2rem; display: grid; gap: .25rem; }
+  .sheet ul a { display: block; padding: .8rem .2rem; font: 600 1.6rem/1.2 var(--f-display); color: var(--text); text-decoration: none; border-bottom: 1px solid var(--line); }
+  .sheet__foot { display: grid; gap: .7rem; margin-top: auto; }
+  @media (max-width: 1080px) { .nav__links { display: none; } .nav__tools { margin-left: auto; } }
+  @media (max-width: 760px) { .nav__gh span, .nav__cta { display: none; } .nav__burger { display: block; } .nav__gh { display: none; } }
+  @media (min-width: 761px) { .sheet { display: none !important; } }
+</style>

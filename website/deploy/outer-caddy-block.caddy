@@ -1,0 +1,12 @@
+# Block für das Caddyfile des äußeren Caddy (Repo wetter-crinitz, server/caddy/Caddyfile). Einmalig eintragen,
+# vorher Sicherung anlegen, danach "caddy validate". TLS-Zertifikat holt Caddy automatisch (Let's Encrypt).
+# NuOrb-Website (Repo Anarki-LNX/nuorb, Ordner website/, /opt/nuorb-site). Der Container heißt im Netz "web" "nuorb-site".
+nuorb.loopout.tech {
+	import sicherheit
+	reverse_proxy nuorb-site:8080
+	handle_errors 502 503 504 {
+		header Retry-After "20"
+		header Cache-Control "no-store"
+		respond "NuOrb: gleich wieder da / back in a moment." 503
+	}
+}
