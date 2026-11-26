@@ -34,20 +34,12 @@ export const YOUTUBE = {
 export const PAYPAL_URL: string | null = "https://www.paypal.me/HenryMeinekat";
 export const validPaypal = (u: string | null): u is string => !!u && /^https:\/\/(www\.paypal\.com|(www\.)?paypal\.me)\/[\w\-./]+$/.test(u);
 
-// Impressum (§ 5 DDG). NUR der Betreiber trägt diese Angaben selbst ein – nichts erfinden, nichts aus anderen Quellen
-// übernehmen. Solange ein Wert mit "[" beginnt, gilt er als Platzhalter: die Seite zeigt ihn sichtbar markiert, und
-// ein Release-Build (NUORB_RELEASE=1, deploy/ausrollen.sh) bricht ab.
-export const IMPRINT = {
-  name: "[Vor- und Nachname – vom Betreiber einzutragen]",
-  street: "[Straße und Hausnummer – vom Betreiber einzutragen]",
-  city: "[PLZ und Ort – vom Betreiber einzutragen]",
-  country: "Deutschland",
-  email: "[E-Mail-Adresse – vom Betreiber einzutragen]",
-  // optional, nach § 18 Abs. 2 MStV nur bei journalistisch-redaktionellen Inhalten nötig; leer lassen = nicht angezeigt
-  editorial: "",
+// Rechtliches: gleicher Betreiber wie loopout.tech. Das dortige Impressum (§ 5 DDG, § 18 Abs. 2 MStV) deckt diese
+// Subdomain ab (geprüft von der Koordination am 26.11.2026) – nur verlinken, keine Personendaten kopieren.
+export const LEGAL = {
+  imprintDe: "https://loopout.tech/impressum",
+  imprintEn: "https://loopout.tech/en/imprint",
 };
-export const isPlaceholder = (v: string) => v.trim().startsWith("[");
-export const imprintComplete = () => !Object.entries(IMPRINT).some(([k, v]) => k !== "editorial" && (!v || isPlaceholder(v)));
 
 // Lizenzen der Drittkomponenten (Repo, gepflegt von der Docker-Sitzung)
 export const THIRD_PARTY = "https://github.com/Anarki-LNX/nuorb/blob/main/THIRD_PARTY_LICENSES.md";

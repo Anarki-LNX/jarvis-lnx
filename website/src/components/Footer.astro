@@ -1,6 +1,6 @@
 ---
-import { t, policyPath, imprintPath, type Lang } from "../i18n";
-import { GITHUB, YOUTUBE, PAYPAL_URL, THIRD_PARTY, validPaypal } from "../config";
+import { t, policyPath, type Lang } from "../i18n";
+import { GITHUB, LEGAL, YOUTUBE, PAYPAL_URL, THIRD_PARTY, validPaypal } from "../config";
 interface Props { lang: Lang; home?: boolean }
 const { lang, home = true } = Astro.props;
 const d = t(lang);
@@ -38,7 +38,7 @@ const pp = validPaypal(PAYPAL_URL) ? PAYPAL_URL : null;
         </ul></div>
         <div><h2>{f.legal}</h2><ul>
           <li><a href={policyPath(lang)}>{f.privacyPolicy}</a></li>
-          <li><a href={imprintPath(lang)}>{f.imprint}</a></li>
+          <li><a href={lang === "de" ? LEGAL.imprintDe : LEGAL.imprintEn} rel="noopener">{f.imprint}</a></li>
           <li><a href={GITHUB.license} rel="noopener">{d.oss.links.license}</a></li>
           <li><a href={THIRD_PARTY} rel="noopener">{f.licenses}</a></li>
         </ul></div>

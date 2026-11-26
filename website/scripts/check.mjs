@@ -27,15 +27,12 @@ if (existsSync(deployDir)) srcFiles.push(...walk(deployDir));
 const rules = [
   [/\b(?:10\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])|192\.168)\.\d{1,3}\.\d{1,3}\b/g, (m) => m !== "192.168.1.50", "private IP"],
   [/\b(?:100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7]))\.\d{1,3}\.\d{1,3}\b/g, () => true, "Tailscale-IP"],
-  [/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, (m) => m !== imprintEmail && !/^(noreply|git)@/.test(m) && !/@\d/.test(m) && !/\.(png|webp|jpg|svg|woff2)$/.test(m), "E-Mail-Adresse"],
+  [/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, (m) => !/^(noreply|git)@/.test(m) && !/@\d/.test(m) && !/\.(png|webp|jpg|svg|woff2)$/.test(m), "E-Mail-Adresse"],
   [/\b(?:sk-ant-[\w-]{10,}|sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|github_pat_\w{20,}|AKIA[0-9A-Z]{16}|xox[bap]-[\w-]{10,})/g, () => true, "Schlüssel/Token"],
   [/-----BEGIN [A-Z ]*PRIVATE KEY-----/g, () => true, "privater Schlüssel"],
   [/\/home\/[a-z_][\w-]*/g, () => true, "lokaler Pfad"],
   [/\bnuorb\b/gi, () => true, "alter Name „NuOrb“"],
 ];
-// Die selbst eingetragene Impressums-Adresse ist die einzige erlaubte E-Mail-Adresse (öffentlich gewollt).
-const cfgText = readFileSync(join(web, "src/config.ts"), "utf8");
-const imprintEmail = (/IMPRINT = \{[\s\S]*?email:\s*"([^"]*)"/.exec(cfgText) || [])[1] || "";
 const scan = (file, text) => {
   for (const [re, keep, what] of rules) for (const m of text.match(re) || []) if (keep(m)) err(`Datenschutz: ${what} „${m}“ in ${relative(web, file)}`);
 };
@@ -110,13 +107,6 @@ for (const f of distFiles.filter((x) => x.endsWith(".js"))) {
 for (const f of htmlFiles) for (const m of readFileSync(f, "utf8").matchAll(/<a\b[^>]*href="https:\/\/[^"]*"[^>]*>/gi)) {
   if (!/rel="[^"]*noopener/.test(m[0])) err(`Externer Link ohne noopener in ${relative(dist, f)}: ${m[0].slice(0, 80)}`);
   if (/paypal/i.test(m[0]) && !/rel="[^"]*noreferrer/.test(m[0])) err(`PayPal-Link ohne noreferrer in ${relative(dist, f)}`);
-}
-
-// 6c) Impressum: Platzhalter sind im Entwicklungs-Build erlaubt (sichtbar markiert), im Release-Build (NUORB_RELEASE=1) nicht
-const placeholders = htmlFiles.filter((f) => readFileSync(f, "utf8").includes("vom Betreiber einzutragen"));
-if (placeholders.length) {
-  if (process.env.NUORB_RELEASE === "1") err(`Impressum unvollständig (Platzhalter in ${placeholders.map((f) => relative(dist, f)).join(", ")}) – erst src/config.ts IMPRINT ausfüllen`);
-  else console.warn(`⚠ Impressum enthält noch Platzhalter (${placeholders.length} Seiten) – Release-Build wird abgelehnt.`);
 }
 
 // 7) Caddyfile im Container setzt genau die Header aus deploy/headers.json (auch der lokale Testserver nutzt sie)
