@@ -44,7 +44,8 @@ const need = new Set();
 const use = (f) => { need.add(f); return "/media/" + f; };
 let clips = [];
 
-const HOLD = new Set(["desktop-setup-en", "install-tutorial-en"]);
+// Clips, die vorübergehend nicht veröffentlicht werden (z. B. bis zu einer Neuaufnahme). Derzeit keine.
+const HOLD = new Set([]);
 
 function fromClipsFormat(list) {
   // Varianten (Größen) je Szene zusammenfassen; "-sound"-Szenen an den stummen Loop hängen.
@@ -53,8 +54,6 @@ function fromClipsFormat(list) {
     if (!["desktop", "tablet", "phone"].includes(c.device)) continue;
     // Social-Kurzfilme (eingeblendete Überschriften, YouTube-End-Karte) gehören nicht auf die Website
     if (String(c.clip || c.id).startsWith("phone-short-")) continue;
-    // Vorerst zurückgehalten: zeigen die in v0.6.3 entfernte Stimme „Alan“ im Einrichtungsassistenten. Die Video-Sitzung
-    // nimmt sie mit Joe unter gleichem Namen neu auf → dann hier austragen.
     if (HOLD.has(String(c.clip || c.id))) { log("zurückgehalten:", c.id); continue; }
     const files = [...(c.sources || []).map((x) => x.src), ...Object.values(c.poster || {}), ...(c.tracks || []).map((x) => x.src)];
     if (!c.sources?.length || files.some((f) => !okPath(f))) { log("übersprungen (Datei fehlt oder ungültiger Pfad):", c.id); continue; }
