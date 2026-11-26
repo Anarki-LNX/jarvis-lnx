@@ -19,7 +19,7 @@ fi
 TAG="$(date +%Y-%m-%d-%H%M)"
 export TMPDIR="$PWD/.tmp"; mkdir -p "$TMPDIR"
 nice -n 19 npm ci --no-audit --no-fund
-NUORB_RELEASE=1 nice -n 19 npm run build   # Release: bricht bei Impressum-Platzhaltern ab; enthält scripts/check.mjs (Datenschutz-Scan, Links, i18n, keine Fremd-Ressourcen)
+nice -n 19 npm run build          # enthält scripts/check.mjs (Datenschutz-Scan, Links, i18n, keine Fremd-Ressourcen)
 nice -n 19 npm run typecheck
 nice -n 19 node tools/audit.mjs   # Browser-Prüfung (Konsole, CSP, Requests, Layout)
 nice -n 19 docker build --pull -t "nuorb-site:$TAG" -f deploy/Dockerfile .

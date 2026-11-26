@@ -49,6 +49,8 @@ function fromClipsFormat(list) {
   const groups = new Map();
   for (const c of list) {
     if (!["desktop", "tablet", "phone"].includes(c.device)) continue;
+    // Social-Kurzfilme (eingeblendete Überschriften, YouTube-End-Karte) gehören nicht auf die Website
+    if (String(c.clip || c.id).startsWith("phone-short-")) continue;
     const files = [...(c.sources || []).map((x) => x.src), ...Object.values(c.poster || {}), ...(c.tracks || []).map((x) => x.src)];
     if (!c.sources?.length || files.some((f) => !okPath(f))) { log("übersprungen (Datei fehlt oder ungültiger Pfad):", c.id); continue; }
     const key = String(c.clip || c.id.replace(/-\d+$/, ""));

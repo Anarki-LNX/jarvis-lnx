@@ -73,6 +73,8 @@ const en = {
     loading: "Loading video…",
     unavailable: "This recording is being prepared. Watch the full trailer on YouTube in the meantime.",
     trailer: "Watch the full trailer on YouTube",
+    trailerNote: "The trailer scenes still show the earlier installation with git clone and docker compose. Today one command is enough:",
+    trailerNoteLink: "see Installation",
     reduced: "Videos do not start on their own because your system prefers reduced motion.",
   },
   features: {
@@ -290,22 +292,11 @@ const en = {
     text: "This page does not exist. The orb is still here, though.",
     home: "Back to NuOrb",
   },
-  imprint: {
-    title: "Imprint",
-    basis: "Information pursuant to § 5 DDG (German Digital Services Act)",
-    provider: "Provider",
-    contact: "Contact",
-    email: "E-mail",
-    editorial: "Responsible for content pursuant to § 18 (2) MStV",
-    incomplete: "This imprint is not complete yet. The operator enters the missing details before the website goes live.",
-    project: "NuOrb is a non-commercial open-source hobby project. Questions about the software:",
-    links: "Despite careful checks, we accept no liability for the content of external links. The operators of the linked pages are solely responsible for their content.",
-  },
   policy: {
     title: "Privacy policy for this website",
     updated: "Last updated: 26 November 2026",
     sections: [
-      ["Who is responsible", "The operator named in the imprint of this website."],
+      ["Who is responsible", "This website is run by the operator of loopout.tech. Name, address and contact details are in the imprint of loopout.tech, which also covers this website."],
       ["Hosting", "The website runs on a server rented from IONOS SE, Elgendorfer Str. 57, 56410 Montabaur, Germany. To deliver the pages, the server necessarily processes your IP address and the requested address (Art. 6(1)(f) GDPR: legitimate interest in operating the website securely)."],
       ["Server logs", "No access logs are kept: neither the web server of this site nor the upstream reverse proxy record which pages you visit. Only if a request fails with a server error (HTTP 5xx) does the reverse proxy write that request including the IP address to its error log for troubleshooting. This log is rotated automatically (at most 3 × 10 MB) and is not evaluated otherwise (Art. 6(1)(f) GDPR)."],
       ["No cookies, no tracking", "This website sets no cookies and uses no analytics, advertising or tracking services. Fonts, images, videos and scripts are served exclusively from this server. No third-party content is embedded."],

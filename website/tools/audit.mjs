@@ -15,7 +15,7 @@ mkdirSync(outDir, { recursive: true });
 const full = process.argv.includes("--full");
 const reducedRun = process.argv.includes("--reduced");
 const PORT = 4499, CDP = 9400 + Math.floor(Math.random() * 300), ORIGIN = `http://127.0.0.1:${PORT}`;
-const pages = ["/", "/en/", "/en/?orb=webgl", "/de/", "/en/privacy/", "/de/datenschutz/", "/en/imprint/", "/de/impressum/", "/does-not-exist"];
+const pages = ["/", "/en/", "/en/?orb=webgl", "/de/", "/en/privacy/", "/de/datenschutz/", "/does-not-exist"];
 const viewports = [
   ["desktop", 1440, 900, 1, false], ["laptop", 1280, 720, 1, false],
   ["tablet-p", 820, 1180, 2, true], ["tablet-l", 1180, 820, 2, true],

@@ -75,6 +75,8 @@ const de: Dict = {
     loading: "Video wird geladen …",
     unavailable: "Diese Aufnahme wird gerade vorbereitet. Den ganzen Trailer gibt es solange auf YouTube.",
     trailer: "Ganzen Trailer auf YouTube ansehen",
+    trailerNote: "Die Trailer-Szenen zeigen noch die frühere Installation mit git clone und docker compose. Heute genügt ein Befehl:",
+    trailerNoteLink: "siehe Installation",
     reduced: "Videos starten nicht von selbst, weil dein System reduzierte Bewegung bevorzugt.",
   },
   features: {
@@ -292,22 +294,11 @@ const de: Dict = {
     text: "Diese Seite gibt es nicht. Der Orb ist aber noch da.",
     home: "Zurück zu NuOrb",
   },
-  imprint: {
-    title: "Impressum",
-    basis: "Angaben gemäß § 5 DDG",
-    provider: "Anbieter",
-    contact: "Kontakt",
-    email: "E-Mail",
-    editorial: "Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV",
-    incomplete: "Dieses Impressum ist noch nicht vollständig. Der Betreiber trägt die fehlenden Angaben vor dem Livegang ein.",
-    project: "NuOrb ist ein nicht kommerzielles Open-Source-Hobbyprojekt. Fragen zur Software bitte über",
-    links: "Trotz sorgfältiger Prüfung übernehmen wir keine Haftung für die Inhalte externer Links. Für den Inhalt der verlinkten Seiten sind ausschließlich deren Betreiber verantwortlich.",
-  },
   policy: {
     title: "Datenschutzerklärung dieser Website",
     updated: "Stand: 26. November 2026",
     sections: [
-      ["Verantwortlicher", "Der im Impressum dieser Website genannte Betreiber."],
+      ["Verantwortlicher", "Diese Website betreibt der Betreiber von loopout.tech. Name, Anschrift und Kontakt stehen im Impressum von loopout.tech, das auch für diese Website gilt."],
       ["Hosting", "Die Website läuft auf einem gemieteten Server der IONOS SE, Elgendorfer Str. 57, 56410 Montabaur. Um die Seiten auszuliefern, verarbeitet der Server zwangsläufig deine IP-Adresse und die aufgerufene Adresse (Art. 6 Abs. 1 lit. f DSGVO: berechtigtes Interesse am sicheren Betrieb der Website)."],
       ["Server-Logs", "Es werden keine Zugriffsprotokolle geführt: Weder der Webserver dieser Seite noch der vorgeschaltete Reverse Proxy speichern, welche Seiten du aufrufst. Nur wenn eine Anfrage mit einem Serverfehler (HTTP 5xx) scheitert, schreibt der Reverse Proxy diese Anfrage samt IP-Adresse zur Fehlersuche in sein Fehlerprotokoll. Es wird automatisch rotiert (höchstens 3 × 10 MB) und nicht anderweitig ausgewertet (Art. 6 Abs. 1 lit. f DSGVO)."],
       ["Keine Cookies, kein Tracking", "Diese Website setzt keine Cookies und nutzt keine Analyse-, Werbe- oder Tracking-Dienste. Schriften, Bilder, Videos und Skripte kommen ausschließlich von diesem Server. Es sind keine Inhalte Dritter eingebunden."],
