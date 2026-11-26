@@ -83,7 +83,7 @@ const en = {
     items: {
       assistant: {
         title: "Your own AI assistant",
-        text: "NuOrb introduces itself on first start, learns your name and answers to whatever name you give it – just say “From now on you're Max”. Persona, memory and skills are yours to configure.",
+        text: "NuOrb introduces itself on first start, learns your name and takes on any name you give it – just say “From now on you're Max” (the wake word stays “Hey NuOrb”). Persona, memory and skills are yours to configure.",
       },
       talk: {
         title: "Talk naturally",
@@ -116,7 +116,7 @@ const en = {
       },
       languages: {
         title: "German & English",
-        text: "Full user interface, speech recognition and voices in German and English (Thorsten and Kerstin for German, Amy for English).",
+        text: "Full user interface, speech recognition and voices in German and English (Thorsten for German, Joe for English – both freely licensed under CC0).",
       },
     },
     shots: {
@@ -233,7 +233,7 @@ const en = {
     },
     release: "Latest release",
     aiNote: "NuOrb is developed with substantial help from AI. The AI declaration explains how.",
-    credits: "Built on Hermes Agent, Ollama, sherpa-onnx with NVIDIA Parakeet, Piper and the Thorsten voice, NixOS and more – see the credits in the README.",
+    credits: "Built on Hermes Agent, Ollama, sherpa-onnx with NVIDIA Parakeet, Piper with the Thorsten and Joe voices, NixOS and more – see the credits in the README.",
   },
   support: {
     kicker: "Support",

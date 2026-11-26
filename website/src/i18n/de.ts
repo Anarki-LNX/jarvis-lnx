@@ -85,7 +85,7 @@ const de: Dict = {
     items: {
       assistant: {
         title: "Dein eigener KI-Assistent",
-        text: "NuOrb stellt sich beim ersten Start vor, lernt deinen Namen und hört auf jeden Namen, den du ihm gibst – sag einfach „Ab jetzt heißt du Max“. Persona, Gedächtnis und Skills richtest du selbst ein.",
+        text: "NuOrb stellt sich beim ersten Start vor, lernt deinen Namen und nimmt jeden Namen an, den du ihm gibst – sag einfach „Ab jetzt heißt du Max“ (das Weckwort bleibt „Hey NuOrb“). Persona, Gedächtnis und Skills richtest du selbst ein.",
       },
       talk: {
         title: "Natürlich sprechen",
@@ -118,7 +118,7 @@ const de: Dict = {
       },
       languages: {
         title: "Deutsch & Englisch",
-        text: "Komplette Oberfläche, Spracherkennung und Stimmen auf Deutsch und Englisch (Thorsten und Kerstin für Deutsch, Amy für Englisch).",
+        text: "Komplette Oberfläche, Spracherkennung und Stimmen auf Deutsch und Englisch (Thorsten für Deutsch, Joe für Englisch – beide frei lizenziert unter CC0).",
       },
     },
     shots: {
@@ -235,7 +235,7 @@ const de: Dict = {
     },
     release: "Aktuelles Release",
     aiNote: "NuOrb entsteht mit viel Hilfe von KI. Wie genau, steht in der KI-Erklärung.",
-    credits: "Aufgebaut auf Hermes Agent, Ollama, sherpa-onnx mit NVIDIA Parakeet, Piper und der Thorsten-Stimme, NixOS und mehr – siehe Credits im README.",
+    credits: "Aufgebaut auf Hermes Agent, Ollama, sherpa-onnx mit NVIDIA Parakeet, Piper mit den Stimmen Thorsten und Joe, NixOS und mehr – siehe Credits im README.",
   },
   support: {
     kicker: "Unterstützen",
