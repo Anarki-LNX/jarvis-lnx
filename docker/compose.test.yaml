@@ -1,8 +1,10 @@
 # Nur für den lokalen Testlauf auf einem Rechner OHNE Docker-Bridge-Netz (z. B. ip_forward=0):
 # Host-Netz, eigene Ports (19xxx), eigenes Projekt -> berührt keine produktive Installation.
 #   docker compose -p nuorb-test -f compose.yaml -f compose.test.yaml --env-file .env.test up -d --build
+# Eigener Containername und EIGENE Volumes – nie die echten nuorb_* einer Installation auf demselben Rechner.
 services:
   nuorb:
+    container_name: nuorb-test
     build:
       network: host
     image: nuorb:test
@@ -16,3 +18,10 @@ services:
       HERMES_API_PORT: "19642"
       STT_ROUTER_PORT: "19178"
       NUORB_UI_PORT_PUBLIC: "19443"
+volumes:
+  data:
+    name: nuorb-test_data
+  models:
+    name: nuorb-test_models
+  ollama:
+    name: nuorb-test_ollama

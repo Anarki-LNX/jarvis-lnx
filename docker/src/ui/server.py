@@ -198,9 +198,11 @@ client: httpx.AsyncClient | None = None
 async def lifespan(_app):
     global client
     client = httpx.AsyncClient(timeout=httpx.Timeout(30, connect=2))
-    # Stimme vorwaermen, damit der erste Satz nicht 1–2 s Ladezeit kostet
-    asyncio.get_running_loop().run_in_executor(None, tts_engine.load)
+    # Stimme vorwaermen, damit der erste Satz nicht 1–2 s Ladezeit kostet. Im Docker-Image laedt ein anderer Dienst
+    # die Stimmen erst beim ersten Start herunter: dann ruhig warten statt FileNotFoundError ins Log zu schreiben.
+    warm = asyncio.create_task(warm_voice())
     yield
+    warm.cancel()
     await client.aclose()
 
 
@@ -989,6 +991,28 @@ async def widgets():
 
 
 # --------------------------------------------------------------------------- TTS (Piper)
+def _ort_explicit_threads(ort) -> None:
+    """Piper legt die ONNX-Session mit Standard-Optionen an (0 Threads = automatisch). Dann setzt onnxruntime die
+    CPU-Affinitaet selbst und schreibt in Containern/LXC „pthread_setaffinity_np failed“ als [E] ins Log. Mit
+    ausdruecklicher Thread-Zahl entfaellt das (gleiche Leistung)."""
+    if getattr(ort, "_nuorb_threads", False):
+        return
+    orig = ort.InferenceSession
+
+    class Session(orig):
+        def __init__(self, path_or_bytes, sess_options=None, *args, **kwargs):
+            if sess_options is None:
+                sess_options = ort.SessionOptions()
+            if not sess_options.intra_op_num_threads:
+                sess_options.intra_op_num_threads = max(1, len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else (os.cpu_count() or 2))
+            if not sess_options.inter_op_num_threads:
+                sess_options.inter_op_num_threads = 1
+            super().__init__(path_or_bytes, sess_options, *args, **kwargs)
+
+    ort.InferenceSession = Session
+    ort._nuorb_threads = True
+
+
 class PiperTTS:
     def __init__(self, path: str):
         self.path = path
@@ -1007,6 +1031,7 @@ class PiperTTS:
             try:  # keine Telemetrie von onnxruntime
                 import onnxruntime
                 onnxruntime.disable_telemetry_events()
+                _ort_explicit_threads(onnxruntime)
             except Exception:
                 pass
             from piper import PiperVoice
@@ -1032,6 +1057,25 @@ class PiperTTS:
 
 
 tts_engine = PiperTTS(cur_voice())
+
+
+def voice_ready(path: str) -> bool:
+    return Path(path).is_file() and Path(path + ".json").is_file()
+
+
+async def warm_voice() -> None:
+    said = False
+    while not voice_ready(cur_voice()):
+        if not said:
+            print(f"Piper: waiting for voice download ({Path(cur_voice()).name}) – Sprachausgabe startet danach", flush=True)
+            said = True
+        await asyncio.sleep(5)
+    if said:
+        print(f"Piper: voice available ({Path(cur_voice()).name})", flush=True)
+    try:
+        await asyncio.get_running_loop().run_in_executor(None, tts_engine.load)
+    except Exception as exc:
+        print(f"Piper: Stimme nicht ladbar ({exc.__class__.__name__}: {str(exc)[:120]})", flush=True)
 
 _MD = [
     (re.compile(r"\[(?:Es ist )?[^\]]{0,40}\d{1,2}:\d{2}[^\]]{0,200}\]"), " "),
@@ -1075,6 +1119,8 @@ async def tts(request: Request):
             raise HTTPException(400, "Tempo muss zwischen 0,6 und 1,6 liegen.")
     if not text:
         return Response(status_code=204)
+    if not voice_ready(path or cur_voice()):  # Stimme noch nicht heruntergeladen (Docker-Erststart)
+        return JSONResponse({"detail": "voice not ready", "code": "voice_loading"}, status_code=503)
     async with tts_engine._lock:  # ein Synthese-Job zur Zeit; Saetze kommen ohnehin nacheinander
         wav = await asyncio.get_running_loop().run_in_executor(None, tts_engine.synth, text, path, ls)
     return Response(wav, media_type="audio/wav", headers={"Cache-Control": "no-store"})

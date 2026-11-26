@@ -1,10 +1,10 @@
 # NuOrb-Server – Installation: .env.example nach .env kopieren, anpassen, dann `docker compose up -d`.
 # Details: README.md
-# Projektname bleibt „nuorb“: Daran hängen die Volume-Namen (nuorb_data, nuorb_models) bestehender Installationen.
 name: nuorb
 
 services:
   nuorb:
+    container_name: nuorb
     # Fertiges Image von GitHub (amd64/arm64). Ist es (noch) nicht abrufbar, baut Compose es aus diesem Ordner.
     image: ghcr.io/anarki-lnx/nuorb:${NUORB_VERSION:-latest}
     build:
@@ -55,7 +55,12 @@ services:
     #     reservations:
     #       devices: [{ driver: nvidia, count: all, capabilities: [gpu] }]
 
+# Feste Volume-Namen: Installationen bis v0.3.x (Projekt „nuorb“) nutzen ihre Daten weiter, auch neue
+# Installationen bekommen diese Namen. Nicht ändern, sonst startet NuOrb mit leeren Daten.
 volumes:
   data:
+    name: nuorb_data
   models:
+    name: nuorb_models
   ollama:
+    name: nuorb_ollama
