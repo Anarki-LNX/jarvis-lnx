@@ -487,12 +487,16 @@ async def ask(request: Request):
     elif isinstance(dev, str) and dev.strip():  # Gerätestatus vom Smartphone, kurz und bereinigt
         parts.append("Smartphone: " + re.sub(r"[^\w %,.°äöüÄÖÜß-]", "", dev)[:140])
     avail = body.get("wake_available")
-    phrase = re.sub(r"[^\w .äöüÄÖÜß-]", "", str(body.get("wake_phrase") or "")).strip()[:30] or ui_cfg()["wake_phrase"] or "Weckwort"
+    uc = ui_cfg()
+    phrase = (re.sub(r"[^\w .äöüÄÖÜß-]", "", str(body.get("wake_phrase") or "")).strip()[:30] or uc["wake_phrase"]
+              or "Hey " + (uc["brand"].capitalize() if uc["brand"].isupper() else uc["brand"]))  # wie cur_persona
     on = (body.get("wake") is True) if android else (cfg().get("wake_word") is True)
     if avail is False:
         parts.append("kein Weckwort")
+    elif on:
+        parts.append(f"Weckwort „{phrase}“ an")
     else:
-        parts.append(f"Weckwort „{phrase}“ " + ("an" if on else "aus"))
+        parts.append("Weckwort aus")
     zeit = "[" + "; ".join(parts) + "]"
     payload = {"input": f"{zeit} {text}", "session_id": session_id, "instructions": cur_persona(),
                # Sprach-Runs ohne Denkphase: ~10x schneller bis zum ersten Satz (Messung ki-backend)
