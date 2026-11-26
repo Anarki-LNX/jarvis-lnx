@@ -126,7 +126,9 @@ Docker meldet beim ersten Start einmalig, dass die Volumes von einem anderen Pro
 * **Bestätigungskarten:** Vor gefährlichen Aktionen fragt NuOrb nach (`approvals.mode: manual`). Der Agent hat ein
   Terminal *im Container*; der Container ist seine Sandbox.
 * **Keine Telemetrie**, keine Update-Checks. Nach außen geht nur: Claude (Gesprächstext, wenn gewählt) und die
-  einmaligen Modell-Downloads.
+  einmaligen Modell-Downloads. onnxruntime (ab 1.32) würde von sich aus Nutzungsdaten an Microsoft senden; das Image
+  schaltet das für jeden Prozess ab (`ORT_DISABLE_TELEMETRY=1`). Nachprüfen, komplett offline:
+  `tools/telemetry-check.sh ghcr.io/anarki-lnx/nuorb:latest`.
 * **Schlüssel** im Admin-Panel eingeben (oder einmalig per `.env`; danach dort löschen).
 
 ### Zertifikat
@@ -163,8 +165,9 @@ selben Compose-Projekt: `docker compose --profile ollama up -d`, Adresse dann `h
 legst du in der Einrichtung fest oder einfach im Gespräch: „Ab jetzt heißt du Max.“ Beim ersten Gespräch stellt er
 sich vor und fragt auch nach deinem Namen.
 
-Sprache **Deutsch oder Englisch** wählst du in der Einrichtung (Oberfläche: `UI_LANG=auto` folgt der Gerätesprache; Admin-Webinterface: `ADMIN_LANG=en` oder `de`, im Browser umschaltbar); dazu passende Stimmen (Thorsten, Kerstin; Alan, Ryan,
-Amy). Stimmen-Lizenzen: <https://huggingface.co/rhasspy/piper-voices> (Thorsten: CC0). 
+Sprache **Deutsch oder Englisch** wählst du in der Einrichtung (Oberfläche: `UI_LANG=auto` folgt der Gerätesprache; Admin-Webinterface: `ADMIN_LANG=en` oder `de`, im Browser umschaltbar); dazu passende Stimmen: Thorsten (Deutsch) und Joe (Englisch), beide CC0 und auch kommerziell nutzbar. Bis v0.6.2
+angebotene Stimmen ohne diese Freigabe (Alan, Ryan, Amy, Kerstin low, Thorsten high) stellt das Update automatisch um
+und löscht ihre Dateien; Details in `THIRD_PARTY_LICENSES.md`. 
 
 Optionales Weckwort in der App: Die openWakeWord-Dateien (`melspectrogram.tflite`, `embedding_model.tflite`,
 `hey_jarvis_v0.1.tflite`) können im Volume unter `jarvis/wakeword/` liegen; die App fragt sonst selbst beim

@@ -106,7 +106,8 @@ def restart_gateways() -> None:
 
 
 def voice_name() -> str:
-    return jc.env("JARVIS_VOICE") or ("en_GB-alan-medium" if jc.lang() == "en" else "de_DE-thorsten-medium")
+    v = jc.env("JARVIS_VOICE") or jc.DEFAULT_VOICE["en" if jc.lang() == "en" else "de"]
+    return jc.voice_replacement(v) or v
 
 
 def first_config() -> None:
@@ -293,6 +294,38 @@ def upgrade_persona() -> None:
         log("Persona updated: internal system info is never read aloud or quoted.")
 
 
+def migrate_voices() -> None:
+    """v0.6.3: Stimmen ohne Freigabe für kommerzielle Nutzung (jc.RESTRICTED_VOICE) ersetzen – EN → Joe, DE → Thorsten –
+    in ui.json und der Hermes-Konfiguration, und ihre Dateien aus dem Modell-Volume löschen."""
+    f = jc.CONF / "ui.json"
+    ui = json.loads(f.read_text(encoding="utf-8")) if f.is_file() else None
+    if ui is not None:
+        cur = ui.get("piper_voice") if isinstance(ui.get("piper_voice"), str) and ui.get("piper_voice") else jc.env("JARVIS_VOICE")
+        new = jc.voice_replacement(cur or "")
+        if new:
+            ui["piper_voice"] = new
+            tmp = f.with_name(".ui.json.voice")
+            tmp.write_text(json.dumps(ui, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            os.chmod(tmp, f.stat().st_mode & 0o777)
+            os.replace(tmp, f)
+            log(f"Voice {cur} is not licensed for commercial use - switched to {new}.")
+            if jc.voice_replacement(jc.env("JARVIS_VOICE")):
+                log(f"Please remove JARVIS_VOICE={jc.env('JARVIS_VOICE')} from your .env (ignored from now on).")
+    cfg = DATA / "config.yaml"
+    with contextlib.suppress(OSError):
+        m = re.search(r"piper-voices/([A-Za-z0-9_\-]+)\.onnx|/voices/([A-Za-z0-9_\-]+)\.onnx", cfg.read_text(encoding="utf-8"))
+        old = m and (m.group(1) or m.group(2))
+        if old and jc.voice_replacement(old):
+            new = jc.voice_replacement(old)
+            code, out = hermes("config", "set", "tts.piper.voice", str(VOICES / f"{new}.onnx"))
+            log(f"Hermes voice {old} -> {new}" + ("" if code == 0 else f" failed: {out[-200:]}"))
+    for p in sorted(VOICES.glob("*.onnx*")):
+        name = p.name.split(".onnx")[0]
+        if jc.voice_replacement(name):
+            p.unlink(missing_ok=True)
+            log(f"Removed voice file {p.name} (not licensed for commercial use).")
+
+
 def main() -> None:
     dirs()
     jc.ensure_certs()
@@ -303,6 +336,10 @@ def main() -> None:
         log(f"Ollama entry not migrated: {exc}")
     if not MARK.exists():
         first_config()
+    try:
+        migrate_voices()
+    except Exception as exc:
+        log(f"Voices not migrated: {exc}")
     try:
         upgrade_persona()
     except Exception as exc:

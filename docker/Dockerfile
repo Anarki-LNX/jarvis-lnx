@@ -43,6 +43,9 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 CMD ["/op
 
 # Hermes-Gateway (Agent + API auf 127.0.0.1:8642) als Hauptprozess; die NuOrb-Dienste laufen daneben unter s6.
 # Version für die Anzeige im Admin („NuOrb Server v…“); im Release setzt der GitHub-Workflow den Tag ein
+# Keine Telemetrie: onnxruntime (pip, ab 1.32) sendet sonst Nutzungsdaten an Microsoft (1DS, OneCollector).
+# Nur die Umgebungsvariable wirkt (disable_telemetry_events() allein nicht, gemessen); ENV gilt für jeden Prozess.
+ENV ORT_DISABLE_TELEMETRY=1 HF_HUB_DISABLE_TELEMETRY=1 DO_NOT_TRACK=1
 ARG JARVIS_LNX_VERSION=dev
 ENV JARVIS_LNX_VERSION=${JARVIS_LNX_VERSION}
 CMD ["gateway", "run"]

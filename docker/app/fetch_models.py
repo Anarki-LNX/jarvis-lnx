@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """NuOrb-Server (Docker): lädt beim ersten Start die Sprachmodelle ins Modell-Volume (nicht ins Image gebacken).
 
-  * Piper-Stimme(n): rhasspy/piper-voices auf Hugging Face (Standard: de_DE-thorsten-medium bzw. en_GB-alan-medium)
+  * Piper-Stimme(n): rhasspy/piper-voices auf Hugging Face (Standard: de_DE-thorsten-medium bzw. en_US-joe-medium; nur Stimmen mit CC0/CC-BY-Kette)
   * Spracherkennung: Parakeet-TDT-0.6B-v3 int8 für sherpa-onnx (GitHub-Release k2-fsa/sherpa-onnx, ~465 MB)
 Vorhandene Dateien werden nicht erneut geladen. Downloads laufen in eine .part-Datei und werden erst am Ende umbenannt.
 """
@@ -84,11 +84,16 @@ def voice_path(name: str) -> str:
     return f"{loc.split('_')[0]}/{loc}/{spk}/{q}/{name}"
 
 
+def log_skip(name: str) -> bool:
+    print(f"[nuorb-models] Voice {name} skipped: not licensed for commercial use.", flush=True)
+    return False
+
+
 def voices(extra: list[str] | None = None) -> None:
     names = [jc.voice_name()] + (extra or [])
     names += [v.strip() for v in jc.env("JARVIS_EXTRA_VOICES").split(",") if v.strip()]
     VOICES.mkdir(parents=True, exist_ok=True)
-    for n in dict.fromkeys(names):
+    for n in [x for x in dict.fromkeys(names) if not jc.voice_replacement(x) or log_skip(x)]:
         for ext in (".onnx", ".onnx.json"):
             dest = VOICES / f"{n}{ext}"
             if not dest.exists() or dest.stat().st_size == 0:
