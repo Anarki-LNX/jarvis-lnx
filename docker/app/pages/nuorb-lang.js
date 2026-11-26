@@ -9,6 +9,28 @@ window.NuI18n = (function () {
   const browser = () => (String(navigator.language || "en").toLowerCase().startsWith("de") ? "de" : "en");
   const I = { lang: stored() || browser(), brand: "NuOrb" };
 
+  // Deutsche Server-Texte (Modellhinweise, Gehirn-Beschreibung, Meldungen der Verwaltung) übersetzen – mit dem
+  // Wörterbuch der NuOrb-Verwaltung (/static/i18n-en.js: Schlüssel = deutscher Text, {0} … = eingesetzte Werte)
+  let muster = null;
+  I.tr = (s) => {
+    s = String(s ?? "");
+    const EN = window.I18N_EN;
+    if (I.lang !== "en" || !EN || !s) return s;
+    const marke = (t) => String(t).replace(/\bJARVIS\b/g, I.brand);
+    if (EN[s] !== undefined) return marke(EN[s]);
+    if (!muster) {
+      muster = Object.keys(EN).filter((k) => /\{\d\}/.test(k)).map((k) => {
+        const esc = k.replace(/[.*+?^$()|[\]\\]/g, "\\$&").replace(/\\?\{(\d)\\?\}/g, "(?<p$1>.+?)");
+        try { return [new RegExp("^" + esc + "$"), EN[k]]; } catch (e) { return null; }   // z. B. {0} doppelt
+      }).filter(Boolean);
+    }
+    for (const [re, en] of muster) {
+      const m = s.match(re);
+      if (m) return marke(en.replace(/\{(\d)\}/g, (_, i) => I.tr((m.groups || {})["p" + i] ?? "")));
+    }
+    return s;
+  };
+
   // Platzhalter {brand} in Texten ersetzen
   I.fmt = (s) => String(s).split("{brand}").join(I.brand);
 
