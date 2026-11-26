@@ -30,7 +30,7 @@ Audio is processed on your server; nothing is sent anywhere unless you choose a 
 git clone https://github.com/Anarki-LNX/nuorb && cd nuorb/docker
 cp .env.example .env && nano .env        # at least JARVIS_HOSTS (your server IP), JARVIS_LANG, TZ
 docker compose up -d                      # pulls ghcr.io/anarki-lnx/nuorb
-docker compose logs jarvis | grep -i "setup code"
+docker compose logs nuorb | grep -i "setup code"
 # then open https://<server-ip>:8444
 ```
 
@@ -47,9 +47,10 @@ Phone and server in the same network – or connected via VPN (WireGuard, Tailsc
 - **Safe by design** – confirmation cards before risky actions, pairing with certificate pinning, no telemetry.
 - **Admin panel** – model & fallback, persona, memory, skills, schedules, MCP servers (connect e.g. Home Assistant), keys, logs, backups.
 
-**Coming from the `jarvis-lnx` image?** Change the `image:` line to `ghcr.io/anarki-lnx/nuorb` (or take the new
-`docker/compose.yaml`), then `docker compose pull && docker compose up -d` – volumes and paired devices stay. See
-[`docker/README.md`](docker/README.md#umstieg-vom-image-jarvis-lnx).
+**Upgrading from v0.3.x or older?** Since v0.4.0 the compose project, service and container are called `nuorb`.
+Stop the old one with `docker compose -p jarvis-lnx down` (**without** `-v`), take the new `docker/compose.yaml`, then
+`docker compose pull && docker compose up -d` – it keeps using your existing data volumes, so password and paired
+devices stay. See [`docker/README.md`](docker/README.md#umstieg-von-einer-älteren-installation-bis-v03x).
 
 **Status:** early release. A custom wake word "Hey NuOrb" for the app is in training. See [`docker/README.md`](docker/README.md) for details, security notes and troubleshooting.
 
@@ -233,7 +234,8 @@ Code: [MIT](LICENSE) © 2026 Anarki-LNX. Third-party files keep their own licens
 ## Disclaimer
 
 The project was renamed to NuOrb. Old repository URLs redirect here; technical names such as the `JARVIS_*`
-settings, `/opt/jarvis` paths and the `jarvis-lnx` compose project are kept so existing installations keep working.
+settings, `/opt/jarvis` paths and the `jarvis-lnx_data` / `jarvis-lnx_models` volume names are kept so existing
+installations keep working.
 Xiaomi, Snapdragon, Claude, Gemma and other names are trademarks of their respective owners.
 
 ---
@@ -245,7 +247,7 @@ oder PC) mit Agent, Orb-Oberfläche, Admin-Panel, lokaler Spracherkennung und Sp
 eigenen **Ollama** oder **Claude** (oder beidem, umschaltbar). Bedient wird per **Android-App** (bald im Play Store)
 oder Browser im Heimnetz. Der Assistent heißt **NuOrb** („Nu-Orb“), stellt sich beim ersten Start vor
 („Mein Schöpfer hat mich NuOrb getauft …“) und lässt sich jederzeit umbenennen. Container starten, Einrichtung im Admin-Panel, Smartphone per QR-Code koppeln – fertig.
-Wer noch das Image `jarvis-lnx` nutzt: in der `compose.yaml` die `image:`-Zeile auf `ghcr.io/anarki-lnx/nuorb` ändern, Volumes bleiben.
+Umstieg von v0.3.x: `docker compose -p jarvis-lnx down` (ohne `-v`), neue `compose.yaml` holen, `docker compose up -d` – Daten bleiben.
 Anleitung: [`docker/README.md`](docker/README.md).
 
 **Für Bastler:** Das Projekt begann mit einem alten **Xiaomi Mi 11 Lite 4G**, auf dem jetzt **NixOS** läuft und

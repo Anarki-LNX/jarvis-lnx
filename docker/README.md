@@ -59,7 +59,7 @@ cp .env.example .env && nano .env
 docker compose up -d
 
 # 4. Einrichtungscode anzeigen
-docker compose logs jarvis | grep -i "setup code"
+docker compose logs nuorb | grep -i "setup code"
 ```
 
 5. Im Browser **`https://<server-ip>:8444`** öffnen. Beim ersten Mal warnt der Browser vor dem Zertifikat
@@ -86,17 +86,21 @@ docker compose pull && docker compose up -d        # neues Image, Daten bleiben
 docker run --rm -v jarvis-lnx_data:/d -v "$PWD":/b debian tar czf /b/nuorb-data.tgz -C /d .   # Sicherung
 ```
 
-### Umstieg vom Image `jarvis-lnx`
+### Umstieg von einer älteren Installation (bis v0.3.x)
 
-Das Image heißt seit v0.3.0 `ghcr.io/anarki-lnx/nuorb`. Wer noch `ghcr.io/anarki-lnx/jarvis-lnx` nutzt, ändert in
-seiner `compose.yaml` nur die `image:`-Zeile (oder holt die neue `compose.yaml` aus dem Repo) und startet neu:
+Seit v0.4.0 heißen Compose-Projekt, Dienst und Container `nuorb` (vorher `jarvis-lnx` / `jarvis` /
+`jarvis-lnx-jarvis-1`), das Image seit v0.3.0 `ghcr.io/anarki-lnx/nuorb`. Die Daten bleiben erhalten: Die neue
+`compose.yaml` nutzt die bisherigen Volumes `jarvis-lnx_data` und `jarvis-lnx_models` unter festem Namen.
 
 ```bash
-docker compose pull && docker compose up -d
+cd nuorb/docker                                  # Ordner mit deiner .env
+docker compose -p jarvis-lnx down                # alten Container stoppen – OHNE -v, sonst sind die Daten weg
+git pull                                         # neue compose.yaml (oder die Datei aus dem Repo holen)
+docker compose pull && docker compose up -d      # startet „nuorb“ mit denselben Daten
 ```
 
-Volumes, `.env`, Zertifikate und gekoppelte Geräte bleiben, weil der Compose-Projektname `jarvis-lnx` gleich bleibt.
-Das alte Image bekommt keine Updates mehr.
+Passwort, Schlüssel, Gedächtnis, Zertifikate und gekoppelte Geräte bleiben, die App muss nicht neu gekoppelt werden.
+Docker meldet beim ersten Start einmalig, dass die Volumes von einem anderen Projekt angelegt wurden; das ist erwartet.
 
 ## Was wo liegt
 
@@ -172,7 +176,7 @@ Docker-Secret einbinden (`NUORB_SMARTHOME_ZUGANG=/run/secrets/…`), dann `NUORB
 `NUORB_SMARTHOME=0` schaltet beim Start aus; leer lässt die Einstellung der Verwaltung stehen.
 
 ```bash
-docker compose exec -T jarvis sh -c 'umask 077; cat > /opt/data/smarthome.env' <<'EOF'
+docker compose exec -T nuorb sh -c 'umask 077; cat > /opt/data/smarthome.env' <<'EOF'
 HA_URL=http://homeassistant.local:8123
 HA_TOKEN=<Long-Lived Access Token>
 EOF
@@ -195,20 +199,20 @@ Werkzeuge bindest du im Admin unter „MCP-Server“ an.
 
 ```bash
 docker compose ps                    # läuft er? (healthy)
-docker compose logs -f jarvis        # alles; Zeilen [nuorb-init], [nuorb-models], [nuorb-admin], [pair], Hermes
-docker compose exec jarvis /command/s6-svstat /run/service/jarvis-ui    # einzelner Dienst
+docker compose logs -f nuorb        # alles; Zeilen [nuorb-init], [nuorb-models], [nuorb-admin], [pair], Hermes
+docker compose exec nuorb /command/s6-svstat /run/service/jarvis-ui    # einzelner Dienst
 ```
 
 | Problem | Lösung |
 |---|---|
 | Browser: „Verbindung nicht sicher“ | Erwartet beim selbst ausgestellten Zertifikat, einmal bestätigen (oder CA importieren). |
-| Einrichtungscode nicht im Log | `docker compose exec jarvis cat /opt/data/jarvis/admin/setup-code.txt` |
+| Einrichtungscode nicht im Log | `docker compose exec nuorb cat /opt/data/jarvis/admin/setup-code.txt` |
 | „Nur im Heimnetz erreichbar“ | Zugriff kommt aus einem nicht erlaubten Netz → `JARVIS_ALLOWED_NETS` ergänzen. |
 | Spracherkennung offline nach dem Start | Modelle laden noch (Fortschritt in der Einrichtung). Meldet die Einrichtung „keine Internetverbindung“: siehe unten. |
 | NuOrb antwortet „hat noch kein Gehirn“ | Einrichtung im Admin abschließen. |
 | Antworten leer oder Fehler „context window … below 64,000“ | Ollama-Kontext zu klein, siehe oben. |
 | App: Zertifikatsfehler | Server-IP fehlt in `JARVIS_HOSTS` → eintragen, `docker compose up -d`, neu koppeln. |
-| Ollama „nicht erreichbar“ | Die IP des Ollama-Rechners eintragen (z. B. `http://192.168.1.50:11434`), auch wenn Ollama auf demselben PC läuft; Ollama mit `OLLAMA_HOST=0.0.0.0` starten. `.local`-Namen lösen im Container oft nicht auf. Testen: `docker compose exec jarvis curl -s <adresse>/api/version`. Firewall siehe unten. Alternative für denselben PC: in `compose.yaml` die `extra_hosts`-Zeile aktivieren, dann `http://host.docker.internal:11434`. |
+| Ollama „nicht erreichbar“ | Die IP des Ollama-Rechners eintragen (z. B. `http://192.168.1.50:11434`), auch wenn Ollama auf demselben PC läuft; Ollama mit `OLLAMA_HOST=0.0.0.0` starten. `.local`-Namen lösen im Container oft nicht auf. Testen: `docker compose exec nuorb curl -s <adresse>/api/version`. Firewall siehe unten. Alternative für denselben PC: in `compose.yaml` die `extra_hosts`-Zeile aktivieren, dann `http://host.docker.internal:11434`. |
 | Port 8443/8444 belegt | `JARVIS_UI_PORT_PUBLIC` / `JARVIS_ADMIN_PORT_PUBLIC` ändern. |
 | Uhrzeit falsch | `TZ` in der `.env` setzen. |
 
@@ -224,7 +228,12 @@ erreicht NuOrb dein Ollama nicht, blockiert meist die Firewall des Rechners den 
   Ollama auf demselben PC zusätzlich vom Docker-Netz erlauben: `sudo ufw allow from 172.16.0.0/12 to any port 11434 proto tcp`.
 * **firewalld** (Fedora, openSUSE): `sudo firewall-cmd --permanent --zone=trusted --add-interface=docker0 && sudo firewall-cmd --reload`
   (Compose-Netze heißen `br-…`; bei Bedarf ebenso hinzufügen).
-* Danach `docker compose restart`. Prüfen: `docker compose exec jarvis curl -sI https://huggingface.co | head -1`.
+* **Docker selbst ohne Netz:** Stehen in `/etc/docker/daemon.json` die Schlüssel `"iptables": false` oder
+  `"bridge": "none"`, haben Container gar kein Netz. Beide Schlüssel entfernen, dann `sudo systemctl restart docker`.
+  Docker legt danach eigene Firewall-Regeln an; veröffentlichte Ports (8443/8444) sind dann im Heimnetz erreichbar.
+* **Ollama auf demselben PC, Test meldet „ConnectTimeout“:** ufw blockt Anfragen aus dem Docker-Netz an Port 11434:
+  `sudo ufw allow from 172.16.0.0/12 to any port 11434 proto tcp`.
+* Danach `docker compose restart`. Prüfen: `docker compose exec nuorb curl -sI https://huggingface.co | head -1`.
 
 Die Ports 8443/8444 bleiben dabei nur im Heimnetz erreichbar, solange du sie am Router nicht freigibst.
 
@@ -235,7 +244,7 @@ Die Ports 8443/8444 bleiben dabei nur im Heimnetz erreichbar, solange du sie am 
 * `app/` lädt die Originalserver unverändert als Modul und ergänzt Kopplung, s6-Dienste, Einrichtung.
 * Image bauen: `docker compose build`. Veröffentlichung per GitHub Actions bei Tag `v*` (`github/workflows/docker.yml`).
 * Test ohne GPU: `python3 docker/tools/mock-llm.py &`, dann
-  `docker compose -p jarvis-lnx-test -f compose.yaml -f compose.test.yaml --env-file .env.test up -d --build` und
+  `docker compose -p nuorb-test -f compose.yaml -f compose.test.yaml --env-file .env.test up -d --build` und
   `python3 docker/tools/e2e-test.py --setup-code <code>`.
 
 ---
@@ -249,13 +258,13 @@ Claude API, or both with automatic fallback.
 1. `git clone https://github.com/Anarki-LNX/nuorb && cd nuorb/docker`
 2. `cp .env.example .env` – set `JARVIS_HOSTS` (server IP), `JARVIS_LANG=en`, `TZ`
 3. `docker compose up -d` (first start downloads ~530 MB of speech models)
-4. `docker compose logs jarvis | grep -i "setup code"`
+4. `docker compose logs nuorb | grep -i "setup code"`
 5. Open `https://<server-ip>:8444`, enter the code, set a password, follow the setup (language, brain), then
    “Pair device” → scan the QR code with the NuOrb app or enter the code at `https://<server-ip>:8443`.
 
-**Migrating from the jarvis-lnx image:** since v0.3.0 the image is `ghcr.io/anarki-lnx/nuorb`. Change the `image:`
-line in your `compose.yaml` (or take the new one from the repo), then `docker compose pull && docker compose up -d`.
-Volumes, `.env`, certificates and paired devices stay, because the compose project name `jarvis-lnx` is unchanged.
+**Upgrading from v0.3.x or older:** since v0.4.0 project, service and container are called `nuorb`. Run
+`docker compose -p jarvis-lnx down` (without `-v`!), take the new `compose.yaml`, then `docker compose pull && docker compose up -d`.
+The new file keeps using the volumes `jarvis-lnx_data` / `jarvis-lnx_models`, so password, data and paired devices stay.
 
 **Smart home (optional):** off by default. Enter Home Assistant / ioBroker access under “Smart Home” in the admin panel (or put
 `/opt/data/smarthome.env` in place and set `NUORB_SMARTHOME=1`). Reading needs no confirmation, switching always shows a
@@ -263,7 +272,9 @@ confirmation card. Reliable with Claude; with a local model it is limited (turn 
 
 **Troubleshooting:** enter the IP of the computer running Ollama, even if it is the same PC (start Ollama with `OLLAMA_HOST=0.0.0.0`); `.local` names often don't resolve inside the container.
 No network inside the container (setup says “no internet connection”, often ufw with `DEFAULT_FORWARD_POLICY="DROP"`):
-`sudo ufw default allow routed && sudo ufw reload`, then `docker compose restart`.
+`sudo ufw default allow routed && sudo ufw reload`, then `docker compose restart`. Remove `"iptables": false` /
+`"bridge": "none"` from `/etc/docker/daemon.json` if present (`sudo systemctl restart docker`). Ollama on the same PC
+times out: `sudo ufw allow from 172.16.0.0/12 to any port 11434 proto tcp`.
 
 Never expose the ports to the internet; use a VPN. The QR code carries the fingerprint of the server's own CA, so the
 app trusts exactly this server.

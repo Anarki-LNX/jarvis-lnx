@@ -164,7 +164,7 @@ async def auth_state(request: Request):
     st = _orig_auth_state(request)
     st = dict(await st if asyncio.iscoroutine(st) else st)
     st["setupHint"] = None if adm.auth_configured() else \
-        f"docker compose exec jarvis cat {adm.SETUP_FILE}\n# {jc.tr('oder', 'or')}: docker compose logs jarvis | grep -i 'setup code'"
+        f"docker compose exec nuorb cat {adm.SETUP_FILE}\n# {jc.tr('oder', 'or')}: docker compose logs nuorb | grep -i 'setup code'"
     # Marke/Sprache für Login und Fußzeile (Feld „ui“ von NuOrb-Admin): Sprache nach ADMIN_LANG, Servername nur mit der Marke
     ui = dict(st.get("ui") or {})
     ui.update(brand=ui.get("brand") or jc.brand(), ui_lang=jc.ui_lang_setting(), server=jc.server_label())

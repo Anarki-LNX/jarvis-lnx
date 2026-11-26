@@ -1,10 +1,10 @@
 # NuOrb-Server – Installation: .env.example nach .env kopieren, anpassen, dann `docker compose up -d`.
 # Details: README.md
-# Projektname bleibt „jarvis-lnx“: Daran hängen die Volume-Namen (jarvis-lnx_data, jarvis-lnx_models) bestehender Installationen.
-name: jarvis-lnx
+name: nuorb
 
 services:
-  jarvis:
+  nuorb:
+    container_name: nuorb
     # Fertiges Image von GitHub (amd64/arm64). Ist es (noch) nicht abrufbar, baut Compose es aus diesem Ordner.
     image: ghcr.io/anarki-lnx/nuorb:${JARVIS_VERSION:-latest}
     build:
@@ -55,7 +55,12 @@ services:
     #     reservations:
     #       devices: [{ driver: nvidia, count: all, capabilities: [gpu] }]
 
+# Feste Volume-Namen: Installationen bis v0.3.x (Projekt „jarvis-lnx“) nutzen ihre Daten weiter, auch neue
+# Installationen bekommen diese Namen. Nicht ändern, sonst startet NuOrb mit leeren Daten.
 volumes:
   data:
+    name: jarvis-lnx_data
   models:
+    name: jarvis-lnx_models
   ollama:
+    name: jarvis-lnx_ollama

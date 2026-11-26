@@ -116,7 +116,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--ui", default="https://127.0.0.1:19443")
     ap.add_argument("--admin", default="https://127.0.0.1:19444")
-    ap.add_argument("--container", default="jarvis-lnx-test-jarvis-1")
+    ap.add_argument("--container", default="nuorb-test")
     ap.add_argument("--zugang", default=str(Path.home() / ".cache/nuorb-smarthome-test/smarthome.env"))
     ap.add_argument("--mock-port", type=int, default=18436)
     ap.add_argument("--password", default=os.environ.get("E2E_PASSWORD", ""))

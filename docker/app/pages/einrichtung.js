@@ -42,12 +42,14 @@
           noBrain: "⚠ Noch kein Gehirn eingerichtet – {brand} kann noch nicht antworten.", brain: (m) => `✓ Gehirn eingerichtet (${m}).`,
           load: (s) => s.total_mb ? `Lade Sprachmodelle: ${s.item || ""} ${s.done_mb || 0} / ${s.total_mb} MB` : `Verbinde für den Download der Sprachmodelle${s.item ? " (" + s.item + ")" : ""} …`, ready: "✓ Sprachmodelle bereit (Spracherkennung und Stimme).",
           offline: "Der Container hat keine Internetverbindung: Die Sprachmodelle (~530 MB) konnten nicht geladen werden. Neuer Versuch läuft automatisch. Häufigste Ursache ist die Firewall des Rechners (ufw: „sudo ufw default allow routed && sudo ufw reload“), sonst DNS oder Proxy.",
+          fw: "Firewall am Ollama-Rechner? Port 11434 für Docker freigeben (172.16.0.0/12), z. B. sudo ufw allow from 172.16.0.0/12 to any port 11434 proto tcp.",
           langOk: "Übernommen.", dl: (v) => `Übernommen, Stimme ${v} wird geladen …`, modes: { local: "Lokal", auto: "Automatik", remote: "Claude" } },
     en: { set: "Key set: ", none: "No key stored yet.", saving: "Saving … (Hermes restarts, ~20 s)",
           ok: "Done. {brand} now thinks with: ", probing: "Testing …", found: (v, n) => `Connected: Ollama ${v}, ${n} models.`, err: "Error: ",
           noBrain: "⚠ No brain configured yet – {brand} cannot answer yet.", brain: (m) => `✓ Brain configured (${m}).`,
           load: (s) => s.total_mb ? `Downloading speech models: ${s.item || ""} ${s.done_mb || 0} / ${s.total_mb} MB` : `Connecting to download the speech models${s.item ? " (" + s.item + ")" : ""} …`, ready: "✓ Speech models ready (recognition and voice).",
           offline: "The container has no internet connection: the speech models (~530 MB) could not be downloaded. Retrying automatically. Most common cause is the host firewall (ufw: “sudo ufw default allow routed && sudo ufw reload”), otherwise DNS or proxy.",
+          fw: "Firewall on the Ollama machine? Allow port 11434 from Docker (172.16.0.0/12), e.g. sudo ufw allow from 172.16.0.0/12 to any port 11434 proto tcp.",
           langOk: "Applied.", dl: (v) => `Applied, downloading voice ${v} …`, modes: { local: "local", auto: "automatic", remote: "Claude" } },
   };
   let m = MSG.en, S = null;
@@ -90,7 +92,10 @@
       if (d.url) $("url").value = d.url;   // vom Server vervollständigt (Schema, Port 11434, ohne /v1)
       $("probeMsg").textContent = m.found(d.version, d.models.length) + (d.warn ? " ⚠ " + I.tr(d.warn) : "");
       $("probeMsg").className = d.warn ? "warn" : "ok";
-    } catch (e) { $("probeMsg").textContent = m.err + I.tr(e.message); $("probeMsg").className = "err"; }
+    } catch (e) {
+      const zeit = /timeout|timed out|ConnectError/i.test(e.message);   // Firewall am Ollama-Rechner blockt das Docker-Netz
+      $("probeMsg").textContent = m.err + I.tr(e.message) + (zeit ? " " + m.fw : ""); $("probeMsg").className = "err";
+    }
   }
   $("probe").addEventListener("click", probe);
 
