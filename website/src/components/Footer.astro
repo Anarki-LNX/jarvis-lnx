@@ -1,7 +1,6 @@
 ---
-import { t, policyPath, type Lang } from "../i18n";
-import { GITHUB, LEGAL, YOUTUBE, PAYPAL_URL, validPaypal } from "../config";
-import Icon from "./Icon.astro";
+import { t, policyPath, imprintPath, type Lang } from "../i18n";
+import { GITHUB, YOUTUBE, PAYPAL_URL, THIRD_PARTY, validPaypal } from "../config";
 interface Props { lang: Lang; home?: boolean }
 const { lang, home = true } = Astro.props;
 const d = t(lang);
@@ -35,19 +34,19 @@ const pp = validPaypal(PAYPAL_URL) ? PAYPAL_URL : null;
           <li><a href={GITHUB.repo} rel="noopener">GitHub</a></li>
           <li><a href={GITHUB.releases} rel="noopener">{d.oss.links.releases}</a></li>
           <li><a href={GITHUB.contributing} rel="noopener">{d.oss.links.contributing}</a></li>
-          <li>{pp ? <a href={pp} rel="noopener">{f.paypal}</a> : <span class="off">{f.paypalSoon}</span>}</li>
+          <li>{pp ? <a href={pp} rel="noopener noreferrer" target="_blank">{f.paypal}</a> : <span class="off">{f.paypalSoon}</span>}</li>
         </ul></div>
         <div><h2>{f.legal}</h2><ul>
           <li><a href={policyPath(lang)}>{f.privacyPolicy}</a></li>
-          <li><a href={lang === "de" ? LEGAL.imprintDe : LEGAL.imprintEn} rel="noopener">{f.imprint}</a></li>
+          <li><a href={imprintPath(lang)}>{f.imprint}</a></li>
           <li><a href={GITHUB.license} rel="noopener">{d.oss.links.license}</a></li>
+          <li><a href={THIRD_PARTY} rel="noopener">{f.licenses}</a></li>
         </ul></div>
       </nav>
     </div>
     <div class="bottom">
       <p>{f.copyright}</p>
       <p class="disc">{f.disclaimer}</p>
-      <a class="gh" href={GITHUB.repo} rel="noopener" aria-label="GitHub"><Icon name="github" /></a>
     </div>
   </div>
 </footer>
@@ -66,7 +65,7 @@ const pp = validPaypal(PAYPAL_URL) ? PAYPAL_URL : null;
   .cols a, .off { display: inline-block; padding: .4rem 0; color: var(--text-2); text-decoration: none; font-size: .95rem; }
   .cols a:hover { color: var(--text); }
   .off { color: var(--text-3); }
-  .bottom { display: grid; grid-template-columns: auto 1fr auto; gap: 1.5rem; align-items: center; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line); font-size: .84rem; color: var(--text-3); }
+  .bottom { display: grid; grid-template-columns: auto 1fr; gap: 1.5rem; align-items: center; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line); font-size: .84rem; color: var(--text-3); }
   .disc { max-width: 90ch; }
   .gh { display: grid; place-items: center; width: 44px; height: 44px; color: var(--text-2); border-radius: 10px; }
   .gh:hover { color: var(--text); background: var(--glass); }

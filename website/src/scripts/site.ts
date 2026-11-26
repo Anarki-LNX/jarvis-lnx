@@ -150,6 +150,17 @@ if (heroOrb) {
   if (document.readyState === "complete") idle(loadOrb); else addEventListener("load", () => idle(loadOrb), { once: true });
 }
 
+// Video-Poster erst kurz vor dem Sichtbarwerden laden (Seite startet schneller)
+const setPoster = (v: HTMLVideoElement) => { if (v.dataset.lazyPoster) v.poster = v.dataset.lazyPoster; delete v.dataset.lazyPoster; };
+const pio = "IntersectionObserver" in window
+  ? new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { setPoster(e.target as HTMLVideoElement); pio?.unobserve(e.target); } }), { rootMargin: "800px 0px" })
+  : null;
+const lazyPoster = (v: HTMLVideoElement, url?: string) => {
+  if (url) v.dataset.lazyPoster = url;
+  if (pio) pio.observe(v); else setPoster(v);
+};
+document.querySelectorAll<HTMLVideoElement>("video[data-lazy-poster]").forEach((v) => lazyPoster(v));
+
 // Kopieren des Installationsbefehls (nur Zwischenablage, nichts wird ausgeführt)
 document.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((b) => {
   if (!navigator.clipboard) return;
@@ -204,7 +215,9 @@ if (demo) {
       video.replaceChildren();
       // Poster erst setzen, wenn das Panel sichtbar ist (versteckte Tabs laden nichts)
       const poster = c.poster.webp || c.poster.jpg || "";
-      if (!panel.hidden) video.poster = poster; else video.dataset.poster = poster;
+      if (panel.hidden) video.dataset.poster = poster;
+      else if (video.hasAttribute("data-lazy-poster")) video.dataset.lazyPoster = poster;
+      else video.poster = poster;
       video.muted = !withSound; video.loop = !withSound;
       video.preload = withSound ? "metadata" : "none";
       video.setAttribute("aria-label", c.alt);
@@ -273,7 +286,7 @@ if (demo) {
     panels.forEach((p) => {
       p.hidden = p.dataset.panel !== tab.dataset.tab;
       const v = p.querySelector<HTMLVideoElement>("[data-video]");
-      if (!p.hidden && v?.dataset.poster) { v.poster = v.dataset.poster; delete v.dataset.poster; }
+      if (!p.hidden && v?.dataset.poster) { lazyPoster(v, v.dataset.poster); delete v.dataset.poster; }
     });
     players.forEach((p) => p?.visibleAuto());
     if (focus) tab.focus();

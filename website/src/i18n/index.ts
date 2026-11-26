@@ -6,3 +6,4 @@ export const t = (lang: Lang) => dicts[lang];
 export const other = (lang: Lang): Lang => (lang === "en" ? "de" : "en");
 // Rechtliche Unterseiten heißen je Sprache anders
 export const policyPath = (lang: Lang) => (lang === "en" ? "/en/privacy/" : "/de/datenschutz/");
+export const imprintPath = (lang: Lang) => (lang === "en" ? "/en/imprint/" : "/de/impressum/");

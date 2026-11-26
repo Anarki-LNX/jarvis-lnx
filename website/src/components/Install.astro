@@ -33,7 +33,7 @@ const tutSources = tut ? ["video/webm", "video/mp4"].map((ty) => tut.video.filte
         <div class="notice notice--warn" role="note"><Icon name="warn" /><div><strong>{d.warnTitle}</strong>{d.warnText}</div></div>
         {tut && tutSources.length > 0 && (
           <figure class="tut">
-            <video controls preload="none" playsinline poster={tut.poster.jpg || tut.poster.webp} aria-label={tut.alt[lang] || tut.alt.en}>
+            <video controls preload="none" playsinline data-lazy-poster={tut.poster.webp || tut.poster.jpg} aria-label={tut.alt[lang] || tut.alt.en}>
               {tutSources.map((v) => v && <source src={v.src} type={v.type} />)}
               {tut.tracks.map((tr) => <track kind="subtitles" src={tr.src} srclang={tr.srclang} label={tr.label} />)}
             </video>

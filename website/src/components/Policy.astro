@@ -3,8 +3,7 @@
 import Base from "../layouts/Base.astro";
 import Nav from "./Nav.astro";
 import Footer from "./Footer.astro";
-import { t, other, policyPath, type Lang } from "../i18n";
-import { LEGAL } from "../config";
+import { t, other, policyPath, imprintPath, type Lang } from "../i18n";
 interface Props { lang: Lang }
 const { lang } = Astro.props;
 const d = t(lang);
@@ -17,7 +16,7 @@ const p = d.policy;
     <p class="upd">{p.updated}</p>
     {p.sections.map(([h, txt]) => (<section><h2>{h}</h2><p>{txt}</p></section>))}
     <p class="links">
-      <a href={lang === "de" ? LEGAL.imprintDe : LEGAL.imprintEn} rel="noopener">{d.footer.imprint}</a>
+      <a href={imprintPath(lang)}>{d.footer.imprint}</a>
       <a href="https://anarki-lnx.github.io/nuorb/privacy/" rel="noopener">{p.appPolicy}</a>
       <a href={`/${lang}/`}>{p.back}</a>
     </p>

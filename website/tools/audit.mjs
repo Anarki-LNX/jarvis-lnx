@@ -15,7 +15,7 @@ mkdirSync(outDir, { recursive: true });
 const full = process.argv.includes("--full");
 const reducedRun = process.argv.includes("--reduced");
 const PORT = 4499, CDP = 9400 + Math.floor(Math.random() * 300), ORIGIN = `http://127.0.0.1:${PORT}`;
-const pages = ["/", "/en/", "/en/?orb=webgl", "/de/", "/en/privacy/", "/de/datenschutz/", "/does-not-exist"];
+const pages = ["/", "/en/", "/en/?orb=webgl", "/de/", "/en/privacy/", "/de/datenschutz/", "/en/imprint/", "/de/impressum/", "/does-not-exist"];
 const viewports = [
   ["desktop", 1440, 900, 1, false], ["laptop", 1280, 720, 1, false],
   ["tablet-p", 820, 1180, 2, true], ["tablet-l", 1180, 820, 2, true],
@@ -110,12 +110,15 @@ try {
           res.autoplay = vid() ? { t: +vid().currentTime.toFixed(2), err: vid().error?.code ?? null, src: vid().currentSrc.split("/").pop() } : null;
           document.querySelector('[data-tab="phone"]').click(); await wait(300);
           const sc = [...document.querySelectorAll('[data-panel="phone"] [data-scene]')]; res.phoneScenes = sc.length;
-          if (sc[1]) { sc[1].click(); await wait(2500); res.phoneClick = { t: +vid().currentTime.toFixed(2), muted: vid().muted, err: vid().error?.code ?? null, tracks: vid().textTracks.length, src: vid().currentSrc.split("/").pop() }; vid().pause(); }
+          if (sc[1]) { sc[1].click(); await wait(2500); res.phoneClick = { t: +vid().currentTime.toFixed(2), muted: vid().muted, err: vid().error?.code ?? null, tracks: vid().textTracks.length, src: vid().currentSrc.split("/").pop() }; vid().pause();
+            const sb = document.querySelector('[data-panel="phone"] [data-act="sound"]');
+            if (sb && !sb.hidden) { sb.click(); await wait(2000); res.sound = { t: +vid().currentTime.toFixed(2), muted: vid().muted, tracks: vid().textTracks.length, src: vid().currentSrc.split("/").pop() }; vid().pause(); } }
           document.querySelector('[data-tab="desktop"]').click(); scrollTo(0, 0); await wait(300);
           return res; })()` });
         const x = d.result.value;
         notes.push(`${vname} ${page}: Demo ${JSON.stringify(x)}`);
         if (x.autoplay && (x.autoplay.err || x.autoplay.t <= 0)) problems.push(`${vname} ${page}: Demo-Loop spielt nicht (${JSON.stringify(x.autoplay)})`);
+        if (x.sound && (x.sound.muted || x.sound.t <= 0 || !x.sound.tracks)) problems.push(`${vname} ${page}: Ton-Fassung fehlerhaft (${JSON.stringify(x.sound)})`);
         if (x.phoneClick && (x.phoneClick.err || x.phoneClick.t <= 0)) problems.push(`${vname} ${page}: Szene startet nicht (${JSON.stringify(x.phoneClick)})`);
       }
       if (page === "/en/" && vname === "phone-p") {
