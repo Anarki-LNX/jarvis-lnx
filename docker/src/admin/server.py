@@ -754,10 +754,11 @@ def move_trailing_comment(m: CommentedMap, old_key, new_key) -> None:
         m.ca.items[new_key] = [None, None, CommentToken(rest if rest.startswith("\n") else "\n" + rest, CommentMark(0), None), None]
 
 
-def config_preview(changes: dict, desc: str, effect: str = "Wirkt nach Neustart des Hermes-Gateways.", danger: str = ""):
+def config_preview(changes: dict, desc: str, effect: str = "Wirkt nach Neustart des Hermes-Gateways.", danger: str = "",
+                   allow_secret: tuple = ()):
     data = load_config_rt()
     for path, value in changes.items():
-        if SECRET_KEY_RE.search(path.split(".")[-1]) and path.split(".")[-1] not in ("unattended_mode",):
+        if path not in allow_secret and SECRET_KEY_RE.search(path.split(".")[-1]) and path.split(".")[-1] not in ("unattended_mode",):
             raise HTTPException(400, "Schlüssel/Passwörter bitte unter ‚Schlüssel‘ setzen, nicht in der Konfiguration.")
         cfg_set(data, path, value)
     return make_preview("config", dump_rt(data), desc, effect, danger)
@@ -973,31 +974,173 @@ async def pairing_revoke(request: Request):
     return {"ok": True}
 
 
-def ollama_normalize(raw: str) -> tuple[str, str]:
-    """Nutzereingabe -> http(s)://host:port ohne /v1, plus Warnhinweis (z. B. localhost)."""
+LOCAL_PROVIDER = OLLAMA_PROVIDER  # Vertrag §1.3: Eintrag heisst weiter pc-ollama, auch fuer llama.cpp & Co.
+LLM_TYPES = ("ollama", "openai")
+LLM_LOOPBACK = "localhost zeigt auf den NuOrb-Server selbst, nicht auf deinen PC. Trage die IP-Adresse des PCs ein."
+LLM_PORT_HINT = "Port fehlt? llama.cpp 8080, vLLM 8000, LM Studio 1234, LocalAI 8080."
+
+
+def llm_normalize(raw: str, typ: str = "ollama") -> tuple[str, str]:
+    """Nutzereingabe -> Basis-URL ohne /v1 plus Warnhinweis. ollama: Port 11434 ergaenzen, kein Pfad.
+    openai: Pfad (Reverse-Proxy) erlaubt, Port wird nicht geraten."""
     s = raw.strip().rstrip("/")
     if not s:
-        raise HTTPException(400, "Bitte eine Ollama-Adresse eingeben, z. B. http://192.168.1.50:11434.")
+        raise HTTPException(400, "Bitte eine Ollama-Adresse eingeben, z. B. http://192.168.1.50:11434." if typ == "ollama"
+                            else "Bitte eine Server-Adresse eingeben, z. B. http://192.168.1.50:8080.")
     if "://" not in s:
         s = "http://" + s
     u = urllib.parse.urlsplit(s)
     if u.scheme not in ("http", "https") or not u.hostname:
-        raise HTTPException(400, "Die Ollama-Adresse muss mit http:// oder https:// beginnen.")
+        raise HTTPException(400, "Die Server-Adresse muss mit http:// oder https:// beginnen.")
     if u.query or u.fragment or u.username or u.password:
-        raise HTTPException(400, "Die Ollama-Adresse darf keine Zugangsdaten, Parameter oder Anker enthalten.")
-    path = re.sub(r"/(v1|api)$", "", u.path.rstrip("/"))
-    if path:
+        raise HTTPException(400, "Die Server-Adresse darf keine Zugangsdaten, Parameter oder Anker enthalten. Ein API-Key gehört ins eigene Feld.")
+    path = re.sub(r"/(v1/chat/completions|v1/models|v1|api)$", "", u.path.rstrip("/"))
+    if path and typ == "ollama":
         raise HTTPException(400, "Bitte nur Adresse und Port angeben, ohne Pfad (z. B. http://192.168.1.50:11434).")
     host = f"[{u.hostname}]" if ":" in u.hostname else u.hostname
-    port = u.port or (11434 if u.scheme == "http" and ":" not in u.netloc.rsplit("]", 1)[-1] else None)
-    url = f"{u.scheme}://{host}" + (f":{port}" if port else "")
-    warn = ""
+    has_port = u.port is not None
+    port = u.port or (11434 if typ == "ollama" and u.scheme == "http" else None)
+    url = f"{u.scheme}://{host}" + (f":{port}" if port else "") + path
+    warn = []
+    loop = u.hostname in ("localhost", "0.0.0.0")
     with contextlib.suppress(ValueError):
-        if u.hostname in ("localhost",) or ipaddress.ip_address(u.hostname).is_loopback or u.hostname == "0.0.0.0":
-            warn = "localhost zeigt auf den NuOrb-Server selbst, nicht auf deinen PC. Trage die IP-Adresse des PCs ein."
-    if u.hostname == "localhost":
-        warn = "localhost zeigt auf den NuOrb-Server selbst, nicht auf deinen PC. Trage die IP-Adresse des PCs ein."
-    return url, warn
+        loop = loop or ipaddress.ip_address(u.hostname).is_loopback
+    if loop:
+        warn.append(LLM_LOOPBACK)
+    if typ == "openai" and not has_port and u.scheme == "http":
+        warn.append(LLM_PORT_HINT)
+    return url, " ".join(warn)
+
+
+def ollama_normalize(raw: str) -> tuple[str, str]:
+    """Kompatibilitaet (Docker-Huelle): wie llm_normalize(raw, "ollama")."""
+    return llm_normalize(raw, "ollama")
+
+
+def llm_type() -> str:
+    """Typ des lokalen Gehirns aus brain_saved.local.type; fehlt = ollama (alte Installationen bleiben gleich)."""
+    t = (load_brain_saved().get("local") or {}).get("type")
+    return t if t in LLM_TYPES else "ollama"
+
+
+def llm_provider(cfg: dict | None = None) -> dict:
+    cfg = cfg if cfg is not None else to_plain(load_config_rt())
+    return ((cfg.get("providers") or {}).get(LOCAL_PROVIDER) or {})
+
+
+def llm_key(cfg: dict | None = None) -> str:
+    return str(llm_provider(cfg).get("api_key") or "").strip()
+
+
+def llm_server(cfg: dict | None = None, typ: str | None = None) -> str:
+    typ = typ or llm_type()
+    name = str(llm_provider(cfg).get("name") or "").strip()
+    return "Ollama" if typ == "ollama" else (name if name and not name.startswith("PC Ollama") and name != "Ollama" else "OpenAI-kompatibel")
+
+
+def llm_headers(key: str) -> dict:
+    return {"Authorization": f"Bearer {key}"} if key else {}
+
+
+async def llm_detect(typ: str, base: str, key: str = "") -> dict:
+    """Verbindungstest + Server-Erkennung (Vertrag §1.4; Referenz scripts/llm-backend-test.py detect()).
+    Erkennung nie am Feld `models` (liefert llama.cpp auch). Aendert nichts."""
+    out = {"ok": False, "base": base, "type": typ, "server": "Ollama" if typ == "ollama" else "OpenAI-kompatibel",
+           "version": None, "models": [], "sizes": {}, "ctx": None, "warn": "", "error": ""}
+    async with httpx.AsyncClient(timeout=5, headers=llm_headers(key)) as c:
+        async def get(path: str, t: float = 5):
+            try:
+                r = await c.get(base + path, timeout=t)
+            except httpx.TimeoutException:
+                return "timeout", None
+            except httpx.HTTPError:
+                return "conn", None
+            try:
+                return r.status_code, r.json()
+            except ValueError:
+                return r.status_code, None
+        st, m = await get("/v1/models")
+        if st == "timeout":
+            out["error"] = f"{base}: nicht erreichbar (Firewall? Server nur auf 127.0.0.1?)"
+            return out
+        if st == "conn":
+            out["error"] = (f"Keine Verbindung zu {base}. Adresse und Port prüfen; Ollama muss im Netz lauschen (OLLAMA_HOST=0.0.0.0)."
+                            if typ == "ollama" else f"Server nicht erreichbar: {base}. Adresse und Port prüfen.")
+            return out
+        if st in (401, 403):
+            out["error"] = "Der API-Key wird abgelehnt." if key else "Der Server verlangt einen API-Key."
+            return out
+        if st != 200 or not isinstance(m, dict) or not isinstance(m.get("data"), list):
+            out["error"] = ("Unter dieser Adresse läuft kein LLM-Server (keine gültige Antwort von /v1/models)." if st == 200
+                            else "Das ist kein OpenAI-kompatibler Server (kein /v1/models)." if st == 404 else f"/v1/models antwortet mit {st}.")
+            return out
+        data = [d for d in (m.get("data") or []) if isinstance(d, dict)]
+        out["models"] = [d.get("id") for d in data if d.get("id")]
+        owned = {d.get("owned_by") for d in data}
+        st, v = await get("/api/version", 3)
+        tags = None
+        if st == 200 and isinstance(v, dict) and "version" in v:  # nur mit /api/tags (JSON mit models) – fremde Web-Apps antworten auf alles
+            st2, tags = await get("/api/tags", 4)
+            if not (st2 == 200 and isinstance(tags, dict) and isinstance(tags.get("models"), list)):
+                tags = None
+        is_ollama = tags is not None or "library" in owned
+        if typ == "ollama":
+            if not is_ollama:
+                out["error"] = f"{base} antwortet, ist aber kein Ollama. Server-Typ „OpenAI-kompatibel“ wählen."
+                return out
+            out["version"] = (v or {}).get("version") if isinstance(v, dict) else None
+            if tags is not None:
+                tl = tags.get("models") or []
+                out["models"] = sorted(t.get("name") for t in tl if t.get("name")) or out["models"]
+                out["sizes"] = {t.get("name"): t.get("size") for t in tl}
+        elif is_ollama:
+            out["server"], out["version"] = "Ollama", (v or {}).get("version") if isinstance(v, dict) else None
+        else:
+            st, p = await get("/props", 3)
+            if "llamacpp" in owned or (st == 200 and isinstance(p, dict) and "default_generation_settings" in p):
+                out["server"] = "llama.cpp"
+                if isinstance(p, dict):
+                    out["version"] = p.get("build_info")
+                    out["ctx"] = (p.get("default_generation_settings") or {}).get("n_ctx")
+            else:
+                st, v = await get("/version", 3)
+                if "vllm" in owned or (st == 200 and isinstance(v, dict) and "version" in v):
+                    out["server"] = "vLLM"
+                    out["version"] = v.get("version") if isinstance(v, dict) else None
+                    out["ctx"] = next((d.get("max_model_len") for d in data if d.get("max_model_len")), None)
+                else:
+                    st, v = await get("/api/v0/models", 3)
+                    if (st == 200 and isinstance(v, dict) and isinstance(v.get("data"), list)) or "organization_owner" in owned:
+                        out["server"] = "LM Studio"
+                    else:
+                        st, _ = await get("/readyz", 3)
+                        if st == 200:
+                            out["server"] = "LocalAI"
+    if isinstance(out["ctx"], int) and out["ctx"] < 65536:
+        out["warn"] = f"Der Server bietet nur {out['ctx']} Token Kontext, NuOrb braucht mindestens 64k. Startbefehl siehe Hilfe."
+    out["ok"] = True
+    return out
+
+
+async def llm_tools_probe(base: str, key: str, model: str) -> dict:
+    """Vertrag §1.4 Schritt 5: kann der Server Tool-Aufrufe? (eine kleine Anfrage, bis 120 s)"""
+    body_ = {"model": model, "messages": [{"role": "user", "content": "Wie spät ist es? Nutze das Werkzeug."}],
+             "tools": [{"type": "function", "function": {"name": "get_time", "description": "Aktuelle Uhrzeit",
+                                                          "parameters": {"type": "object", "properties": {}}}}],
+             "tool_choice": "auto", "max_tokens": 400}
+    try:
+        async with httpx.AsyncClient(timeout=120, headers=llm_headers(key)) as c:
+            r = await c.post(f"{base}/v1/chat/completions", json=body_)
+    except httpx.HTTPError:
+        return {"ok": False, "error": "Keine Antwort vom Server."}
+    try:
+        j = r.json()
+    except ValueError:
+        j = None
+    calls = ((((j or {}).get("choices") or [{}])[0].get("message") or {}).get("tool_calls")) if isinstance(j, dict) else None
+    if r.status_code == 200 and calls:
+        return {"ok": True, "error": ""}
+    return {"ok": False, "status": r.status_code, "error": "Der Server hat kein Werkzeug aufgerufen."}
 
 
 def ollama_base(cfg: dict | None = None) -> str:
@@ -1020,9 +1163,17 @@ def ollama_base(cfg: dict | None = None) -> str:
 async def status():
     cfg = to_plain(load_config_rt())
     model = cfg.get("model", {}) or {}
-    ollama = ollama_base(cfg)
+    ollama, typ = ollama_base(cfg), llm_type()
+    async def nothing():
+        return False, None
+    if not ollama:
+        brain_p, ps_p = nothing(), nothing()
+    elif typ == "openai":  # Vertrag §1.6: kein /api/ps, /api/version – online = /v1/models mit Key
+        brain_p, ps_p = probe(f"{ollama}/v1/models", 3, headers=llm_headers(llm_key(cfg))), nothing()
+    else:
+        brain_p, ps_p = probe(f"{ollama}/api/version", 3), probe(f"{ollama}/api/ps", 3)
     (brain, ver), (ps_ok, ps), (hermes, _), (stt, sttj), (ui, uij) = await asyncio.gather(
-        probe(f"{ollama}/api/version", 3), probe(f"{ollama}/api/ps", 3), probe(f"{HERMES_URL}/health"),
+        brain_p, ps_p, probe(f"{HERMES_URL}/health"),
         probe(STT_URL), probe(f"{UI_URL}/api/status", verify=ui_ssl_ctx()))
     units = await asyncio.gather(*(unit_state(n) for n in UNITS))
     loaded = []
@@ -1032,8 +1183,8 @@ async def status():
                            "until": m.get("expires_at"), "ctx": m.get("context_length")})
     fb = cfg.get("fallback_providers") or []
     return {
-        "time": now_iso(), "brain": {"online": brain, "version": (ver or {}).get("version"), "url": ollama,
-                                     "loaded": loaded},
+        "time": now_iso(), "brain": {"online": brain, "version": (ver or {}).get("version") if typ == "ollama" else None,
+                                     "url": ollama, "loaded": loaded, "type": typ, "server": llm_server(cfg, typ)},
         "hermes": {"online": hermes}, "stt": {"online": stt, "info": sttj}, "ui": {"online": ui, "info": uij},
         "model": {"default": model.get("default"), "provider": model.get("provider"),
                   "context": model.get("context_length")},
@@ -1052,12 +1203,18 @@ async def status():
 async def models():
     cfg = to_plain(load_config_rt())
     model = cfg.get("model", {}) or {}
-    ollama = ollama_base(cfg)
-    ok, tags = (await probe(f"{ollama}/api/tags", timeout=3)) if ollama else (False, None)
-    names = sorted(m.get("name") for m in (tags or {}).get("models", [])) if ok else []
-    sizes = {m.get("name"): m.get("size") for m in (tags or {}).get("models", [])} if ok else {}
+    ollama, typ = ollama_base(cfg), llm_type()
+    if typ == "openai":
+        ok, mods = (await probe(f"{ollama}/v1/models", timeout=3, headers=llm_headers(llm_key(cfg)))) if ollama else (False, None)
+        names = sorted(d.get("id") for d in (mods or {}).get("data", []) if isinstance(d, dict) and d.get("id")) if ok else []
+        sizes = {}
+    else:
+        ok, tags = (await probe(f"{ollama}/api/tags", timeout=3)) if ollama else (False, None)
+        names = sorted(m.get("name") for m in (tags or {}).get("models", [])) if ok else []
+        sizes = {m.get("name"): m.get("size") for m in (tags or {}).get("models", [])} if ok else {}
     providers = cfg.get("providers") or {}
     return {"ollama": names, "sizes": sizes, "online": ok, "model": model, "ollama_url": ollama,
+            "llm_type": typ, "llm_server": llm_server(cfg, typ), "api_key_set": bool(llm_key(cfg)),
             "reasoning": (cfg.get("agent") or {}).get("reasoning_effort"),
             "fallback": cfg.get("fallback_providers") or [],
             "providers": list(providers.keys()),
@@ -1074,21 +1231,48 @@ async def models_save(request: Request):
         if not re.fullmatch(r"[A-Za-z0-9._:/\-]{1,120}", name):
             raise HTTPException(400, "Ungültiger Modellname.")
         ch["model.default"] = name
-    if d.get("ollama_url"):
-        url, _ = ollama_normalize(str(d["ollama_url"]))
-        cfg = to_plain(load_config_rt())
-        if url != ollama_base(cfg):
-            ch[f"providers.{OLLAMA_PROVIDER}.api"] = url + "/v1"
-            if not ((cfg.get("providers") or {}).get(OLLAMA_PROVIDER) or {}).get("name"):
-                ch[f"providers.{OLLAMA_PROVIDER}.name"] = "Ollama"
-            if str((cfg.get("model") or {}).get("provider", "")) == f"custom:{OLLAMA_PROVIDER}":
+    cfg = to_plain(load_config_rt())
+    old_typ = llm_type()
+    typ = str(d.get("llm_type") or old_typ)
+    if typ not in LLM_TYPES:
+        raise HTTPException(400, "Unbekannter Server-Typ.")
+    raw = d.get("url") or d.get("ollama_url")
+    base = ollama_base(cfg)
+    if raw:
+        url, _ = llm_normalize(str(raw), typ)
+        if url != base:
+            ch[f"providers.{LOCAL_PROVIDER}.api"] = url + "/v1"
+            if str((cfg.get("model") or {}).get("provider", "")) == f"custom:{LOCAL_PROVIDER}":
                 ch["model.base_url"] = url + "/v1"
+        base = url
+    key = llm_key(cfg)
+    new_key = str(d.get("api_key") or "").strip()
+    if new_key:
+        if "\n" in new_key or len(new_key) > 4096:
+            raise HTTPException(400, "Ungültiger API-Key.")
+        if new_key != key:
+            ch[f"providers.{LOCAL_PROVIDER}.api_key"] = new_key
+        key = new_key
+    elif d.get("api_key_clear") and key:
+        ch[f"providers.{LOCAL_PROVIDER}.api_key"] = None
+        key = ""
+    det = await llm_detect(typ, base, key) if base and (raw or typ != old_typ or new_key) else None
+    server = det["server"] if det and det["ok"] else llm_server(cfg, typ)
+    old_name = str(llm_provider(cfg).get("name") or "")
+    if typ == "ollama":  # eigenen Anzeigenamen (z. B. „PC Ollama (…)“) behalten; nur nach Typwechsel oder wenn leer setzen
+        server = "Ollama"
+        if not old_name or old_typ != "ollama":
+            ch[f"providers.{LOCAL_PROVIDER}.name"] = server
+    elif server != old_name and (det or not old_name):
+        ch[f"providers.{LOCAL_PROVIDER}.name"] = server
     if "context_length" in d:
         n = int(d["context_length"]) if d["context_length"] else None
         if n is not None and not 2048 <= n <= 1048576:
             raise HTTPException(400, "Kontext zwischen 2048 und 1048576.")
         ch["model.context_length"] = n
-        ch["model.ollama_num_ctx"] = n
+        ch["model.ollama_num_ctx"] = n if typ == "ollama" else None  # Vertrag §1.3: bei openai nicht setzen
+    elif typ == "openai" and (cfg.get("model") or {}).get("ollama_num_ctx") is not None:
+        ch["model.ollama_num_ctx"] = None
     if "reasoning" in d:
         r = str(d["reasoning"])
         if r not in ("none", "minimal", "low", "medium", "high", "xhigh"):
@@ -1107,34 +1291,52 @@ async def models_save(request: Request):
     danger = ""
     if "model.default" in ch:
         danger = "Ein anderes Modell kann mehr Grafikspeicher (VRAM) auf dem PC belegen. Vorher prüfen, ob es mit 64k Kontext passt."
-    return config_preview(ch, "Modell/Fallback ändern", danger=danger)
+    pv = config_preview(ch, "Modell/Fallback ändern", danger=danger, allow_secret=(f"providers.{LOCAL_PROVIDER}.api_key",))
+    saved = load_brain_saved()
+    loc = dict(saved.get("local") or {})
+    if loc.get("type", "ollama") != typ or loc.get("server") != server:
+        loc.update(type=typ, server=server)
+        PENDING[pv["preview"]]["after_brain"] = {**saved, "local": loc}
+    return pv
+
+
+@app.post("/api/llm/test")
+async def llm_test(request: Request):
+    """Vertrag §1.4: {type, url, api_key} -> {ok, base, server, version, models, ctx, warn, error}. Aendert nichts.
+    Leerer api_key = gespeicherten Key nehmen (nie zurueckgeben)."""
+    d = await body(request)
+    typ = str(d.get("type") or "ollama")
+    if typ not in LLM_TYPES:
+        raise HTTPException(400, "Unbekannter Server-Typ.")
+    base, warn = llm_normalize(str(d.get("url", "")), typ)
+    key = str(d.get("api_key") or "").strip() or ("" if d.get("api_key_clear") else llm_key())
+    r = await llm_detect(typ, base, key)
+    r["warn"] = " ".join(x for x in (warn, r["warn"]) if x)
+    return r
+
+
+@app.post("/api/llm/tools")
+async def llm_tools(request: Request):
+    d = await body(request)
+    typ = str(d.get("type") or "ollama")
+    base, _ = llm_normalize(str(d.get("url", "")), typ if typ in LLM_TYPES else "ollama")
+    model = str(d.get("model") or "").strip()
+    if not model:
+        raise HTTPException(400, "Bitte zuerst ein Modell wählen.")
+    key = str(d.get("api_key") or "").strip() or llm_key()
+    return await llm_tools_probe(base, key, model)
 
 
 @app.post("/api/ollama/test")
 async def ollama_test(request: Request):
-    """Adresse pruefen: erreichbar? Version, Modelle. Aendert nichts."""
+    """Kompatibilitaet: Ollama-Test im alten Format (Docker-Einrichtung)."""
     d = await body(request)
-    url, warn = ollama_normalize(str(d.get("url", "")))
-    try:
-        async with httpx.AsyncClient(timeout=5) as c:
-            v = await c.get(f"{url}/api/version")
-            t = await c.get(f"{url}/api/tags")
-    except httpx.ConnectTimeout:
-        raise HTTPException(502, f"Keine Antwort von {url} (Zeitüberschreitung). Läuft der PC, und ist Ollama im Netz erreichbar (OLLAMA_HOST=0.0.0.0)?")
-    except httpx.ConnectError:
-        raise HTTPException(502, f"Keine Verbindung zu {url}. Adresse und Port prüfen; Ollama muss im Netz lauschen (OLLAMA_HOST=0.0.0.0).")
-    except httpx.HTTPError:
-        raise HTTPException(502, f"Keine Verbindung zu {url}.")
-    try:
-        ver = v.json().get("version") if v.status_code == 200 else None
-        tags = t.json().get("models", []) if t.status_code == 200 else None
-    except ValueError:
-        ver = tags = None
-    if not ver or tags is None:
-        raise HTTPException(502, f"{url} antwortet, ist aber kein Ollama.")
-    names = sorted(m.get("name") for m in tags if m.get("name"))
-    return {"ok": True, "url": url, "version": ver, "count": len(names), "models": names,
-            "sizes": {m.get("name"): m.get("size") for m in tags}, "warn": warn}
+    url, warn = llm_normalize(str(d.get("url", "")), "ollama")
+    r = await llm_detect("ollama", url)
+    if not r["ok"]:
+        raise HTTPException(502, r["error"])
+    return {"ok": True, "url": url, "version": r["version"], "count": len(r["models"]), "models": r["models"],
+            "sizes": r["sizes"], "warn": warn}
 
 
 @app.post("/api/models/check")
@@ -1155,6 +1357,8 @@ async def models_unload(request: Request):
     ollama = ollama_base(cfg)
     if not ollama:
         raise HTTPException(400, "Keine Ollama-Adresse eingestellt.")
+    if llm_type() != "ollama":
+        raise HTTPException(400, "Entladen gibt es nur bei Ollama.")
     async with httpx.AsyncClient(timeout=10) as c:
         r = await c.post(f"{ollama}/api/generate", json={"model": name, "keep_alive": 0})
     audit(who(request), f"Modell entladen: {name}")
@@ -1242,7 +1446,7 @@ def build_brain_change(mode: str, remote_model: str | None, fallback_model: str 
     cur = to_plain(yaml_rt.load(text) or {}).get("model") or {}
     saved = load_brain_saved()
     if not str(cur.get("provider", "")).startswith("anthropic"):  # lokale Einstellung merken
-        saved["local"] = {k: cur.get(k) for k in ("provider", "base_url", "default")}
+        saved["local"] = {**(saved.get("local") or {}), **{k: cur.get(k) for k in ("provider", "base_url", "default")}}
     saved["remote_model"], saved["fallback_model"] = remote_model, fallback_model
     local = {**LOCAL_DEFAULT, **{k: v for k, v in (saved.get("local") or {}).items() if v}}
     text = fb_block_set(text, fallback_model if mode == "auto" else None)
@@ -1278,8 +1482,8 @@ async def unload_local_model() -> bool:
     saved = load_brain_saved()
     local = {**LOCAL_DEFAULT, **{k: v for k, v in (saved.get("local") or {}).items() if v}}
     ollama = ollama_base()
-    if not ollama or not local["default"]:
-        return False
+    if not ollama or not local["default"] or llm_type() != "ollama":
+        return False  # Vertrag §1.6: bei openai nichts entladen
     try:
         async with httpx.AsyncClient(timeout=5) as c:
             r = await c.post(f"{ollama}/api/generate", json={"model": local["default"], "keep_alive": 0})

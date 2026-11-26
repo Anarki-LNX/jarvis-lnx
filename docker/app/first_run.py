@@ -130,8 +130,11 @@ def first_config() -> None:
         if code != 0:
             log(f"hermes config set {k} failed: {out[-300:]}")
     # LLM aus der .env (optional; sonst Einrichtung im Admin-Panel)
-    url = jc.env("NUORB_INIT_OLLAMA_URL").rstrip("/").removesuffix("/v1")
-    model = jc.env("NUORB_INIT_OLLAMA_MODEL")
+    # Lokales Gehirn: Ollama (Standard) oder jeder OpenAI-kompatible Server (llama.cpp, vLLM, LM Studio, LocalAI)
+    url = (jc.env("NUORB_INIT_LLM_URL") or jc.env("NUORB_INIT_OLLAMA_URL")).rstrip("/").removesuffix("/v1")
+    model = jc.env("NUORB_INIT_LLM_MODEL") or jc.env("NUORB_INIT_OLLAMA_MODEL")
+    ltype = "openai" if jc.env("NUORB_INIT_LLM_TYPE").lower() == "openai" else "ollama"
+    lkey = jc.env("NUORB_INIT_LLM_API_KEY")
     ctx = int(jc.env("NUORB_INIT_CONTEXT", "65536") or 65536)
     os.environ.setdefault("NUORB_HOME", "/opt/nuorb/home")
     sys.path.insert(0, "/opt/nuorb/admin")
@@ -140,14 +143,27 @@ def first_config() -> None:
     if url and model:
         data = adm.load_config_rt()
         prov = getattr(adm, "OLLAMA_PROVIDER", "pc-ollama")
+        server = "Ollama"
+        if ltype == "openai":
+            det = jc.llm_detect(url, lkey)
+            server = det["server"]
+            if det.get("ctx"):
+                ctx = max(65536, int(det["ctx"]))
         adm.cfg_set(data, f"providers.{prov}.api", f"{url}/v1")
-        adm.cfg_set(data, f"providers.{prov}.name", "Ollama")
+        adm.cfg_set(data, f"providers.{prov}.name", server)
         adm.cfg_set(data, f"providers.{prov}.models", {model: {"context_length": ctx}})
-        for k, v in (("provider", f"custom:{prov}"), ("base_url", f"{url}/v1"), ("default", model),
-                     ("context_length", ctx), ("ollama_num_ctx", ctx)):
+        if lkey:
+            adm.cfg_set(data, f"providers.{prov}.api_key", lkey)
+        for k, v in (("provider", f"custom:{prov}"), ("base_url", f"{url}/v1"), ("default", model), ("context_length", ctx)):
             adm.cfg_set(data, f"model.{k}", v)
+        if ltype == "ollama":
+            adm.cfg_set(data, "model.ollama_num_ctx", ctx)   # bei openai nicht: verdeckt sonst ein zu kleines -c am Server
+        else:
+            (data.get("model") or {}).pop("ollama_num_ctx", None)
         adm.atomic_write(path, adm.dump_rt(data))
-        adm.save_brain_saved({"local": {"provider": f"custom:{prov}", "base_url": f"{url}/v1", "default": model}})
+        local = {"provider": f"custom:{prov}", "base_url": f"{url}/v1", "default": model, "type": ltype, "server": server}
+        adm.save_brain_saved({"local": local})
+        log(f"Local brain from .env: {server} ({ltype}) {url} · {model}")
     has_key = bool(env_get("ANTHROPIC_API_KEY"))
     mode = jc.env("NUORB_INIT_BRAIN") or ("auto" if (url and model and has_key) else "remote" if has_key else "local")
     ui = {"mode": "live", "persona": personas.PERSONA[lg], "piper_voice": voice_name(), "length_scale": 0.95,
@@ -156,7 +172,10 @@ def first_config() -> None:
         try:
             ch = adm.build_brain_change(mode, jc.env("NUORB_INIT_CLAUDE_MODEL") or None, jc.env("NUORB_INIT_CLAUDE_MODEL") or None)
             adm.atomic_write(path, ch["text"])
-            adm.save_brain_saved(ch["saved"])
+            saved = ch["saved"]
+            if url and model and isinstance(saved.get("local"), dict):
+                saved["local"].update(type=ltype, server=server)   # Typ gehört NuOrb, nicht Hermes (§1.3)
+            adm.save_brain_saved(saved)
             ui.update(ch["ui"])
             jc._write_json(jc.CONF / "setup-done.json", {"time": jc.now_iso(), "mode": mode, "via": ".env"})
             log(f"Brain from .env: {ch['desc']}")

@@ -6,7 +6,7 @@
   const DE = !window.I18N || window.I18N.lang === "de"; // lokale Sprachbefehle (deutsche Muster) nur auf Deutsch
   const LOC = DE ? "de-DE" : "en-GB";
   const $ = (id) => document.getElementById(id);
-  const VERSION = "2026-11-25.57";
+  const VERSION = "2026-11-26.58";
   // Kurzes Client-Log ins Server-Journal (Kiosk hat keine JS-Konsole)
   function clog(msg) {
     try { fetch("/api/clientlog", { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
@@ -743,7 +743,7 @@
             const er = String(ev.error || "");
             const why = offline ? t("Gehirn offline – das Sprachmodell auf dem PC ist nicht erreichbar.")
               : /too large|context|token/i.test(er) ? t("Das Sprachmodell hat zu wenig Kontext für Hermes (Backend-Einstellung nötig).")
-              : /connect|refused|unreachable|timed? ?out/i.test(er) ? t("Das Sprachmodell antwortet nicht. Läuft Ollama auf dem PC?")
+              : /connect|refused|unreachable|timed? ?out/i.test(er) ? t("Das Sprachmodell antwortet nicht. Läuft der Sprachmodell-Server?")
               : t("Hermes: {e}", { e: er || t("Lauf fehlgeschlagen") });
             return fail(why);
           }

@@ -48,18 +48,25 @@
   </section>
 
   <section class="panel" id="pOllama">
-    <h2 data-t="h_ollama">Ollama</h2>
+    <h2 data-t="h_ollama">Local language model server</h2>
+    <div class="row">
+      <div><label for="ltype" data-t="l_type">Server type</label>
+        <select id="ltype"><option value="ollama">Ollama</option><option value="openai" data-t="t_openai">OpenAI-compatible (llama.cpp, vLLM, LM Studio, LocalAI)</option></select></div>
+      <div><label for="lkey" data-t="l_lkey">API key (only if the server needs one)</label>
+        <input id="lkey" type="password" autocomplete="off" spellcheck="false"></div>
+    </div>
+    <p class="muted" id="lkeyState"></p>
     <div class="row">
       <div><label for="url" data-t="l_url">Address</label><input id="url" placeholder="http://192.168.1.50:11434" spellcheck="false"></div>
       <div class="fit"><button class="btn" id="probe" type="button" data-t="probe">Test connection</button></div>
     </div>
-    <p class="muted" data-t="url_hint">IP address of the computer running Ollama (or its hostname, e.g. http://ollama.local:11434). Use the IP if the name doesn't resolve. Ollama on this same machine: use this machine's IP too (start Ollama with OLLAMA_HOST=0.0.0.0).</p>
+    <p class="muted" data-t="url_hint">Ollama: http://<IP>:11434. llama.cpp/LocalAI usually port 8080, vLLM 8000, LM Studio 1234. Use the IP of the computer running the server, also if it is this one; the server must listen on the network (0.0.0.0) and its port must be open in that computer's firewall.</p>
     <p class="muted" id="probeMsg"></p>
     <label for="model" data-t="l_model">Model</label>
     <select id="model"><option value="">–</option></select>
     <label for="ctx" data-t="l_ctx">Context (tokens)</label>
     <select id="ctx"><option selected>65536</option><option>131072</option></select>
-    <p class="muted" data-t="ctx_hint">Important: Hermes requires at least 64k tokens of context. Set OLLAMA_CONTEXT_LENGTH=65536 on the Ollama server or create a model variant with “PARAMETER num_ctx”, otherwise answers get cut off.</p>
+    <p class="muted" data-t="ctx_hint">Important: NuOrb needs at least 64k tokens of context – Ollama: OLLAMA_CONTEXT_LENGTH=65536, llama.cpp: -c 65536, vLLM: --max-model-len 65536, LM Studio: Context Length 65536. The model must support tool calling (llama.cpp: --jinja, vLLM: --enable-auto-tool-choice).</p>
   </section>
 
   <section class="panel" id="pClaude">

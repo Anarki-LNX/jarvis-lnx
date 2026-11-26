@@ -24,7 +24,8 @@ UNINSTALL=0
 SOURCE=""                    # local docker/ folder instead of download (development, offline)
 IMAGE=""                     # use this image instead of ghcr.io/anarki-lnx/nuorb (development)
 IP=""
-OLLAMA=""                    # URL, or "none"
+OLLAMA=""                    # URL des lokalen Gehirns (Ollama oder OpenAI-kompatibel), oder "none"
+LLM_KEY=""
 
 # ------------------------------------------------------------------ output
 if [ -t 1 ]; then B=$'\e[1m'; G=$'\e[32m'; Y=$'\e[33m'; R=$'\e[31m'; C=$'\e[36m'; N=$'\e[0m'; else B=""; G=""; Y=""; R=""; C=""; N=""; fi
@@ -64,7 +65,9 @@ NuOrb server installer (install, update, repair)
   --ports UI,ADMIN  ports for the app/UI and the admin panel (default: 8443,8444)
   --lang de|en      language of the assistant and the admin panel
   --ip IP           address of this server in your home network (default: detected)
-  --ollama URL|none Ollama address (default: detected on this machine, otherwise ask)
+  --llm URL|none    local brain: Ollama or OpenAI-compatible server (llama.cpp, vLLM, LM Studio)
+                    (default: detected on this machine, otherwise ask); --ollama is the same
+  --llm-key KEY     API key of that server, if it requires one
   --yes             no questions, use defaults (never runs sudo)
   --no-firewall     do not check or change the firewall
   --uninstall       remove NuOrb (asks; data only with an extra confirmation)
@@ -79,7 +82,8 @@ while [ $# -gt 0 ]; do
     --ports) UI_PORT="${2%%,*}"; ADMIN_PORT="${2##*,}"; PORTS_SET=1; shift ;;
     --lang) LANG_SEL="$2"; UL="$2"; shift ;;
     --ip) IP="$2"; shift ;;
-    --ollama) OLLAMA="$2"; shift ;;
+    --ollama|--llm) OLLAMA="$2"; shift ;;
+    --llm-key) LLM_KEY="$2"; shift ;;
     --yes|-y) YES=1 ;;
     --no-firewall) FIREWALL=0 ;;
     --uninstall) UNINSTALL=1 ;;
@@ -279,9 +283,57 @@ set_env() {   # set_env KEY VALUE  (in $DIR/.env)
 }
 get_env() { sed -n "s/^$1=//p" "$DIR/.env" 2>/dev/null | tail -1; }
 
-ollama_local() {   # Ollama auf diesem Rechner? -> "loopback" | "all" | ""
-  curl -fsS -m 2 http://127.0.0.1:11434/api/version >/dev/null 2>&1 || { echo ""; return; }
-  if command -v ss >/dev/null && ss -ltnH 2>/dev/null | awk '{print $4}' | grep -Eq '^(0\.0\.0\.0|\*|\[::\]):11434$'; then echo all; else echo loopback; fi
+# ------------------------------------------------------------------ lokales Gehirn: Ollama oder OpenAI-kompatibler Server
+bind_of() {   # bind_of PORT -> "all" | "loopback"
+  if command -v ss >/dev/null && ss -ltnH 2>/dev/null | awk '{print $4}' | grep -Eq "^(0\.0\.0\.0|\*|\[::\]):$1\$"; then echo all; else echo loopback; fi
+}
+json_ids() {  # stdin: JSON von /v1/models oder /api/tags -> eine ID pro Zeile
+  if command -v python3 >/dev/null; then
+    python3 -c 'import json,sys
+try: d=json.load(sys.stdin)
+except Exception: sys.exit(0)
+for m in d.get("data") or d.get("models") or []:
+    i = m.get("id") or m.get("name")
+    if i: print(i)' 2>/dev/null || true
+  else grep -o '"\(id\|name\)":"[^"]*"' | cut -d'"' -f4 || true; fi
+}
+llm_probe() {  # llm_probe BASE [KEY] -> "TYP|SERVER|HTTP"  (TYP ollama|openai|"", HTTP von /v1/models)
+  local b="$1" k="${2:-}" code body auth=()
+  [ -n "$k" ] && auth=(-H "Authorization: Bearer $k")
+  # Merkmale immer am JSON prüfen: manche Web-Apps beantworten jeden Pfad mit HTML und Status 200
+  if curl -fsS -m 3 "$b/api/version" 2>/dev/null | grep -q '"version"' && curl -fsS -m 3 "$b/api/tags" 2>/dev/null | grep -q '"models"'; then
+    echo "ollama|Ollama|200"; return
+  fi
+  body=$(curl -s -m 4 -w '\n%{http_code}' "${auth[@]}" "$b/v1/models" 2>/dev/null || true)
+  code=${body##*$'\n'}; body=${body%$'\n'*}
+  case "$code" in
+    401|403) echo "openai|OpenAI-kompatibel|$code"; return ;;
+    200) printf '%s' "$body" | grep -q '"data"' || { echo "||nojson"; return; } ;;
+    *) echo "||${code:-000}"; return ;;
+  esac
+  if printf '%s' "$body" | grep -q '"owned_by":"llamacpp"' || curl -fsS -m 3 "${auth[@]}" "$b/props" 2>/dev/null | grep -q default_generation_settings; then echo "openai|llama.cpp|200"
+  elif printf '%s' "$body" | grep -q '"owned_by":"vllm"' || curl -fsS -m 3 "${auth[@]}" "$b/version" 2>/dev/null | grep -q '"version"'; then echo "openai|vLLM|200"
+  elif curl -fsS -m 3 "${auth[@]}" "$b/api/v0/models" 2>/dev/null | grep -q '"data"'; then echo "openai|LM Studio|200"
+  elif curl -fsS -m 3 -o /dev/null "$b/readyz" 2>/dev/null; then echo "openai|LocalAI|200"
+  else echo "openai|OpenAI-kompatibel|200"; fi
+}
+local_llms() {  # Server auf diesem Rechner: "PORT|TYP|SERVER|BIND" je Zeile
+  local p r
+  for p in 11434 8080 8000 1234; do
+    r=$(llm_probe "http://127.0.0.1:$p")
+    case "$r" in ollama*|openai*) printf '%s|%s|%s|%s\n' "$p" "${r%%|*}" "$(printf '%s' "$r" | cut -d'|' -f2)" "$(bind_of "$p")" ;; esac
+  done
+}
+listen_hint() {  # listen_hint SERVER -> wie man den Server im Netz lauschen lässt
+  case "$1" in
+    Ollama) cmdline "sudo systemctl edit ollama   $(t "# add:" "# eintragen:") [Service]  Environment=\"OLLAMA_HOST=0.0.0.0\"  Environment=\"OLLAMA_CONTEXT_LENGTH=65536\""
+            cmdline "sudo systemctl restart ollama" ;;
+    llama.cpp) cmdline "llama-server … --host 0.0.0.0 -c 65536 --jinja" ;;
+    vLLM) cmdline "vllm serve … --host 0.0.0.0 --max-model-len 65536 --enable-auto-tool-choice --tool-call-parser hermes" ;;
+    "LM Studio") cmdline "$(t "LM Studio: Developer → Server → “Serve on Local Network”; load the model with Context Length ≥ 65536" \
+                             "LM Studio: Entwickler → Server → „Im lokalen Netzwerk bereitstellen“; Modell mit Context Length ≥ 65536 laden")" ;;
+    *) cmdline "--host 0.0.0.0" ;;
+  esac
 }
 
 configure() {
@@ -309,37 +361,55 @@ configure() {
   set_env NUORB_HOSTS "$IP"; set_env NUORB_UI_PORT_PUBLIC "$UI_PORT"; set_env NUORB_ADMIN_PORT_PUBLIC "$ADMIN_PORT"
   ok "$(t "Language" "Sprache") $lang · IP $IP · $(t "ports" "Ports") $UI_PORT/$ADMIN_PORT · TZ ${tz:-Europe/Berlin}"
 
-  # Ollama (optional; geht auch später im Einrichtungsassistenten)
-  local url="" lo
+  # Lokales Gehirn (optional; geht auch später im Einrichtungsassistenten): Ollama oder OpenAI-kompatibler Server
+  local url="" found first ltype="" server="" code="" key="${LLM_KEY:-}"
   if [ -z "$OLLAMA" ]; then
-    lo=$(ollama_local)
-    if [ -n "$lo" ]; then
-      ok "$(t "Ollama is running on this machine." "Ollama läuft auf diesem Rechner.")"
-      if [ "$lo" = loopback ]; then
-        warn "$(t "It only listens on 127.0.0.1 – the container cannot reach it. Let it listen on all interfaces:" \
-                  "Es lauscht nur auf 127.0.0.1 – der Container erreicht es so nicht. Auf allen Schnittstellen lauschen lassen:")"
-        cmdline "sudo systemctl edit ollama   $(t "# add:" "# eintragen:") [Service]  Environment=\"OLLAMA_HOST=0.0.0.0\""
-        cmdline "sudo systemctl restart ollama"
+    found=$(local_llms)
+    if [ -n "$found" ]; then
+      ok "$(t "Language model server on this machine:" "Sprachmodell-Server auf diesem Rechner:")"
+      printf '%s\n' "$found" | while IFS='|' read -r p ty sv bd; do
+        printf '      · %s  http://%s:%s%s\n' "$sv" "$IP" "$p" "$([ "$bd" = loopback ] && t "  (only 127.0.0.1 – not reachable from the container)" "  (nur 127.0.0.1 – vom Container nicht erreichbar)")"
+      done
+      first=$(printf '%s\n' "$found" | head -1)
+      if [ "$(printf '%s' "$first" | cut -d'|' -f4)" = loopback ]; then
+        warn "$(t "Let it listen on all interfaces:" "Auf allen Schnittstellen lauschen lassen:")"; listen_hint "$(printf '%s' "$first" | cut -d'|' -f3)"
       fi
-      url=$(ask "$(t "Ollama address (- = set up later)" "Ollama-Adresse (- = später einrichten)")" "http://$IP:11434")
+      url=$(ask "$(t "Brain address (- = set up later)" "Adresse des Gehirns (- = später einrichten)")" "http://$IP:$(printf '%s' "$first" | cut -d'|' -f1)")
     else
-      url=$(ask "$(t "Ollama address, e.g. http://192.168.1.50:11434 (Enter = later / Claude only)" "Ollama-Adresse, z. B. http://192.168.1.50:11434 (Enter = später / nur Claude)")" "-")
+      url=$(ask "$(t "Address of Ollama or an OpenAI-compatible server (llama.cpp, vLLM, LM Studio), e.g. http://192.168.1.50:11434 – Enter = later / Claude only" \
+                     "Adresse von Ollama oder einem OpenAI-kompatiblen Server (llama.cpp, vLLM, LM Studio), z. B. http://192.168.1.50:11434 – Enter = später / nur Claude")" "-")
     fi
   elif [ "$OLLAMA" != none ]; then url="$OLLAMA"; fi
-  case "$url" in ""|-|none) ok "$(t "Brain: choose in the setup wizard (Ollama or Claude)." "Gehirn: im Einrichtungsassistenten wählen (Ollama oder Claude).")"; return ;; esac
+  case "$url" in ""|-|none) ok "$(t "Brain: choose in the setup wizard (local server or Claude)." "Gehirn: im Einrichtungsassistenten wählen (lokaler Server oder Claude).")"; return 0 ;; esac
   case "$url" in http://*|https://*) ;; *) url="http://$url" ;; esac
   url="${url%/}"; url="${url%/v1}"
-  set_env NUORB_INIT_OLLAMA_URL "$url"
-  local models model
-  models=$(curl -fsS -m 4 "$url/api/tags" 2>/dev/null | grep -o '"name":"[^"]*"' | cut -d'"' -f4 || true)
+  IFS='|' read -r ltype server code <<< "$(llm_probe "$url" "$key")"
+  if [ "$code" = 401 ] || [ "$code" = 403 ]; then
+    if [ -n "$TTY" ] && [ "$YES" = 0 ]; then
+      printf '  %s?%s %s ' "$C" "$N" "$(t "The server requires an API key (input hidden):" "Der Server verlangt einen API-Key (Eingabe verdeckt):")" > "$TTY"
+      IFS= read -rs key < "$TTY" || true; echo > "$TTY"
+      IFS='|' read -r ltype server code <<< "$(llm_probe "$url" "$key")"
+    fi
+  fi
+  if [ -z "$ltype" ] || [ "$code" != 200 ]; then
+    set_env NUORB_INIT_OLLAMA_URL "$url"
+    warn "$(t "No language model server answers at $url (HTTP ${code:-–}). Check the address/port, that the server listens on the network and the firewall – or fix it later in the setup wizard." \
+              "Unter $url antwortet kein Sprachmodell-Server (HTTP ${code:-–}). Adresse/Port prüfen, ob der Server im Netz lauscht, und die Firewall – oder später im Einrichtungsassistenten ändern.")"
+    return 0
+  fi
+  set_env NUORB_INIT_LLM_TYPE "$ltype"; set_env NUORB_INIT_OLLAMA_URL "$url"
+  [ -n "$key" ] && set_env NUORB_INIT_LLM_API_KEY "$key"
+  local models model auth=()
+  [ -n "$key" ] && auth=(-H "Authorization: Bearer $key")
+  if [ "$ltype" = ollama ]; then models=$(curl -fsS -m 4 "$url/api/tags" 2>/dev/null | json_ids)
+  else models=$(curl -fsS -m 4 "${auth[@]}" "$url/v1/models" 2>/dev/null | json_ids); fi
   if [ -n "$models" ]; then
     printf '%s\n' "$models" | head -12 | sed 's/^/      · /'
-    model=$(ask "$(t "Ollama model" "Ollama-Modell")" "$(printf '%s\n' "$models" | head -1)")
+    model=$(ask "$(t "Model" "Modell")" "$(printf '%s\n' "$models" | head -1)")
     set_env NUORB_INIT_OLLAMA_MODEL "$model"
-    ok "Ollama $url · $model ($(t "needs at least 64k context: OLLAMA_CONTEXT_LENGTH=65536" "braucht mindestens 64k Kontext: OLLAMA_CONTEXT_LENGTH=65536"))"
+    ok "$server $url · $model ($(t "needs at least 64k context" "braucht mindestens 64k Kontext"))"
   else
-    warn "$(t "Ollama at $url does not answer from here – you can fix the address later in the setup wizard." \
-              "Ollama unter $url antwortet von hier nicht – die Adresse lässt sich später im Einrichtungsassistenten ändern.")"
+    warn "$(t "$server answers but lists no model – choose it later in the setup wizard." "$server antwortet, nennt aber kein Modell – später im Einrichtungsassistenten wählen.")"
   fi
 }
 
@@ -365,11 +435,12 @@ firewall() {
   net=$(ip -4 -o addr show 2>/dev/null | awk -v ip="$IP" '$4 ~ "^"ip"/" {print $4}' | head -1 || true)
   lan=$([ -n "$net" ] && python3 -c 'import ipaddress,sys; print(ipaddress.ip_interface(sys.argv[1]).network)' "$net" 2>/dev/null || echo "192.168.0.0/16")
   ollama_url=$(get_env NUORB_INIT_OLLAMA_URL)
+  local lport; lport=$(printf '%s' "$ollama_url" | sed -n 's#^https\{0,1\}://[^/]*:\([0-9]*\).*#\1#p'); lport=${lport:-11434}
   if systemctl is-active --quiet ufw 2>/dev/null || grep -qs '^ENABLED=yes' /etc/ufw/ufw.conf; then
     step "$(t "Firewall (ufw)" "Firewall (ufw)")"
     grep -qs 'DEFAULT_FORWARD_POLICY="DROP"' /etc/default/ufw && FW_CMDS+=("sudo ufw default allow routed")
     FW_CMDS+=("sudo ufw allow from $lan to any port $UI_PORT,$ADMIN_PORT proto tcp")
-    case "$ollama_url" in *"//$IP:"*|*//127.*|*//localhost*) FW_CMDS+=("sudo ufw allow from 172.16.0.0/12 to any port 11434 proto tcp") ;; esac
+    case "$ollama_url" in *"//$IP:"*|*//127.*|*//localhost*) FW_CMDS+=("sudo ufw allow from 172.16.0.0/12 to any port $lport proto tcp") ;; esac
     FW_CMDS+=("sudo ufw reload")
   elif systemctl is-active --quiet firewalld 2>/dev/null; then
     step "$(t "Firewall (firewalld)" "Firewall (firewalld)")"
@@ -424,10 +495,12 @@ start() {
   [ "$st" = healthy ] && ok "$(t "NuOrb is running." "NuOrb läuft.")" || warn "$(t "Still starting – check with: docker compose ps" "Startet noch – prüfen mit: docker compose ps")"
   # Ollama vom Container aus erreichbar?
   local ou; ou=$(get_env NUORB_INIT_OLLAMA_URL)
-  if [ -n "$ou" ] && ! "${DOCKER[@]}" exec "$cname" curl -fsS -m 6 -o /dev/null "$ou/api/version" 2>/dev/null; then
-    warn "$(t "The container cannot reach Ollama at $ou." "Der Container erreicht Ollama unter $ou nicht.")"
-    cmdline "OLLAMA_HOST=0.0.0.0   $(t "# Ollama must listen on all interfaces" "# Ollama muss auf allen Schnittstellen lauschen")"
-    cmdline "sudo ufw allow from 172.16.0.0/12 to any port 11434 proto tcp   $(t "# with ufw on the Ollama machine" "# bei ufw auf dem Ollama-Rechner")"
+  local ok_code; ok_code=$("${DOCKER[@]}" exec "$cname" curl -s -m 6 -o /dev/null -w '%{http_code}' "$ou/v1/models" 2>/dev/null || true)
+  if [ -n "$ou" ] && [ "$ok_code" != 200 ] && [ "$ok_code" != 401 ] && [ "$ok_code" != 403 ]; then
+    local op; op=$(printf '%s' "$ou" | sed -n 's#^https\{0,1\}://[^/]*:\([0-9]*\).*#\1#p')
+    warn "$(t "The container cannot reach the language model server at $ou." "Der Container erreicht den Sprachmodell-Server unter $ou nicht.")"
+    cmdline "$(t "# the server must listen on all interfaces (0.0.0.0), not only 127.0.0.1" "# der Server muss auf allen Schnittstellen lauschen (0.0.0.0), nicht nur auf 127.0.0.1")"
+    cmdline "sudo ufw allow from 172.16.0.0/12 to any port ${op:-11434} proto tcp   $(t "# with ufw on that machine" "# bei ufw auf diesem Rechner")"
   fi
   CNAME="$cname"
 }
@@ -461,6 +534,8 @@ finish() {
 }
 
 # ------------------------------------------------------------------ main
+# Für Tests: nur die Funktionen laden (NUORB_LIB_ONLY=1 source install.sh)
+if [ "${NUORB_LIB_ONLY:-}" = 1 ]; then return 0 2>/dev/null || exit 0; fi
 printf '%sNuOrb%s – %s\n' "$B" "$N" "$(t "self-hosted voice assistant · installer" "selbst gehosteter Sprachassistent · Installation")"
 check_docker
 [ "$UNINSTALL" = 1 ] && uninstall

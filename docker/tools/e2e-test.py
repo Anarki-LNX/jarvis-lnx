@@ -234,6 +234,42 @@ def main() -> int:
         s = wait_brain(app, True)
         check("Zurück auf die alte Ollama-Adresse", st == 200 and bool(s.get("brain_ok")), f"{st} {old_url}")
 
+    # ---------------------------------------------------------------- OpenAI-kompatibler Server (llama.cpp-Art, mit API-Key)
+    port3, key3 = 18439, "e2e-" + secrets.token_hex(6)
+    log3 = Path(tempfile.mkdtemp(prefix="e2e-oai-", dir=str(Path(__file__).resolve().parent.parent / ".work"))) / "mock3.log"
+    mock3 = subprocess.Popen([sys.executable, str(Path(__file__).with_name("mock-llm.py")), str(port3)], stdout=open(log3, "w"),
+                             stderr=subprocess.STDOUT, env={**os.environ, "MOCK_KIND": "llamacpp", "MOCK_API_KEY": key3})
+    try:
+        time.sleep(1.5)
+        st, pr = adm.req("POST", "/api/setup/ollama", {"type": "openai", "url": f"127.0.0.1:{port3}", "api_key": ""})
+        check("OpenAI-Server ohne Key: klare Meldung", st == 502 and "key" in str(pr.get("detail", "")).lower(), f"{st} {pr.get('detail')}")
+        st, pr = adm.req("POST", "/api/setup/ollama", {"type": "openai", "url": f"127.0.0.1:{port3}", "api_key": key3})
+        check("OpenAI-Server erkannt (llama.cpp, 64k, Modelle)", st == 200 and pr.get("server") == "llama.cpp" and pr.get("models") == [model]
+              and (pr.get("ctx") or 0) >= 65536, f"{st} {pr.get('server')} ctx={pr.get('ctx')} {pr.get('models')}")
+        st, d = adm.req("POST", "/api/setup/apply", {"mode": "local", "llm_type": "openai", "llm_api_key": key3,
+                                                    "ollama_url": f"http://127.0.0.1:{port3}", "ollama_model": model,
+                                                    "context": 65536, "remote_model": ""}, timeout=150)
+        st1, s1 = adm.req("GET", "/api/setup")
+        check("Gespeichert als openai/llama.cpp, Key nur als „gesetzt“", st == 200 and s1.get("llm_type") == "openai"
+              and s1.get("llm_server") == "llama.cpp" and s1.get("llm_api_key_set") is True and key3 not in json.dumps(s1),
+              f"{st} {s1.get('llm_type')} {s1.get('llm_server')} key_set={s1.get('llm_api_key_set')}")
+        s = wait_brain(app, True)
+        check("Statusanzeige: Gehirn online über /v1/models", bool(s.get("brain_ok")) and s.get("brain_type") == "openai",
+              f"brain_ok={s.get('brain_ok')} type={s.get('brain_type')} server={s.get('brain_server')}")
+        n0 = log3.read_text().count("POST")
+        ans3, ev3, _ = ask(app, "Was ist zwei plus zwei?")
+        n1 = log3.read_text().count("POST")
+        check("Antwort über den OpenAI-kompatiblen Server (mit Key)", bool(ans3) and not ans3.startswith("FEHLER") and n1 > n0,
+              f"Anfragen: {n1 - n0} Antwort={ans3[:50]!r}")
+    finally:
+        mock3.terminate()
+        st, d = adm.req("POST", "/api/setup/apply", {"mode": "local", "llm_type": "ollama", "llm_api_key_clear": True,
+                                                    "ollama_url": old_url, "ollama_model": model, "context": 65536, "remote_model": ""}, timeout=150)
+        st1, s1 = adm.req("GET", "/api/setup")
+        s = wait_brain(app, True)
+        check("Zurück auf Ollama, Key gelöscht", st == 200 and s1.get("llm_type") == "ollama" and not s1.get("llm_api_key_set")
+              and bool(s.get("brain_ok")), f"{s1.get('llm_type')} key_set={s1.get('llm_api_key_set')} brain_ok={s.get('brain_ok')}")
+
     # ---------------------------------------------------------------- Sprache
     st, wav = app.req("POST", "/api/tts", {"text": "Guten Abend. Alle Systeme laufen."}, timeout=60)
     tts_ok = st == 200 and isinstance(wav, bytes) and wav[:4] == b"RIFF"

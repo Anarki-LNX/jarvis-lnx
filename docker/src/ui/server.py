@@ -42,7 +42,7 @@ STT_URL = os.environ.get("STT_URL", "http://127.0.0.1:8178/v1/audio/transcriptio
 # Startwert (Env BRAIN_URL); massgeblich ist providers.pc-ollama.api in der Hermes-Konfiguration (siehe brain_url())
 BRAIN_URL = os.environ.get("BRAIN_URL", "http://ollama:11434/api/version")
 HERMES_CONFIG = Path(os.environ.get("HERMES_CONFIG", str(Path.home() / ".hermes/config.yaml")))
-_brain_cache = {"mtime": None, "url": BRAIN_URL}
+_brain_cache: dict = {"mtime": None, "url": BRAIN_URL, "api": ""}
 _hcfg = {"mtime": None, "data": {}}
 
 
@@ -67,14 +67,72 @@ def smarthome_enabled() -> bool:
     return isinstance(srv, dict) and srv.get("enabled") is True
 
 
+def _start_api() -> str:
+    """Startwert aus Env BRAIN_URL (alt: …/api/version, neu: …/v1) -> OpenAI-Basis …/v1."""
+    u = BRAIN_URL.rstrip("/")
+    return re.sub(r"/api/version$", "", u) + ("" if u.endswith("/v1") else "/v1")
+
+
+BRAIN_SAVED_FILE = Path(os.environ.get("BRAIN_SAVED_FILE", str(HOME / "nuorb-admin/data/brain.json")))
+
+
+def brain_provider() -> dict:
+    """Lokales Gehirn nach Vertrag docs/llm-backends.md (§1.3/§1.6): Anbieter providers.pc-ollama in der Hermes-
+    Konfiguration (api, name, api_key); Typ aus NuOrbs eigenen Daten brain_saved.local.type (Datei der Verwaltung,
+    Env BRAIN_SAVED_FILE) – „ollama“ | „openai“, fehlt er: ollama. Env BRAIN_PROVIDER waehlt einen anderen Schluessel."""
+    provs = hermes_cfg().get("providers") or {}
+    key = os.environ.get("BRAIN_PROVIDER", "").strip() or "pc-ollama"
+    p = provs.get(key) if isinstance(provs.get(key), dict) else {}
+    saved = _read_json(BRAIN_SAVED_FILE, {}) if BRAIN_SAVED_FILE.exists() else {}
+    local = saved.get("local") if isinstance(saved, dict) and isinstance(saved.get("local"), dict) else {}
+    api = str(p.get("api") or p.get("base_url") or local.get("base_url") or "").strip().rstrip("/")
+    if not re.fullmatch(r"https?://[\w.\-\[\]:]+(/[\w.\-/]*)?", api):
+        api = _brain_cache.get("api") or _start_api()
+    if not api.endswith("/v1"):
+        api += "/v1"
+    _brain_cache["api"] = api
+    typ = str(local.get("type") or "ollama").strip().lower()
+    typ = typ if typ in ("ollama", "openai") else "ollama"
+    ak = p.get("api_key") if isinstance(p.get("api_key"), str) else ""
+    if not ak and isinstance(p.get("key_env"), str):  # Vertrag §1.3: api_key oder key_env
+        ak = hermes_env(p["key_env"].strip())
+    name = str(p.get("name") or local.get("server") or "").strip()[:60]
+    return {"key": key, "api": api, "type": typ, "api_key": ak, "name": "Ollama" if typ == "ollama" else (name or "OpenAI-kompatibel")}
+
+
 def brain_url() -> str:
-    """Ollama-Pruefadresse: providers.pc-ollama.api aus der Hermes-Konfiguration (die NuOrb-Verwaltung stellt sie ein),
-    ohne /v1, plus /api/version. Bei jeder Pruefung frisch (mtime) – kein Neustart noetig. Fehlt der Eintrag oder die
-    Datei, gilt der Startwert BRAIN_URL bzw. die zuletzt gelesene Adresse."""
-    api = str(((hermes_cfg().get("providers") or {}).get("pc-ollama") or {}).get("api") or "").strip()
-    if re.fullmatch(r"https?://[\w.\-\[\]:]+(/[\w.\-/]*)?", api):
-        _brain_cache["url"] = re.sub(r"/v1/?$", "", api.rstrip("/")) + "/api/version"
-    return _brain_cache["url"]
+    """Pruefadresse des lokalen Gehirns: OpenAI-kompatibel {api}/models (gilt auch fuer Ollama)."""
+    return brain_provider()["api"] + "/models"
+
+
+async def brain_probe() -> tuple[bool, dict]:
+    """§1.6: ollama -> online/Version ueber /api/version; openai -> online ueber {api}/models (mit Key), Version nur wo
+    der Server sie verraet (llama.cpp /props.build_info, vLLM /version), sonst ausblenden. Ollama-Endpunkte werden bei
+    openai nie aufgerufen."""
+    bp = brain_provider()
+    info = {"type": bp["type"], "provider": bp["key"], "server": bp["name"], "models": None, "version": None}
+    root = re.sub(r"/v1$", "", bp["api"])
+    if bp["type"] == "ollama":
+        ok, vdata = await _probe(root + "/api/version")
+        if ok and isinstance(vdata, dict):
+            info["version"] = vdata.get("version")
+        return ok, info
+    hdr = {"Authorization": f"Bearer {bp['api_key']}"} if bp["api_key"] else None
+    ok, data = await _probe(bp["api"] + "/models", headers=hdr)
+    models = data.get("data") if isinstance(data, dict) else None
+    ok = ok and isinstance(models, list)
+    if ok:
+        info["models"] = len(models)
+        pok, props = await _probe(root + "/props", headers=hdr)                    # llama.cpp
+        if pok and isinstance(props, dict) and props.get("build_info"):
+            info["version"] = str(props["build_info"])[:40]
+        else:
+            vok, ver = await _probe(root + "/version", headers=hdr)                # vLLM
+            if vok and isinstance(ver, dict) and ver.get("version"):
+                info["version"] = str(ver["version"])[:40]
+    return ok, info
+
+
 PIPER_VOICE = os.environ.get(
     "PIPER_VOICE", str(HOME / ".hermes/cache/piper-voices/de_DE-thorsten-medium.onnx"))
 HOST = os.environ.get("UI_HOST", "0.0.0.0")
@@ -180,6 +238,20 @@ def cur_length_scale() -> float:
         return 0.95
 
 
+def hermes_env(name: str) -> str:
+    """Wert aus der Umgebung oder ~/.hermes/.env (fuer providers.<x>.key_env laut docs/llm-backends.md)."""
+    if not re.fullmatch(r"[A-Z_][A-Z0-9_]{0,63}", name or ""):
+        return ""
+    val = os.environ.get(name, "")
+    env = HOME / ".hermes/.env"
+    if not val and env.exists():
+        for line in env.read_text(encoding="utf-8", errors="ignore").splitlines():
+            m = re.match(rf"\s*{name}\s*=\s*(.*)\s*$", line)
+            if m:
+                val = m.group(1).strip().strip('"').strip("'")
+    return val
+
+
 def hermes_key() -> str:
     key = os.environ.get("API_SERVER_KEY", "")
     env = HOME / ".hermes/.env"
@@ -270,7 +342,7 @@ async def status():
         return _status_cache["data"]
     await discover_rooms()
     (brain, bdata), (hermes, _), (stt, sdata) = await asyncio.gather(
-        _probe(brain_url()), _probe(f"{HERMES_URL}/health"),
+        brain_probe(), _probe(f"{HERMES_URL}/health"),
         _probe(STT_URL.replace("/v1/audio/transcriptions", "/health")))
     # Gehirn-Schalter aus nuorb-admin (ui.json): local | auto | remote; fehlt er, gilt „local“ (bisheriges Verhalten)
     bm = str(cfg().get("brain_mode", "local")).strip().lower()
@@ -284,6 +356,8 @@ async def status():
         # nutzbar = Hermes laeuft und (bei lokal) der PC antwortet
         "brain_ok": bool(hermes and (brain or effective == "remote")),
         "brain": brain, "brain_version": (bdata or {}).get("version"),
+        "brain_type": (bdata or {}).get("type"), "brain_models": (bdata or {}).get("models"),
+        "brain_server": (bdata or {}).get("server"),
         "hermes": hermes, "stt": stt, "stt_backend": (sdata or {}).get("backend"),
         "tts": tts_engine.ready, "time": datetime.now().isoformat(timespec="seconds"), "mode": cur_mode(),
         "voice": Path(tts_engine.path).stem,

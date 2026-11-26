@@ -193,7 +193,11 @@ def setup_state() -> dict:
             "remote_model": adm.brain_state()["remote_model"],
             "voice": jc.voice_name(), "voice_choices": jc.VOICE_CHOICES,
             "voices_installed": sorted(p.stem for p in (jc.MODELS / "voices").glob("*.onnx")),
-            "models": models_info(), **assistant_state()}
+            "models": models_info(), **assistant_state(),
+            # lokales Gehirn: Ollama oder OpenAI-kompatibel (docs/llm-backends.md), Werte von der NuOrb-Verwaltung
+            "llm_type": adm.llm_type() if hasattr(adm, "llm_type") else "ollama",
+            "llm_server": adm.llm_server(cfg) if hasattr(adm, "llm_server") else "Ollama",
+            "llm_api_key_set": bool(adm.llm_key(cfg)) if hasattr(adm, "llm_key") else False}
 
 
 def _bundled_ollama() -> str:
@@ -249,16 +253,32 @@ async def setup_get(request: Request):
 
 
 async def setup_ollama_probe(request: Request):
+    """Verbindungstest wie in der Verwaltung (llm_detect, Vertrag §1.4): Ollama oder OpenAI-kompatibel."""
     d = await adm.body(request)
-    url, warn = _normalize_ollama(str(d.get("url", "")))
-    try:
+    typ = d.get("type") if d.get("type") in ("ollama", "openai") else "ollama"
+    url, warn = _normalize_llm(str(d.get("url", "")), typ)
+    key = str(d.get("api_key") or "").strip() or (adm.llm_key() if hasattr(adm, "llm_key") else "")
+    if hasattr(adm, "llm_detect"):
+        res = await adm.llm_detect(typ, url, key)
+        if not res.get("ok"):
+            raise HTTPException(502, res.get("error") or jc.tr("Server nicht erreichbar", "Server not reachable"))
+        return {"ok": True, "url": res.get("base") or url, "type": typ, "server": res.get("server"), "version": res.get("version"),
+                "models": res.get("models") or [], "ctx": res.get("ctx"), "warn": res.get("warn") or warn}
+    try:   # ältere Verwaltung ohne llm_detect: nur Ollama
         async with httpx.AsyncClient(timeout=5) as c:
             v = (await c.get(f"{url}/api/version")).json()
             tags = (await c.get(f"{url}/api/tags")).json()
     except Exception as exc:
         raise HTTPException(502, jc.tr(f"Ollama unter {url} nicht erreichbar", f"Ollama at {url} not reachable") + f" ({exc.__class__.__name__}).")
-    return {"ok": True, "url": url, "warn": warn, "version": v.get("version"),
+    return {"ok": True, "url": url, "type": "ollama", "server": "Ollama", "warn": warn, "version": v.get("version"),
             "models": sorted(m.get("name") for m in tags.get("models", []))}
+
+
+def _normalize_llm(raw: str, typ: str = "ollama") -> tuple[str, str]:
+    """Adresse wie in der Verwaltung prüfen (llm_normalize): ollama mit Port 11434, openai ohne geratenen Port."""
+    if hasattr(adm, "llm_normalize"):
+        return adm.llm_normalize(raw, typ)
+    return _normalize_ollama(raw)
 
 
 def _normalize_ollama(raw: str) -> tuple[str, str]:
@@ -293,12 +313,16 @@ async def setup_apply(request: Request):
     mode = d.get("mode")
     if mode not in ("local", "auto", "remote"):
         raise HTTPException(400, jc.tr("Modus fehlt (local, auto oder remote).", "Mode missing (local, auto or remote)."))
-    url = _normalize_ollama(str(d.get("ollama_url")))[0] if str(d.get("ollama_url") or "").strip() else ""
+    typ = d.get("llm_type") if d.get("llm_type") in ("ollama", "openai") else "ollama"
+    url = _normalize_llm(str(d.get("ollama_url")), typ)[0] if str(d.get("ollama_url") or "").strip() else ""
     model = str(d.get("ollama_model") or "").strip()
+    lkey = str(d.get("llm_api_key") or "").strip()
+    lkey_clear = bool(d.get("llm_api_key_clear"))
     key = str(d.get("anthropic_key") or "").strip()
     ctx = int(d.get("context") or 65536)
     if mode in ("local", "auto") and not (url and re.fullmatch(r"[A-Za-z0-9._:/\-]{1,120}", model)):
-        raise HTTPException(400, jc.tr("Für Lokal/Automatisch braucht es Ollama-Adresse und Modell.", "Local/automatic needs an Ollama address and a model."))
+        raise HTTPException(400, jc.tr("Für Lokal/Automatisch braucht es die Adresse des lokalen Servers und ein Modell.",
+                                       "Local/automatic needs the address of the local server and a model."))
     if key and not re.fullmatch(r"sk-ant-[A-Za-z0-9_\-]{20,300}", key):
         raise HTTPException(400, jc.tr("Das sieht nicht wie ein Anthropic-Schlüssel aus (sk-ant-…).", "That does not look like an Anthropic key (sk-ant-…)."))
     if not 64000 <= ctx <= 1048576:
@@ -312,17 +336,40 @@ async def setup_apply(request: Request):
     path = adm.FILES["config"][0]
     old = adm.read_text(path)
     data = adm.load_config_rt()
+    server = "Ollama"
     if url:
+        # Schlüssel des lokalen Servers: neu gesetzt, gelöscht oder der gespeicherte bleibt (nie in Logs/Audit)
+        cur = adm.to_plain(data)
+        key_eff = "" if lkey_clear else (lkey or (adm.llm_key(cur) if hasattr(adm, "llm_key") else ""))
+        if typ == "openai" or key_eff:
+            det = await adm.llm_detect(typ, url, key_eff) if hasattr(adm, "llm_detect") else {}
+            if det.get("ok"):
+                server = det.get("server") or server
+                if det.get("ctx"):
+                    ctx = max(ctx, int(det["ctx"]))
+            elif typ == "openai":
+                server = "OpenAI-kompatibel"
+        prov = (cur.get("providers") or {}).get(OLLAMA_PROVIDER) or {}
         adm.cfg_set(data, f"providers.{OLLAMA_PROVIDER}.api", f"{url}/v1")
-        adm.cfg_set(data, f"providers.{OLLAMA_PROVIDER}.name", "Ollama")
+        # Anzeigename: erkannter Server; bei Ollama bleibt ein eigener Name stehen (wie in der Verwaltung)
+        if typ == "openai" or not prov.get("name"):
+            adm.cfg_set(data, f"providers.{OLLAMA_PROVIDER}.name", server)
         adm.cfg_set(data, f"providers.{OLLAMA_PROVIDER}.models", {model: {"context_length": ctx}} if model else {})
+        if key_eff:
+            adm.cfg_set(data, f"providers.{OLLAMA_PROVIDER}.api_key", key_eff)
+        else:
+            ((data.get("providers") or {}).get(OLLAMA_PROVIDER) or {}).pop("api_key", None)
         adm.cfg_set(data, "model.provider", f"custom:{OLLAMA_PROVIDER}")
         adm.cfg_set(data, "model.base_url", f"{url}/v1")
         adm.cfg_set(data, "model.default", model)
         adm.cfg_set(data, "model.context_length", ctx)
-        adm.cfg_set(data, "model.ollama_num_ctx", ctx)
+        if typ == "ollama":
+            adm.cfg_set(data, "model.ollama_num_ctx", ctx)
+        else:   # bei openai verdeckt ollama_num_ctx sonst ein zu kleines Fenster am Server (Vertrag §1.3)
+            (data.get("model") or {}).pop("ollama_num_ctx", None)
         saved = adm.load_brain_saved()
-        saved["local"] = {"provider": f"custom:{OLLAMA_PROVIDER}", "base_url": f"{url}/v1", "default": model}
+        saved["local"] = {"provider": f"custom:{OLLAMA_PROVIDER}", "base_url": f"{url}/v1", "default": model,
+                          "type": typ, "server": server}
         adm.save_brain_saved(saved)
     adm.backup("config", old, "Setup: LLM")
     adm.atomic_write(path, adm.dump_rt(data))
@@ -334,7 +381,10 @@ async def setup_apply(request: Request):
     if code != 0:
         adm.atomic_write(path, old)
         raise HTTPException(500, jc.tr("Hermes lehnt die Konfiguration ab, alte Einstellung wiederhergestellt: ", "Hermes rejected the configuration, previous settings restored: ") + out[-400:])
-    adm.save_brain_saved(ch["saved"])
+    saved = ch["saved"]
+    if url and isinstance(saved.get("local"), dict):
+        saved["local"].update(type=typ, server=server)   # Typ gehört NuOrb, nicht Hermes (Vertrag §1.3)
+    adm.save_brain_saved(saved)
     adm.write_ui_fields(ch["ui"], "Setup: brain mode")
     adm.audit(who, f"Setup: {ch['desc']}")
     jc._write_json(SETUP_DONE, {"time": adm.now_iso(), "mode": mode})

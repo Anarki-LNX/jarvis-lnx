@@ -146,7 +146,7 @@ window.I18N_EN = {
   "Dazu habe ich gerade keine Antwort.": "I don't have an answer to that right now.",
   "Gehirn offline – das Sprachmodell auf dem PC ist nicht erreichbar.": "Brain offline – the language model on the PC is unreachable.",
   "Das Sprachmodell hat zu wenig Kontext für Hermes (Backend-Einstellung nötig).": "The language model has too little context for Hermes (backend setting needed).",
-  "Das Sprachmodell antwortet nicht. Läuft Ollama auf dem PC?": "The language model isn't responding. Is Ollama running on the PC?",
+  "Das Sprachmodell antwortet nicht. Läuft der Sprachmodell-Server?": "The language model isn't responding. Is the model server running?",
   "Hermes: {e}": "Hermes: {e}",
   "Lauf fehlgeschlagen": "run failed",
   "Abgebrochen.": "Cancelled.",

@@ -14,6 +14,7 @@ import hashlib
 import hmac
 import ipaddress
 import json
+import urllib.error
 import contextvars
 import os
 import secrets
@@ -369,3 +370,45 @@ def revoke_device(did: str) -> bool:
 
 def pairing_required() -> bool:
     return env("NUORB_REQUIRE_PAIRING", "1") != "0"
+
+
+# ------------------------------------------------------------------ Lokales Gehirn: Server-Erkennung (docs/llm-backends.md §1.4)
+def llm_detect(base: str, api_key: str = "", timeout: float = 5) -> dict:
+    """Erkennt den Server hinter einer OpenAI-kompatiblen Adresse (nur Anzeige, nie Pflicht).
+    -> {"server": Name, "models": [ids], "ctx": int|None, "ok": bool, "error": str}"""
+    import urllib.request
+    base = base.rstrip("/").removesuffix("/v1")
+    hdr = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+
+    def get(path: str):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(base + path, headers=hdr), timeout=timeout) as r:
+                return r.status, json.loads(r.read() or b"{}")
+        except urllib.error.HTTPError as e:
+            return e.code, {}
+        except Exception:
+            return 0, {}
+    st, mj = get("/v1/models")
+    out = {"server": "OpenAI-kompatibel", "models": [], "ctx": None, "ok": st == 200, "error": ""}
+    if st in (401, 403):
+        out["error"] = "api_key"
+        return out
+    if st != 200:
+        out["error"] = "unreachable" if st == 0 else f"http {st}"
+        return out
+    data = mj.get("data") or []
+    out["models"] = [d.get("id") for d in data if isinstance(d, dict) and d.get("id")]
+    owners = {str(d.get("owned_by", "")) for d in data if isinstance(d, dict)}
+    if "library" in owners or (get("/api/version")[1].get("version") and "models" in get("/api/tags")[1]):
+        out["server"] = "Ollama"
+    elif "llamacpp" in owners or "default_generation_settings" in get("/props")[1]:
+        out["server"] = "llama.cpp"
+        out["ctx"] = (get("/props")[1].get("default_generation_settings") or {}).get("n_ctx")
+    elif "vllm" in owners or get("/version")[1].get("version"):
+        out["server"] = "vLLM"
+        out["ctx"] = next((d.get("max_model_len") for d in data if isinstance(d, dict) and d.get("max_model_len")), None)
+    elif "organization_owner" in owners or get("/api/v0/models")[0] == 200:
+        out["server"] = "LM Studio"
+    elif get("/readyz")[0] == 200:
+        out["server"] = "LocalAI"
+    return out

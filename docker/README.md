@@ -147,9 +147,14 @@ Caddy): `NUORB_TLS=off`, `NUORB_BIND=127.0.0.1`, `NUORB_PUBLIC_URL` auf die Prox
 
 | Modus | Bedeutung |
 |---|---|
-| Lokal | Nur Ollama. Nichts verlässt dein Netz. |
-| Automatisch | Ollama; ist es nicht erreichbar, übernimmt Claude. |
+| Lokal | Nur dein lokaler Server (Ollama, llama.cpp, vLLM, LM Studio …). Nichts verlässt dein Netz. |
+| Automatisch | Lokaler Server; ist er nicht erreichbar, übernimmt Claude. |
 | Remote | Nur Claude (Haiku, Sonnet oder Opus). |
+
+Statt Ollama geht **jeder OpenAI-kompatible Server** (llama.cpp `llama-server`, vLLM, LM Studio, LocalAI): in der
+Einrichtung Typ „OpenAI-kompatibel“ wählen, Adresse mit Port und ggf. API-Key eintragen. Startbefehle mit Tool-Calling
+und 64k Kontext: [INSTALL.de.md](../INSTALL.de.md#llamacpp-vllm-lm-studio-statt-ollama). In der `.env`: `NUORB_INIT_LLM_TYPE=openai`,
+`NUORB_INIT_OLLAMA_URL`, `NUORB_INIT_OLLAMA_MODEL`, `NUORB_INIT_LLM_API_KEY`.
 
 Umschalten im Admin unter „Modell & Fallback“ oder in der Oberfläche (Abzeichen oben antippen). Eigenes Ollama im
 selben Compose-Projekt: `docker compose --profile ollama up -d`, Adresse dann `http://ollama:11434`.
