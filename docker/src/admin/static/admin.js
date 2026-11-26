@@ -196,8 +196,10 @@ async function viewOverview(view) {
   const s = await api("/api/status"); applyStatus(s);
   actions(`<button class="btn ghost" id="btnRefresh">Aktualisieren</button>`).querySelector("#btnRefresh").onclick = (e) => busy(e.target, () => show("uebersicht", true));
   const sys = s.system, memUsed = sys.mem_total - sys.mem_avail, diskUsed = sys.disk_total - sys.disk_free;
+  const wantCtx = Math.max(+(s.model.num_ctx || 0), +(s.model.context || 0), 65536);
   const loaded = s.brain.loaded.map((m) => `<div class="row"><div class="grow"><div class="title mono">${esc(m.name)}</div>
-      <div class="meta">VRAM ${fmtBytes(m.vram)} von ${fmtBytes(m.size)}${m.ctx ? ` · Kontext ${esc(m.ctx)}` : ""} · bleibt bis ${esc(fmtTime(m.until))}</div></div>
+      <div class="meta">VRAM ${fmtBytes(m.vram)} von ${fmtBytes(m.size)}${m.ctx ? ` · ${esc(T("Kontext {0}", [m.ctx]))}` : ""} · bleibt bis ${esc(fmtTime(m.until))}</div>
+      ${m.ctx && m.ctx < wantCtx ? `<div class="note warn small mt">${esc(T("Modell {0} läuft nur mit {1} Token Kontext – lange Gespräche können abgeschnitten werden. Ollama begrenzt auf das Trainingsfenster des Modells; ein größeres Modell wählen.", [m.name, m.ctx]))}</div>` : ""}</div>
       <button class="btn small ghost" data-unload="${esc(m.name)}">Entladen</button></div>`).join("");
   const p = s.phone || {}, ps = p.status || {}, kw = "span-3", ph = s.phones || { paired: 0, online: 0 };
   const phoneLine = !p.reachable ? "nicht erreichbar" : !p.configured ? "erreichbar · Steuerung nicht eingerichtet" : p.error ? esc(p.error) : `Akku ${esc(ps.akku_prozent ?? "?")} %${ps.laedt ? " · lädt" : ""}`;
@@ -304,7 +306,12 @@ async function viewModel(view) {
       const r = await api("/api/llm/test", { method: "POST", body: llmBody() });
       if (r.base) $("#oUrl").value = r.base;
       const warn = r.warn ? `<div class="note warn">${esc(r.warn)}</div>` : "";
-      if (!r.ok) { setHTML(res, `<div class="note danger">${esc(r.error)}</div>${warn}`); $("#oState").textContent = T("nicht erreichbar"); return; }
+      const fw = r.firewall ? `<div class="note small"><b>Firewall auf dem LLM-Rechner freigeben</b> (Port <span data-noi18n>${esc(r.firewall.port)}</span> für diesen NuOrb-Server <span data-noi18n>${esc(r.firewall.ip)}</span>):
+        <div class="muted">Linux (ufw):</div><pre class="code mono">${esc(r.firewall.ufw)}</pre>
+        <div class="muted">Linux (firewalld):</div><pre class="code mono">${esc(r.firewall.firewalld)}</pre>
+        <div class="muted">Windows (PowerShell als Administrator):</div><pre class="code mono">${esc(r.firewall.windows)}</pre>
+        <div class="muted">Außerdem muss der Server im Netz lauschen: llama.cpp/vLLM mit --host 0.0.0.0, Ollama mit OLLAMA_HOST=0.0.0.0.</div></div>` : "";
+      if (!r.ok) { setHTML(res, `<div class="note danger">${esc(r.error)}</div>${fw}${warn}`); $("#oState").textContent = T("nicht erreichbar"); return; }
       const facts = [r.version && `${r.server} ${r.version}`, !r.version && r.server, (r.models.length === 1 ? T("1 Modell") : T("{0} Modelle", [r.models.length])), r.ctx && T("Kontext {0}", [r.ctx])].filter(Boolean).join(" · ");
       setHTML(res, `<div class="note">${dot(true)} <span data-noi18n>${esc(T("Erkannt:"))} ${esc(facts)}</span></div>${warn}`);
       $("#oSrv").textContent = r.server;

@@ -136,6 +136,10 @@ def main() -> int:
     st, pr = adm.req("POST", "/api/setup/ollama", {"url": "127.0.0.1:18434/v1"})
     check("Ollama-Adresse wie in der Verwaltung normalisiert", st == 200 and pr.get("url") == "http://127.0.0.1:18434" and bool(pr.get("warn")),
           f"{pr.get('url')} warn={bool(pr.get('warn'))}")
+    st, pr = adm.req("POST", "/api/setup/ollama", {"url": "http://127.0.0.1:9"})
+    fw = pr.get("firewall") or {}
+    check("Nicht erreichbar: fertige Firewall-Befehle", st == 502 and fw.get("port") == 9 and "port 9 " in (fw.get("ufw") or "")
+          and bool(fw.get("firewalld")) and bool(fw.get("windows")), str(fw.get("ufw"))[:80])
     st, html = adm.req("GET", "/")
     check("Admin-Startseite lädt Zusatz-Skript", st == 200 and b"admin-extra.js" in html)
     st, dev = adm.req("GET", "/api/services")

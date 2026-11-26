@@ -358,7 +358,7 @@ configure() {
   [ -n "$IP" ] || fail "$(t "Could not detect the IP address, use --ip 192.168.1.50" "IP-Adresse nicht erkannt, bitte --ip 192.168.1.50 angeben")"
   tz=$(timedatectl show -p Timezone --value 2>/dev/null || cat /etc/timezone 2>/dev/null || echo Europe/Berlin)
   set_env NUORB_LANG "$lang"; set_env ADMIN_LANG "$lang"; set_env TZ "${tz:-Europe/Berlin}"
-  set_env NUORB_HOSTS "$IP"; set_env NUORB_UI_PORT_PUBLIC "$UI_PORT"; set_env NUORB_ADMIN_PORT_PUBLIC "$ADMIN_PORT"
+  set_env NUORB_HOSTS "$IP"; set_env NUORB_HOST_IP "$IP"; set_env NUORB_UI_PORT_PUBLIC "$UI_PORT"; set_env NUORB_ADMIN_PORT_PUBLIC "$ADMIN_PORT"
   ok "$(t "Language" "Sprache") $lang · IP $IP · $(t "ports" "Ports") $UI_PORT/$ADMIN_PORT · TZ ${tz:-Europe/Berlin}"
 
   # Lokales Gehirn (optional; geht auch später im Einrichtungsassistenten): Ollama oder OpenAI-kompatibler Server

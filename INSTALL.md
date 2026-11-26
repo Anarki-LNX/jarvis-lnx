@@ -169,7 +169,7 @@ The settings names start with `NUORB_` for historical reasons; they are explaine
 | Setup: *“The container has no internet connection”*, speech models stuck | Host firewall drops container traffic: ufw `sudo ufw default allow routed && sudo ufw reload`; firewalld: `sudo firewall-cmd --permanent --zone=trusted --add-interface=docker0 && sudo firewall-cmd --reload`. |
 | Containers have no network at all | `/etc/docker/daemon.json` contains `"iptables": false` or `"bridge": "none"` – remove both, `sudo systemctl restart docker`. |
 | `unable to derive the IP value for host-gateway` | Your Docker has no default bridge; do not use `host.docker.internal`, use the machine's IP. |
-| Ollama *not reachable* / ConnectTimeout | Ollama listens only on 127.0.0.1 → `OLLAMA_HOST=0.0.0.0`; firewall on the Ollama machine → allow 11434 (from Docker `172.16.0.0/12` if it is the same machine); use the IP, not `.local`. |
+| Ollama *not reachable* / ConnectTimeout | Ollama listens only on 127.0.0.1 → `OLLAMA_HOST=0.0.0.0`; firewall on the Ollama machine → allow 11434 (from Docker `172.16.0.0/12` if it is the same machine); use the IP, not `.local`. The setup shows the exact firewall commands for that computer. |
 | *context window … below 64,000* | Context too small → Ollama `OLLAMA_CONTEXT_LENGTH=65536`, llama.cpp `-c 65536`, vLLM `--max-model-len 65536`, LM Studio Context Length 65536; restart the server. |
 | llama.cpp/vLLM/LM Studio *not reachable* (Timeout) | The server listens only on 127.0.0.1 → `--host 0.0.0.0` / *Serve on Local Network*; open its port in the PC firewall (`sudo ufw allow from 172.16.0.0/12 to any port 8080 proto tcp`). |
 | *The server requires an API key* | The server was started with `--api-key` → enter the same key in the setup. |

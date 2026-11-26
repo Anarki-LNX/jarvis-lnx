@@ -41,7 +41,7 @@ window.NuI18n = (function () {
       method: "POST", headers: { ...h, "Content-Type": "application/json", "X-NuOrb": "1" }, body: JSON.stringify(body) });
     if (r.status === 401) { location.href = "/"; throw new Error("login"); }
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.detail || r.status);
+    if (!r.ok) { const e = new Error(d.detail || r.status); e.data = d; throw e; }
     return d;
   };
 

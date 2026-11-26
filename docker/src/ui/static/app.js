@@ -6,7 +6,7 @@
   const DE = !window.I18N || window.I18N.lang === "de"; // lokale Sprachbefehle (deutsche Muster) nur auf Deutsch
   const LOC = DE ? "de-DE" : "en-GB";
   const $ = (id) => document.getElementById(id);
-  const VERSION = "2026-11-26.58";
+  const VERSION = "2026-11-26.59";
   // Kurzes Client-Log ins Server-Journal (Kiosk hat keine JS-Konsole)
   function clog(msg) {
     try { fetch("/api/clientlog", { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
@@ -577,6 +577,7 @@
     let res;
     try {
       const r = await fetch("/api/ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, session_id: S.session, device: ANDROID ? "" : deviceSummary(), no_haiku: !!retry,
+        wake_available: wakeAvailable(), wake_phrase: window.I18N ? I18N.wake : "",
         ...(ANDROID ? { client: "android", wake: !!WAKE.on } : {}) }) });
       res = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(r.status === 503 && res.code === "no_brain" && res.detail ? String(res.detail) : r.status === 503 ? t("Hermes ist nicht erreichbar.") : r.status === 429 ? t("Hermes ist ausgelastet.") : (res.detail || t("Fehler {s}", { s: r.status })));
@@ -600,7 +601,7 @@
   const JUNK = /<\|?\/?(?:channel|tool_call|tool_response)\|?>|<\|"\|>/gi;
   const MAX_ANSWER = 900; // Zeichen; laengere Sprachantworten werden gestoppt
   function cleanOut(t) {
-    return String(t || "").replace(/(^|\n)[ \t]*\[\d{1,2}:\d{2}\][ \t]*/g, "$1").replace(/\n{3,}/g, "\n\n").replace(JUNK, "").replace(/(^|[\s.!?:])thought(?=[ \t]*(?:\n|$|<))/gi, "$1").replace(/^[\s|}]+/, "").trim();
+    return String(t || "").replace(/\[Systeminfo[^\]]{0,400}\]\s*/g, "").replace(/(^|\n)[ \t]*\[\d{1,2}:\d{2}\][ \t]*/g, "$1").replace(/\n{3,}/g, "\n\n").replace(JUNK, "").replace(/(^|[\s.!?:])thought(?=[ \t]*(?:\n|$|<))/gi, "$1").replace(/^[\s|}]+/, "").trim();
   }
   const letters = (t) => (String(t).match(/[A-Za-zÄÖÜäöüß]/g) || []).length;
   // Englischer Denktext („The current brightness isn't …, so I'll use …“) gehoert nicht in die deutsche Antwort:
@@ -662,8 +663,8 @@
           if (!toolSeen) preTool = raw; // Vortext des Werkzeug-Turns (falls die Endantwort kaputt ist)
           let c = stripEnglish(cleanOut(raw));
           // Modell wiederholt manchmal den Zeitstempel „[12:30]“ aus der Nutzernachricht – weg damit
-          if (/^\[[^\]]*$/.test(c) && c.length < 260) break;
-          c = c.replace(/^\[[^\]]{0,260}\]\s*/, "");
+          if (/^\[[^\]]*$/.test(c) && c.length < 420) break;
+          c = c.replace(/^\[[^\]]{0,420}\]\s*/, "");
           if (letters(c) < 8 && !/[.!?]/.test(c)) break; // evtl. noch Steuer-Rest („thought“) – abwarten
           full = c; spoken = Math.min(spoken, full.length);
           ensureCard().textContent = full; els.convo.scrollTop = els.convo.scrollHeight;
@@ -716,7 +717,7 @@
         case "run.completed": {
           finished = true;
           if (capped) break;
-          const out = cleanOut(typeof ev.output === "string" ? ev.output : "").replace(/^\[[^\]]{0,260}\]\s*/, "");
+          const out = cleanOut(typeof ev.output === "string" ? ev.output : "").replace(/^\[[^\]]{0,420}\]\s*/, "");
           if (!gotDelta && out) full = out;
           else if (out && out.length > full.length && out.startsWith(full)) full = out;
           full = stripEnglish(cleanOut(full));
