@@ -1,5 +1,7 @@
 # Installing NuOrb
 
+**▶ Prefer video?** Watch the 3-minute install tutorial: https://youtu.be/NO66dwKtCvg
+
 [Deutsch](INSTALL.de.md)
 
 NuOrb is a private voice assistant you run yourself: **one Docker container** on a home server, a Proxmox VM/LXC or
