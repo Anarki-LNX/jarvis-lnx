@@ -235,7 +235,7 @@ const de: Dict = {
     },
     release: "Aktuelles Release",
     aiNote: "NuOrb entsteht mit viel Hilfe von KI. Wie genau, steht in der KI-Erklärung.",
-    credits: "Aufgebaut auf Hermes Agent, Ollama, sherpa-onnx mit NVIDIA Parakeet, Piper mit den Stimmen Thorsten und Joe, NixOS und mehr – siehe Credits im README.",
+    credits: "Aufgebaut auf Hermes Agent, Ollama, sherpa-onnx mit NVIDIA Parakeet, Piper mit den Stimmen Thorsten und Joe, webgl-noise (Ashima Arts, Stefan Gustavson; MIT) für den Orb-Shader, NixOS und mehr – siehe Credits im README.",
   },
   support: {
     kicker: "Unterstützen",

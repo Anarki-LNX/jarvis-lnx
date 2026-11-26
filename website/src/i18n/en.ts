@@ -233,7 +233,7 @@ const en = {
     },
     release: "Latest release",
     aiNote: "NuOrb is developed with substantial help from AI. The AI declaration explains how.",
-    credits: "Built on Hermes Agent, Ollama, sherpa-onnx with NVIDIA Parakeet, Piper with the Thorsten and Joe voices, NixOS and more – see the credits in the README.",
+    credits: "Built on Hermes Agent, Ollama, sherpa-onnx with NVIDIA Parakeet, Piper with the Thorsten and Joe voices, webgl-noise (Ashima Arts, Stefan Gustavson; MIT) for the orb shader, NixOS and more – see the credits in the README.",
   },
   support: {
     kicker: "Support",
