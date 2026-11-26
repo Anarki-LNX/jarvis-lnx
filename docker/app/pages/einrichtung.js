@@ -74,7 +74,7 @@
       const d = await api("/api/setup/language", { lang: $("lang").value, voice: $("voice").value });
       $("langMsg").className = "ok"; $("langMsg").textContent = d.downloading ? m.dl(d.downloading) : m.langOk;
       setTimeout(() => location.reload(), d.downloading ? 1500 : 800);
-    } catch (e) { $("langMsg").className = "err"; $("langMsg").textContent = m.err + e.message; }
+    } catch (e) { $("langMsg").className = "err"; $("langMsg").textContent = m.err + I.tr(e.message); }
   });
 
   async function probe() {
@@ -86,9 +86,9 @@
       for (const n of d.models) { const o = document.createElement("option"); o.value = o.textContent = n; $("model").append(o); }
       if (cur && d.models.includes(cur)) $("model").value = cur;
       if (d.url) $("url").value = d.url;   // vom Server vervollständigt (Schema, Port 11434, ohne /v1)
-      $("probeMsg").textContent = m.found(d.version, d.models.length) + (d.warn ? " ⚠ " + d.warn : "");
+      $("probeMsg").textContent = m.found(d.version, d.models.length) + (d.warn ? " ⚠ " + I.tr(d.warn) : "");
       $("probeMsg").className = d.warn ? "warn" : "ok";
-    } catch (e) { $("probeMsg").textContent = m.err + e.message; $("probeMsg").className = "err"; }
+    } catch (e) { $("probeMsg").textContent = m.err + I.tr(e.message); $("probeMsg").className = "err"; }
   }
   $("probe").addEventListener("click", probe);
 
@@ -98,9 +98,9 @@
       const d = await api("/api/setup/apply", { mode: mode(), ollama_url: $("url").value.trim(), ollama_model: $("model").value,
         context: Number($("ctx").value), anthropic_key: $("key").value.trim(), remote_model: $("remote").value });
       $("key").value = "";
-      $("msg").className = "ok"; $("msg").textContent = I.fmt(m.ok) + d.desc;
+      $("msg").className = "ok"; $("msg").textContent = I.fmt(m.ok) + I.tr(d.desc);
       $("brainState").className = "ok"; $("brainState").textContent = m.brain(m.modes[mode()]);
-    } catch (e) { $("msg").className = "err"; $("msg").textContent = m.err + e.message; }
+    } catch (e) { $("msg").className = "err"; $("msg").textContent = m.err + I.tr(e.message); }
     $("save").disabled = false;
   });
   $("skip").addEventListener("click", () => { sessionStorage.setItem("jl.setupSkipped", "1"); location.href = "/"; });
@@ -108,7 +108,7 @@
   function showModels(x) {
     const st = $("modelState");
     if (x.stt_ready && x.voice_ready && x.state !== "loading") { st.className = "ok"; st.textContent = m.ready; $("bar").hidden = true; return false; }
-    if (x.state === "error") { st.className = "err"; st.textContent = x.error_code === "offline" ? m.offline : x.error; $("bar").hidden = true; return true; }
+    if (x.state === "error") { st.className = "err"; st.textContent = x.error_code === "offline" ? m.offline : I.tr(x.error); $("bar").hidden = true; return true; }
     st.className = "muted"; st.textContent = m.load(x);
     $("bar").hidden = !x.total_mb; $("barFill").style.width = (x.total_mb ? Math.min(100, 100 * x.done_mb / x.total_mb) : 0) + "%";
     return true;
@@ -132,7 +132,7 @@
     if (s.ollama_model) { const o = document.createElement("option"); o.value = o.textContent = s.ollama_model; $("model").replaceChildren(o); }
     $("keyState").textContent = s.anthropic_key ? m.set + s.anthropic_key : m.none;
     for (const [id, x] of Object.entries(s.claude_models || {})) {
-      const o = document.createElement("option"); o.value = id; o.textContent = `${x.name} – ${x.hint}`; $("remote").append(o);
+      const o = document.createElement("option"); o.value = id; o.textContent = `${x.name} – ${I.tr(x.hint)}`; $("remote").append(o);
     }
     $("remote").value = s.remote_model || "claude-haiku-5-5";
     const want = s.done ? s.brain : (s.ollama_url ? (s.anthropic_key ? "auto" : "local") : (s.anthropic_key ? "remote" : "local"));
