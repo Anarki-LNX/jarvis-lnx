@@ -1,6 +1,7 @@
 // Englische Texte der Verwaltung. Schluessel = deutscher Originaltext, {0} … = eingesetzte Werte. Erzeugt aus
 // admin.js/index.html/server.py; JARVIS und „Hey Jarvis“ werden zur Laufzeit durch Name/Weckwort ersetzt.
 window.I18N_EN = {
+ "(Port": "(port",
  "(antwortet bei Remote auf alles)": "(answers everything in Remote mode)",
  "(bei Automatisch, wenn der PC nicht antwortet)": "(in Automatic mode, when the PC doesn't respond)",
  "(in der Konfiguration abgeschaltet)": "(disabled in the configuration)",
@@ -57,6 +58,7 @@ window.I18N_EN = {
  "Ausweich-Modell": "Fallback model",
  "Automatisch": "Automatic",
  "Automatisch (Browser)": "Automatic (browser)",
+ "Außerdem muss der Server im Netz lauschen: llama.cpp/vLLM mit --host 0.0.0.0, Ollama mit OLLAMA_HOST=0.0.0.0.": "The server also has to listen on the network: llama.cpp/vLLM with --host 0.0.0.0, Ollama with OLLAMA_HOST=0.0.0.0.",
  "Basis-Adresse des Servers, ohne /v1. Port angeben: llama.cpp 8080, vLLM 8000, LM Studio 1234, LocalAI 8080.": "The server's base address, without /v1. Include the port: llama.cpp 8080, vLLM 8000, LM Studio 1234, LocalAI 8080.",
  "Bearbeiten": "Edit",
  "Bearer {0}": "Bearer {0}",
@@ -185,6 +187,7 @@ window.I18N_EN = {
  "Fehler {0}": "Error {0}",
  "Feld {0} ist hier nicht erlaubt.": "Field {0} isn't allowed here.",
  "Filtern …": "Filter…",
+ "Firewall auf dem LLM-Rechner freigeben": "Open the firewall on the LLM machine",
  "Fortsetzen": "Resume",
  "Fähigkeiten": "Capabilities",
  "Für Claude fehlt der ANTHROPIC_API_KEY (in der Verwaltung unter Schlüssel eintragen).": "Claude needs an ANTHROPIC_API_KEY (add it in Admin under Keys).",
@@ -350,6 +353,7 @@ window.I18N_EN = {
  "Modell auf dem Server (": "Model on the server (",
  "Modell entladen.": "Model unloaded.",
  "Modell entladen: {0}": "Model unloaded: {0}",
+ "Modell {0} läuft nur mit {1} Token Kontext – lange Gespräche können abgeschnitten werden. Ollama begrenzt auf das Trainingsfenster des Modells; ein größeres Modell wählen.": "Model {0} only runs with {1} tokens of context – long conversations may get cut off. Ollama limits it to the model's training window; choose a larger model.",
  "Modell/Fallback ändern": "Change model/fallback",
  "Modelle, die nicht in den Grafikspeicher passen, machen den PC träge.": "Models that don't fit in GPU memory make the PC sluggish.",
  "Modus live oder demo.": "Mode must be live or demo.",
@@ -581,6 +585,7 @@ window.I18N_EN = {
  "Wert ist kein gültiges YAML: {0}": "Value is not valid YAML: {0}",
  "Wetter": "Weather",
  "Wiederherstellen …": "Restore…",
+ "Windows (PowerShell als Administrator):": "Windows (PowerShell as administrator):",
  "Wird in diesem Browser gemerkt.": "Remembered in this browser.",
  "Wird nur an den Server geschickt, nie wieder angezeigt.": "Only sent to the server, never shown again.",
  "Wirkt nach Neustart des Hermes-Gateways.": "Takes effect after the Hermes gateway restarts.",
@@ -627,6 +632,7 @@ window.I18N_EN = {
  "erreichbar · Steuerung nicht eingerichtet": "reachable · control not set up",
  "fallback_providers steht ausserhalb des markierten Blocks – bitte im Expertenmodus bereinigen.": "fallback_providers is outside the marked block – please clean it up in expert mode.",
  "fehlgeschlagen": "failed",
+ "für diesen NuOrb-Server": "for this NuOrb server",
  "geheim": "secret",
  "gemischt": "mixed",
  "gerade eben": "just now",

@@ -1042,7 +1042,47 @@ def llm_headers(key: str) -> dict:
     return {"Authorization": f"Bearer {key}"} if key else {}
 
 
-async def llm_detect(typ: str, base: str, key: str = "") -> dict:
+CTX_MIN = 65536
+
+
+def ctx_short_text(name: str, ctx: int) -> str:
+    return (f"Modell {name} läuft nur mit {ctx} Token Kontext – lange Gespräche können abgeschnitten werden. "
+            f"Ollama begrenzt auf das Trainingsfenster des Modells; ein größeres Modell wählen.")
+
+
+def own_ip_towards(host: str, port: int, prefer: str = "") -> str:
+    """IP, unter der der LLM-Rechner diesen NuOrb-Server sieht: NUORB_HOST_IP, sonst die Browser-Adresse
+    (wenn IPv4), sonst die Quelladresse der Route zum Ziel."""
+    env_ip = os.environ.get("NUORB_HOST_IP", "").strip()
+    if env_ip:
+        return env_ip
+    with contextlib.suppress(ValueError):
+        ip = ipaddress.ip_address(prefer)
+        if ip.version == 4 and not ip.is_loopback:
+            return prefer
+    with contextlib.suppress(OSError):
+        s_ = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s_.connect((host, port or 80))
+            return s_.getsockname()[0]
+        finally:
+            s_.close()
+    return "<NuOrb-IP>"
+
+
+def firewall_hint(base: str, prefer_ip: str = "") -> dict:
+    u = urllib.parse.urlsplit(base)
+    port = u.port or (443 if u.scheme == "https" else 80)
+    ip = own_ip_towards(u.hostname or "", port, prefer_ip)
+    return {"ip": ip, "port": port,
+            "ufw": f"sudo ufw allow from {ip} to any port {port} proto tcp",
+            "firewalld": (f"sudo firewall-cmd --permanent --add-rich-rule='rule family=ipv4 source address={ip} "
+                          f"port port={port} protocol=tcp accept' && sudo firewall-cmd --reload"),
+            "windows": (f'New-NetFirewallRule -DisplayName "NuOrb LLM" -Direction Inbound -Protocol TCP '
+                        f'-LocalPort {port} -RemoteAddress {ip} -Action Allow')}
+
+
+async def llm_detect(typ: str, base: str, key: str = "", prefer_ip: str = "") -> dict:
     """Verbindungstest + Server-Erkennung (Vertrag §1.4; Referenz scripts/llm-backend-test.py detect()).
     Erkennung nie am Feld `models` (liefert llama.cpp auch). Aendert nichts."""
     out = {"ok": False, "base": base, "type": typ, "server": "Ollama" if typ == "ollama" else "OpenAI-kompatibel",
@@ -1060,6 +1100,8 @@ async def llm_detect(typ: str, base: str, key: str = "") -> dict:
             except ValueError:
                 return r.status_code, None
         st, m = await get("/v1/models")
+        if st in ("timeout", "conn"):
+            out["firewall"] = firewall_hint(base, prefer_ip)
         if st == "timeout":
             out["error"] = f"{base}: nicht erreichbar (Firewall? Server nur auf 127.0.0.1?)"
             return out
@@ -1089,6 +1131,13 @@ async def llm_detect(typ: str, base: str, key: str = "") -> dict:
                 out["error"] = f"{base} antwortet, ist aber kein Ollama. Server-Typ „OpenAI-kompatibel“ wählen."
                 return out
             out["version"] = (v or {}).get("version") if isinstance(v, dict) else None
+            st3, psj = await get("/api/ps", 3)
+            if st3 == 200 and isinstance(psj, dict):
+                short = [(p.get("name"), p.get("context_length")) for p in psj.get("models") or []
+                         if isinstance(p.get("context_length"), int) and p.get("context_length") < CTX_MIN]
+                if short:
+                    out["ctx_short"] = [{"name": n, "ctx": c} for n, c in short]
+                    out["warn"] = " ".join(ctx_short_text(n, c) for n, c in short)
             if tags is not None:
                 tl = tags.get("models") or []
                 out["models"] = sorted(t.get("name") for t in tl if t.get("name")) or out["models"]
@@ -1116,7 +1165,7 @@ async def llm_detect(typ: str, base: str, key: str = "") -> dict:
                         st, _ = await get("/readyz", 3)
                         if st == 200:
                             out["server"] = "LocalAI"
-    if isinstance(out["ctx"], int) and out["ctx"] < 65536:
+    if isinstance(out["ctx"], int) and out["ctx"] < CTX_MIN:
         out["warn"] = f"Der Server bietet nur {out['ctx']} Token Kontext, NuOrb braucht mindestens 64k. Startbefehl siehe Hilfe."
     out["ok"] = True
     return out
@@ -1187,7 +1236,7 @@ async def status():
                                      "url": ollama, "loaded": loaded, "type": typ, "server": llm_server(cfg, typ)},
         "hermes": {"online": hermes}, "stt": {"online": stt, "info": sttj}, "ui": {"online": ui, "info": uij},
         "model": {"default": model.get("default"), "provider": model.get("provider"),
-                  "context": model.get("context_length")},
+                  "context": model.get("context_length"), "num_ctx": model.get("ollama_num_ctx")},
         "fallback": [{"provider": f.get("provider"), "model": f.get("model")} for f in fb if isinstance(f, dict)],
         "approvals": (cfg.get("approvals") or {}).get("mode"),
         "mode": brain_state()["mode"],
@@ -1310,7 +1359,7 @@ async def llm_test(request: Request):
         raise HTTPException(400, "Unbekannter Server-Typ.")
     base, warn = llm_normalize(str(d.get("url", "")), typ)
     key = str(d.get("api_key") or "").strip() or ("" if d.get("api_key_clear") else llm_key())
-    r = await llm_detect(typ, base, key)
+    r = await llm_detect(typ, base, key, request.url.hostname or "")
     r["warn"] = " ".join(x for x in (warn, r["warn"]) if x)
     return r
 

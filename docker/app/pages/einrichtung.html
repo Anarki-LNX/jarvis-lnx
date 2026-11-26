@@ -62,6 +62,7 @@
     </div>
     <p class="muted" data-t="url_hint">Ollama: http://<IP>:11434. llama.cpp/LocalAI usually port 8080, vLLM 8000, LM Studio 1234. Use the IP of the computer running the server, also if it is this one; the server must listen on the network (0.0.0.0) and its port must be open in that computer's firewall.</p>
     <p class="muted" id="probeMsg"></p>
+    <div id="probeFw" hidden><p class="muted" data-t="fw_title">Open the port on the computer running the server – one of these, depending on its firewall:</p><pre class="fwcmd" id="probeFwCmd"></pre></div>
     <label for="model" data-t="l_model">Model</label>
     <select id="model"><option value="">–</option></select>
     <label for="ctx" data-t="l_ctx">Context (tokens)</label>

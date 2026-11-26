@@ -220,7 +220,7 @@ docker compose exec nuorb /command/s6-svstat /run/service/jarvis-ui    # einzeln
 | NuOrb antwortet „hat noch kein Gehirn“ | Einrichtung im Admin abschließen. |
 | Antworten leer oder Fehler „context window … below 64,000“ | Ollama-Kontext zu klein, siehe oben. |
 | App: Zertifikatsfehler | Server-IP fehlt in `JARVIS_HOSTS` → eintragen, `docker compose up -d`, neu koppeln. |
-| Ollama „nicht erreichbar“ | Die IP des Ollama-Rechners eintragen (z. B. `http://192.168.1.50:11434`), auch wenn Ollama auf demselben PC läuft; Ollama mit `OLLAMA_HOST=0.0.0.0` starten. `.local`-Namen lösen im Container oft nicht auf. Testen: `docker compose exec nuorb curl -s <adresse>/api/version`. Firewall siehe unten. Alternative für denselben PC: in `compose.yaml` die `extra_hosts`-Zeile aktivieren, dann `http://host.docker.internal:11434`. |
+| Ollama „nicht erreichbar“ | Die IP des Ollama-Rechners eintragen (z. B. `http://192.168.1.50:11434`), auch wenn Ollama auf demselben PC läuft; Ollama mit `OLLAMA_HOST=0.0.0.0` starten. `.local`-Namen lösen im Container oft nicht auf. Testen: `docker compose exec nuorb curl -s <adresse>/api/version`. Firewall siehe unten; die Einrichtung zeigt bei Timeout fertige Befehle (ufw, firewalld, Windows) mit der IP dieses Servers (`NUORB_HOST_IP`, sonst die erste IP aus `JARVIS_HOSTS`). Alternative für denselben PC: in `compose.yaml` die `extra_hosts`-Zeile aktivieren, dann `http://host.docker.internal:11434`. |
 | Port 8443/8444 belegt | `JARVIS_UI_PORT_PUBLIC` / `JARVIS_ADMIN_PORT_PUBLIC` ändern. |
 | Uhrzeit falsch | `TZ` in der `.env` setzen. |
 

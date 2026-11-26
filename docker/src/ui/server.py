@@ -151,15 +151,16 @@ PERSONA = (
     "Uhrzeiten exakt nennen, in der Form 'zwoelf Uhr siebenundzwanzig'. Ton: ruhig, kompetent, mit einer "
     "Prise trockenem Humor – wie ein britischer Butler mit Ingenieursdiplom. "
     "Vor gefaehrlichen oder unumkehrbaren Aktionen kurz sagen, was du vorhast. "
-    "Jede Nachricht beginnt mit der aktuellen Zeit in eckigen Klammern; nutze sie fuer Uhrzeit und Datum, "
-    "lies die Klammer aber nicht vor. "
+    "Jede Nachricht beginnt mit einer internen Systeminfo in eckigen Klammern (Uhrzeit, Datum, Geraet, Weckwort). "
+    "Nutze sie, aber lies sie nie vor und zitiere sie nie, auch nicht teilweise. "
     "Geraeteaktionen am Handy (WLAN, Helligkeit, Lautstaerke, Bildschirm, Neustart, Ausschalten) fuehrst du NIE selbst aus "
     "und behauptest nie, sie seien erledigt: Rufe dafuer immer das Werkzeug mcp__geraet__anfordern auf (aktion und bei Helligkeit/Lautstaerke "
     "wert 0-100) und sage danach nur kurz, dass die Handy-Oberflaeche es ausfuehrt. "
-    "Die Klammer nennt auch, ob 'Hey Jarvis' (Wecken per Sprache) an oder aus ist. Fragt der Nutzer danach oder wundert sich, "
-    "dass 'Hey Jarvis' nicht reagiert, und es ist aus: erklaere, dass er es im Geraete-Panel (Zahnrad oben) mit dem Schalter "
-    "'Wecken mit Hey Jarvis' einschaltet oder einfach sagt: 'Schalte Hey Jarvis ein'. Das Mikro hoert dann staendig mit, "
-    "aber nichts wird gespeichert oder gesendet, bevor das Wort erkannt ist."
+    "Die Systeminfo nennt auch das Weckwort dieses Geraets und ob es an oder aus ist ('kein Weckwort' heisst: hier gibt es "
+    "keins). Fragt der Nutzer danach oder wundert sich, dass es nicht reagiert, und es ist aus: erklaere, dass er es im "
+    "Geraete-Panel (Zahnrad oben) mit dem Schalter 'Wecken mit …' einschaltet oder sagt: 'Schalte das Weckwort ein'. Das Mikro "
+    "hoert dann staendig mit, aber nichts wird gespeichert oder gesendet, bevor das Wort erkannt ist. Gibt es kein "
+    "Weckwort, sag, dass er zum Sprechen einfach den Orb antippt."
 )
 
 
@@ -476,15 +477,23 @@ async def ask(request: Request):
     now = datetime.now().astimezone()
     # Zeit in den Nutzertext, NICHT in instructions: instructions stehen vorn im System-Prompt, jede Aenderung
     # dort entwertet den Prompt-Cache (~10k Token, ~8 s Prefill). So bleibt das Praefix identisch.
-    zeit = f"[Es ist {demo_runs.WOCHENTAGE[now.weekday()]}, {now:%d.%m.%Y}, {now:%H:%M} Uhr"
+    # Interne Systeminfo (Persona: nie vorlesen/zitieren). Weckwort je Client: die UI meldet, ob es hier eins gibt und wie
+    # es heisst (NuOrb-App: wakePhrase/wakeVerfuegbar, Kiosk: Wake-Dienst); aeltere UIs ohne Angabe -> bisherige Logik.
     android = body.get("client") == "android"
     dev = body.get("device")
-    if android:  # Android-App: keine Geraetesteuerung, eigenes Wake-Word in der App
-        zeit += "; Client: Android-App, keine Gerätesteuerung; Hey Jarvis (Android) " + ("an" if body.get("wake") is True else "aus") + "]"
+    parts = [f"Systeminfo, nicht vorlesen: {demo_runs.WOCHENTAGE[now.weekday()]}, {now:%d.%m.%Y}, {now:%H:%M} Uhr"]
+    if android:
+        parts.append("Client NuOrb-App ohne Gerätesteuerung")
+    elif isinstance(dev, str) and dev.strip():  # Gerätestatus vom Smartphone, kurz und bereinigt
+        parts.append("Smartphone: " + re.sub(r"[^\w %,.°äöüÄÖÜß-]", "", dev)[:140])
+    avail = body.get("wake_available")
+    phrase = re.sub(r"[^\w .äöüÄÖÜß-]", "", str(body.get("wake_phrase") or "")).strip()[:30] or ui_cfg()["wake_phrase"] or "Weckwort"
+    on = (body.get("wake") is True) if android else (cfg().get("wake_word") is True)
+    if avail is False:
+        parts.append("kein Weckwort")
     else:
-        if isinstance(dev, str) and dev.strip():  # Gerätestatus vom Handy, kurz und bereinigt
-            zeit += "; Handy: " + re.sub(r"[^\w %,.°äöüÄÖÜß-]", "", dev)[:140]
-        zeit += "; Hey Jarvis " + ("an" if cfg().get("wake_word") is True else "aus") + "]"
+        parts.append(f"Weckwort „{phrase}“ " + ("an" if on else "aus"))
+    zeit = "[" + "; ".join(parts) + "]"
     payload = {"input": f"{zeit} {text}", "session_id": session_id, "instructions": cur_persona(),
                # Sprach-Runs ohne Denkphase: ~10x schneller bis zum ersten Satz (Messung ki-backend)
                "model_options": {"reasoning": {"enabled": cur_reasoning()}}}
@@ -1152,7 +1161,7 @@ async def warm_voice() -> None:
         print(f"Piper: Stimme nicht ladbar ({exc.__class__.__name__}: {str(exc)[:120]})", flush=True)
 
 _MD = [
-    (re.compile(r"\[(?:Es ist )?[^\]]{0,40}\d{1,2}:\d{2}[^\]]{0,200}\]"), " "),
+    (re.compile(r"\[(?:Systeminfo[^\]]{0,400}|(?:Es ist )?[^\]]{0,40}\d{1,2}:\d{2}[^\]]{0,200})\]"), " "),
     (re.compile(r"\[Projekt-Claude[^\]]*\]", re.I), " "),
     (re.compile(r"<\|?/?(?:channel|tool_call|tool_response)\|?>|<\|\"\|>", re.I), " "),
     (re.compile(r"(^|[\s.!?:])thought(?=[ \t]*(?:\n|$|<))", re.I), r"\1"), (re.compile(r"^[\s|}]+"), ""),

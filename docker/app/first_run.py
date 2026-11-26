@@ -274,6 +274,25 @@ def migrate_ollama_provider() -> None:
     log("Ollama entry renamed lan-ollama -> pc-ollama (same as Model & Fallback in the admin panel).")
 
 
+def upgrade_persona() -> None:
+    """Standard-Sätze älterer Versionen in der Persona (ui.json) auf den aktuellen Stand bringen (siehe personas.UPGRADES)."""
+    f = jc.CONF / "ui.json"
+    if not f.is_file():
+        return
+    ui = json.loads(f.read_text(encoding="utf-8"))
+    old = ui.get("persona")
+    if not isinstance(old, str):
+        return
+    new = personas.upgrade(old)
+    if new != old:
+        ui["persona"] = new
+        tmp = f.with_name(".ui.json.persona")
+        tmp.write_text(json.dumps(ui, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        os.chmod(tmp, f.stat().st_mode & 0o777)
+        os.replace(tmp, f)
+        log("Persona updated: internal system info is never read aloud or quoted.")
+
+
 def main() -> None:
     dirs()
     jc.ensure_certs()
@@ -284,6 +303,10 @@ def main() -> None:
         log(f"Ollama entry not migrated: {exc}")
     if not MARK.exists():
         first_config()
+    try:
+        upgrade_persona()
+    except Exception as exc:
+        log(f"Persona not updated: {exc}")
     try:
         ensure_mcp()
     except Exception as exc:

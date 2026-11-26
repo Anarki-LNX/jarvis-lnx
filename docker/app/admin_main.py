@@ -25,6 +25,7 @@ from fastapi import HTTPException, Request
 from fastapi.responses import FileResponse, Response
 from fastapi.routing import APIRoute
 from starlette.routing import Route
+from starlette.responses import JSONResponse
 
 sys.path.insert(0, "/opt/jarvis/admin")
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -259,11 +260,16 @@ async def setup_ollama_probe(request: Request):
     url, warn = _normalize_llm(str(d.get("url", "")), typ)
     key = str(d.get("api_key") or "").strip() or (adm.llm_key() if hasattr(adm, "llm_key") else "")
     if hasattr(adm, "llm_detect"):
-        res = await adm.llm_detect(typ, url, key)
+        try:   # prefer_ip: Adresse, unter der der Browser NuOrb aufruft (Fallback, wenn NUORB_HOST_IP fehlt)
+            res = await adm.llm_detect(typ, url, key, prefer_ip=request.url.hostname or "")
+        except TypeError:   # ältere Verwaltung ohne prefer_ip
+            res = await adm.llm_detect(typ, url, key)
         if not res.get("ok"):
-            raise HTTPException(502, res.get("error") or jc.tr("Server nicht erreichbar", "Server not reachable"))
+            return JSONResponse({"detail": res.get("error") or jc.tr("Server nicht erreichbar", "Server not reachable"),
+                                 "firewall": res.get("firewall")}, status_code=502)
         return {"ok": True, "url": res.get("base") or url, "type": typ, "server": res.get("server"), "version": res.get("version"),
-                "models": res.get("models") or [], "ctx": res.get("ctx"), "warn": res.get("warn") or warn}
+                "models": res.get("models") or [], "ctx": res.get("ctx"), "ctx_short": res.get("ctx_short") or [],
+                "warn": res.get("warn") or warn}
     try:   # ältere Verwaltung ohne llm_detect: nur Ollama
         async with httpx.AsyncClient(timeout=5) as c:
             v = (await c.get(f"{url}/api/version")).json()

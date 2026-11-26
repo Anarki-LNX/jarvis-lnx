@@ -10,7 +10,7 @@
     h_mode: "2 · Brain", m_local: "Local", m_local_d: "Only your own server (Ollama, llama.cpp …). Nothing leaves your home. Free.",
     m_auto: "Both (automatic)", m_auto_d: "Your own server, and Claude when the PC is off.", m_remote: "Claude (API)",
     m_remote_d: "No PC of your own needed, costs per question.",
-    h_ollama: "Local language model server", l_type: "Server type", t_openai: "OpenAI-compatible (llama.cpp, vLLM, LM Studio, LocalAI)", l_lkey: "API key (only if the server needs one)", l_url: "Address", probe: "Test connection",
+    h_ollama: "Local language model server", fw_title: "Open the port on the computer running the server – one of these, depending on its firewall:", l_type: "Server type", t_openai: "OpenAI-compatible (llama.cpp, vLLM, LM Studio, LocalAI)", l_lkey: "API key (only if the server needs one)", l_url: "Address", probe: "Test connection",
     url_hint: "Ollama: http://<IP>:11434. llama.cpp/LocalAI usually port 8080, vLLM 8000, LM Studio 1234. Use the IP of the computer running the server, also if it is this one; the server must listen on the network (0.0.0.0) and its port must be open in that computer's firewall.", l_model: "Model", l_ctx: "Context (tokens)",
     ctx_hint: "Important: NuOrb needs at least 64k tokens of context – Ollama: OLLAMA_CONTEXT_LENGTH=65536, llama.cpp: -c 65536, vLLM: --max-model-len 65536, LM Studio: Context Length 65536. The model must support tool calling (llama.cpp: --jinja, vLLM: --enable-auto-tool-choice).",
     h_claude: "Claude", l_key: "Anthropic API key", l_remote: "Claude model",
@@ -27,7 +27,7 @@
     h_mode: "2 · Gehirn", m_local: "Lokal", m_local_d: "Nur dein eigener Server (Ollama, llama.cpp …). Nichts verlässt das Haus. Kostenlos.",
     m_auto: "Beides (Automatik)", m_auto_d: "Dein eigener Server, und Claude, wenn der PC aus ist.", m_remote: "Claude (API)",
     m_remote_d: "Kein eigener PC nötig, kostet pro Frage.",
-    h_ollama: "Lokaler Sprachmodell-Server", l_type: "Server-Typ", t_openai: "OpenAI-kompatibel (llama.cpp, vLLM, LM Studio, LocalAI)", l_lkey: "API-Key (nur wenn der Server einen verlangt)", l_url: "Adresse", probe: "Verbindung testen",
+    h_ollama: "Lokaler Sprachmodell-Server", fw_title: "Port am Rechner des Servers freigeben – je nach Firewall einer dieser Befehle:", l_type: "Server-Typ", t_openai: "OpenAI-kompatibel (llama.cpp, vLLM, LM Studio, LocalAI)", l_lkey: "API-Key (nur wenn der Server einen verlangt)", l_url: "Adresse", probe: "Verbindung testen",
     url_hint: "Ollama: http://<IP>:11434. llama.cpp/LocalAI meist Port 8080, vLLM 8000, LM Studio 1234. IP des Rechners eintragen, auf dem der Server läuft, auch wenn es dieser ist; der Server muss im Netz lauschen (0.0.0.0) und sein Port in der Firewall dieses Rechners offen sein.", l_model: "Modell", l_ctx: "Kontext (Token)",
     ctx_hint: "Wichtig: NuOrb braucht mindestens 64k Token Kontext – Ollama: OLLAMA_CONTEXT_LENGTH=65536, llama.cpp: -c 65536, vLLM: --max-model-len 65536, LM Studio: Context Length 65536. Das Modell muss Werkzeuge aufrufen können (llama.cpp: --jinja, vLLM: --enable-auto-tool-choice).",
     h_claude: "Claude", l_key: "Anthropic-API-Schlüssel", l_remote: "Claude-Modell",
@@ -85,6 +85,7 @@
 
   async function probe() {
     $("probeMsg").textContent = m.probing; $("probeMsg").className = "muted";
+    $("probeFw").hidden = true;
     try {
       const d = await api("/api/setup/ollama", { type: $("ltype").value, url: $("url").value.trim(), api_key: $("lkey").value.trim() });
       const cur = $("model").value || $("model").dataset.want || "";
@@ -95,8 +96,17 @@
       $("probeMsg").textContent = m.found(d.server || "Ollama", d.version, d.models.length) + (d.warn ? " ⚠ " + I.tr(d.warn) : "");
       $("probeMsg").className = d.warn ? "warn" : "ok";
     } catch (e) {
-      const zeit = /timeout|timed out|ConnectError/i.test(e.message);   // Firewall am Ollama-Rechner blockt das Docker-Netz
+      const fw = e.data && e.data.firewall;   // fertige Befehle der Verwaltung (Host-IP aus NUORB_HOST_IP)
+      const zeit = !fw && /timeout|timed out|ConnectError/i.test(e.message);   // ältere Verwaltung: allgemeiner Hinweis
       $("probeMsg").textContent = m.err + I.tr(e.message) + (zeit ? " " + m.fw : ""); $("probeMsg").className = "err";
+      if (fw && fw.ip) {
+        let host = ""; try { host = new URL($("url").value.trim()).hostname; } catch (_) { }
+        // Server auf demselben Rechner: Pakete kommen aus dem Docker-Netz, nicht von der Host-IP
+        const src = host === fw.ip || host === "localhost" || host.startsWith("127.") ? "172.16.0.0/12" : fw.ip;
+        const cmds = [["ufw", fw.ufw], ["firewalld", fw.firewalld], ["Windows (PowerShell)", fw.windows]]
+          .filter(([, c]) => c).map(([k, c]) => "# " + k + "\n" + c.split(fw.ip).join(src));
+        $("probeFwCmd").textContent = cmds.join("\n\n"); $("probeFw").hidden = false;
+      }
     }
   }
   $("probe").addEventListener("click", probe);

@@ -10,6 +10,14 @@ case "${JARVIS_TLS:-selfsigned}" in off) SCHEME=http ;; *) SCHEME=https ;; esac
 D=/opt/data/jarvis
 export UI_CERT_DIR=$D/certs ADMIN_CERTS=$D/certs
 export NUORB_SMARTHOME_MCP=/opt/jarvis/smarthome/smarthome_mcp.py   # Smart-Home-Modul im Image (Verwaltung: Testen/Schalten)
+# Host-IP für Firewall-Befehle der Verwaltung (im Bridge-Netz kennt der Container nur seine eigene IP):
+# NUORB_HOST_IP aus der .env, sonst die erste IPv4-Adresse aus JARVIS_HOSTS
+if [ -z "${NUORB_HOST_IP:-}" ]; then
+  for h in $(printf '%s' "${JARVIS_HOSTS:-}" | tr ',' ' '); do
+    case "$h" in *[!0-9.]*|""|127.*) ;; *.*.*.*) NUORB_HOST_IP=$h; break ;; esac
+  done
+fi
+[ -n "${NUORB_HOST_IP:-}" ] && export NUORB_HOST_IP
 export BRAIN_SAVED_FILE=$D/admin/brain.json   # Typ des lokalen Gehirns (ollama|openai) für die Statusanzeige
 export HERMES_CONFIG=/opt/data/config.yaml   # Gehirn-Adresse für die Statusanzeige (providers.pc-ollama.api)
 export UI_CONFIG=$D/config/ui.json JARVIS_UI_SETTINGS=$D/config/ui.json ADMIN_TOKEN_FILE=$D/config/internal.token
