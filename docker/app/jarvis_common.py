@@ -88,6 +88,20 @@ VOICE_CHOICES = {
     "de": [("de_DE-thorsten-medium", "Thorsten (male, CC0)")],
     "en": [("en_US-joe-medium", "Joe (US, male, CC0)")],
 }
+# Namensnennung für die Seite „Über“ der Verwaltung (Lizenzkette: Aufnahmen + Basisstimme, siehe MODEL_CARD).
+VOICE_CREDITS = {
+    "de_DE-thorsten-medium": {"name": "Thorsten", "license": "CC0-1.0",
+                              "data": "Thorsten-Voice by Thorsten Müller", "data_url": "https://www.thorsten-voice.de",
+                              "base": "rdh (CC0)"},
+    "en_US-joe-medium": {"name": "Joe", "license": "CC0-1.0",
+                         "data": "OHF-Voice/voice-datasets", "data_url": "https://github.com/OHF-Voice/voice-datasets",
+                         "base": "rdh (CC0)"},
+}
+STT_CREDIT = {"name": "NVIDIA Parakeet-TDT-0.6B-v3", "license": "CC-BY-4.0",
+              "url": "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3",
+              "license_url": "https://creativecommons.org/licenses/by/4.0/",
+              "conversion": "int8 ONNX export by k2-fsa/sherpa-onnx", "conversion_url": "https://github.com/k2-fsa/sherpa-onnx",
+              "text": "Speech recognition: NVIDIA Parakeet-TDT-0.6B-v3 (CC-BY-4.0), ONNX export by k2-fsa/sherpa-onnx"}
 # Nicht für kommerzielle Nutzung freigegeben (Forschungs-/NC-Daten oder -Basismodell): werden ersetzt und gelöscht.
 # lessac (Blizzard 2013, nur Forschung) und alles darauf Aufbauende, ryan (CC-BY-NC-SA) und Abgeleitete, amy (unklar).
 RESTRICTED_VOICE = re.compile(r"^(en_GB-alan-.*|en_US-ryan-.*|en_US-amy-.*|en_US-lessac-.*|en_US-libritts_r-.*"
