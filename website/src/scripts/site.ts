@@ -83,6 +83,7 @@ if (heroOrb) {
   const seq: [string, number][] = [["idle", 3600], ["listening", 3200], ["thinking", 2400], ["speaking", 4200]];
   let i = 0, timer = 0, visible = true, pointer = 0, speakT = 0, raf = 0;
   const orb = () => window.Orb;
+  const cssOrb = heroOrb.querySelector<HTMLElement>(".orb-css");
   const setState = (s: string) => {
     heroOrb.dataset.state = s;
     orb()?.set({ state: s });
@@ -101,7 +102,8 @@ if (heroOrb) {
     let lvl = pointer * 0.45;
     if (s === "speaking") { speakT = t / 1000; lvl = Math.max(lvl, 0.35 + 0.3 * Math.abs(Math.sin(speakT * 7.3) * Math.sin(speakT * 2.1 + 1))); }
     else if (s === "listening") lvl = Math.max(lvl, 0.15 + 0.1 * Math.abs(Math.sin(t / 380)));
-    orb()?.set({ level: lvl });
+    const o = orb();
+    if (o) o.set({ level: lvl }); else cssOrb?.style.setProperty("--lvl", lvl.toFixed(3)); // CSS-Orb reagiert ebenfalls
   };
   heroOrb.closest(".hero")?.addEventListener("pointermove", (e) => {
     const r = heroOrb.getBoundingClientRect();
@@ -122,6 +124,30 @@ if (heroOrb) {
     if (visible) start(); else { clearTimeout(timer); cancelAnimationFrame(raf); }
   }).observe(heroOrb);
   reduced.addEventListener("change", start);
+
+  // orb.js erst nach dem Laden nachladen (nicht auf dem kritischen Pfad). Ohne GPU-Beschleunigung (Software-WebGL wie
+  // SwiftShader/llvmpipe) bleibt der CSS-Orb – derselbe Fallback wie im Produkt, aber ohne den Hauptthread zu blockieren.
+  // ?orb=webgl erzwingt den WebGL-Orb (Tests), ?orb=css den CSS-Orb.
+  const softwareGL = () => {
+    try {
+      const gl = document.createElement("canvas").getContext("webgl", { failIfMajorPerformanceCaveat: true }) as WebGLRenderingContext | null;
+      if (!gl) return true;
+      const ext = gl.getExtension("WEBGL_debug_renderer_info");
+      const name = String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+      gl.getExtension("WEBGL_lose_context")?.loseContext();
+      return /swiftshader|llvmpipe|softpipe|software|basic render/i.test(name);
+    } catch { return true; }
+  };
+  const loadOrb = () => {
+    const force = new URLSearchParams(location.search).get("orb");
+    if (force === "css" || (force !== "webgl" && softwareGL())) { heroOrb.dataset.renderer = "css"; return; }
+    const sc = document.createElement("script");
+    sc.src = "/orb/orb.js";
+    sc.onload = () => { heroOrb.dataset.renderer = window.Orb?.renderer || "?"; setState(heroOrb.dataset.state || "idle"); orb()?.calm(!visible || reduced.matches); };
+    document.body.append(sc);
+  };
+  const idle = (fn: () => void) => ("requestIdleCallback" in window ? (window as Window & { requestIdleCallback: (f: () => void, o?: object) => void }).requestIdleCallback(fn, { timeout: 1500 }) : setTimeout(fn, 300));
+  if (document.readyState === "complete") idle(loadOrb); else addEventListener("load", () => idle(loadOrb), { once: true });
 }
 
 // Kopieren des Installationsbefehls (nur Zwischenablage, nichts wird ausgeführt)
@@ -172,10 +198,13 @@ if (demo) {
     const load = (c: Clip, sound_ = false, autoplay = false) => {
       clip = c;
       withSound = !c.loop || (sound_ && c.sound.length > 0);
-      const v = pick(c.loop && withSound ? c.sound : c.video, video.clientWidth || 640);
+      const guess: Record<string, number> = { phone: 300, tablet: 700, desktop: 900 };
+      const v = pick(c.loop && withSound ? c.sound : c.video, video.clientWidth || guess[panel.dataset.panel || ""] || 640);
       video.pause();
       video.replaceChildren();
-      video.poster = c.poster.webp || c.poster.jpg || "";
+      // Poster erst setzen, wenn das Panel sichtbar ist (versteckte Tabs laden nichts)
+      const poster = c.poster.webp || c.poster.jpg || "";
+      if (!panel.hidden) video.poster = poster; else video.dataset.poster = poster;
       video.muted = !withSound; video.loop = !withSound;
       video.preload = withSound ? "metadata" : "none";
       video.setAttribute("aria-label", c.alt);
@@ -241,7 +270,11 @@ if (demo) {
 
   const select = (tab: HTMLButtonElement, focus = false) => {
     tabs.forEach((b) => { const on = b === tab; b.setAttribute("aria-selected", String(on)); b.tabIndex = on ? 0 : -1; });
-    panels.forEach((p) => { p.hidden = p.dataset.panel !== tab.dataset.tab; });
+    panels.forEach((p) => {
+      p.hidden = p.dataset.panel !== tab.dataset.tab;
+      const v = p.querySelector<HTMLVideoElement>("[data-video]");
+      if (!p.hidden && v?.dataset.poster) { v.poster = v.dataset.poster; delete v.dataset.poster; }
+    });
     players.forEach((p) => p?.visibleAuto());
     if (focus) tab.focus();
   };

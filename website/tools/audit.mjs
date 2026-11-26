@@ -15,7 +15,7 @@ mkdirSync(outDir, { recursive: true });
 const full = process.argv.includes("--full");
 const reducedRun = process.argv.includes("--reduced");
 const PORT = 4499, CDP = 9400 + Math.floor(Math.random() * 300), ORIGIN = `http://127.0.0.1:${PORT}`;
-const pages = ["/", "/en/", "/de/", "/en/privacy/", "/de/datenschutz/", "/does-not-exist"];
+const pages = ["/", "/en/", "/en/?orb=webgl", "/de/", "/en/privacy/", "/de/datenschutz/", "/does-not-exist"];
 const viewports = [
   ["desktop", 1440, 900, 1, false], ["laptop", 1280, 720, 1, false],
   ["tablet-p", 820, 1180, 2, true], ["tablet-l", 1180, 820, 2, true],
@@ -63,6 +63,7 @@ try {
     await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: reducedRun ? "reduce" : "no-preference" }] });
     for (const page of pages) {
       if (!full && vname !== "desktop" && !["/en/", "/de/"].includes(page)) continue;
+      if (page.includes("?orb=") && vname !== "desktop" && vname !== "phone-p") continue;
       events.length = 0;
       await send("Runtime.evaluate", { expression: "try{localStorage.clear()}catch(e){}" }).catch(() => {});
       await send("Page.navigate", { url: ORIGIN + page });
@@ -78,7 +79,7 @@ try {
         const imgsNoAlt = [...document.images].filter(i => !i.hasAttribute("alt")).length;
         const h1 = document.querySelectorAll("h1").length;
         const dupIds = (() => { const s = new Set(), d = []; document.querySelectorAll("[id]").forEach(e => { if (s.has(e.id)) d.push(e.id); s.add(e.id); }); return d; })();
-        return { notRevealed, sw, iw, wide, small, imgsNoAlt, h1, dupIds, renderer: window.Orb?.renderer ?? null, lang: document.documentElement.lang, title: document.title, H: document.documentElement.scrollHeight };
+        return { notRevealed, sw, iw, wide, small, imgsNoAlt, h1, dupIds, renderer: document.querySelector("[data-hero-orb]")?.dataset.renderer ?? null, lang: document.documentElement.lang, title: document.title, H: document.documentElement.scrollHeight };
       })()` });
       const v = r.result.value;
       const tag = `${vname} ${page}`;
@@ -88,7 +89,7 @@ try {
       if (v.h1 !== 1) problems.push(`${tag}: ${v.h1} h1-Elemente`);
       if (v.dupIds.length) problems.push(`${tag}: doppelte IDs ${v.dupIds.join(",")}`);
       if (v.small.length && mobile) notes.push(`${tag}: kleine Tippziele ${v.small.join(" | ")}`);
-      if (["/en/", "/de/"].includes(page)) notes.push(`${tag}: Orb-Renderer ${v.renderer}, Höhe ${v.H}px`);
+      if (page.startsWith("/en/") || page === "/de/") notes.push(`${tag}: Orb-Renderer ${v.renderer}, Höhe ${v.H}px`);
       for (const e of events) {
         if (e.method === "Runtime.exceptionThrown") problems.push(`${tag}: Exception ${e.params.exceptionDetails.exception?.description || e.params.exceptionDetails.text}`);
         if (e.method === "Runtime.consoleAPICalled" && ["error", "warning"].includes(e.params.type)) problems.push(`${tag}: console.${e.params.type} ${e.params.args.map((a) => a.value ?? a.description).join(" ")}`);
@@ -117,8 +118,22 @@ try {
         if (x.autoplay && (x.autoplay.err || x.autoplay.t <= 0)) problems.push(`${vname} ${page}: Demo-Loop spielt nicht (${JSON.stringify(x.autoplay)})`);
         if (x.phoneClick && (x.phoneClick.err || x.phoneClick.t <= 0)) problems.push(`${vname} ${page}: Szene startet nicht (${JSON.stringify(x.phoneClick)})`);
       }
+      if (page === "/en/" && vname === "phone-p") {
+        const m = await send("Runtime.evaluate", { returnByValue: true, awaitPromise: true, expression: `(async () => {
+          const wait = (ms) => new Promise(r => setTimeout(r, ms)); const b = document.querySelector("[data-menu-open]"), sh = document.querySelector("[data-menu]");
+          b.click(); await wait(200);
+          const open = !sh.hidden && b.getAttribute("aria-expanded") === "true" && sh.contains(document.activeElement);
+          sh.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); await wait(100);
+          const closed = sh.hidden && document.activeElement === b;
+          const t = document.querySelector('[role="tab"][aria-selected="true"]'); t.focus();
+          t.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true })); await wait(100);
+          const moved = document.activeElement !== t && document.activeElement.getAttribute("aria-selected") === "true";
+          return { open, closed, moved }; })()` });
+        const x = m.result.value; notes.push(`${vname} ${page}: Menü/Tabs ${JSON.stringify(x)}`);
+        if (!x.open || !x.closed || !x.moved) problems.push(`${vname} ${page}: Menü oder Tab-Tastatur fehlerhaft ${JSON.stringify(x)}`);
+      }
       const shot = await send("Page.captureScreenshot", { format: "jpeg", quality: 70, captureBeyondViewport: true, clip: { x: 0, y: 0, width: v.iw, height: Math.min(v.H, 16000), scale: dpr > 1 ? 1 / dpr : 0.6 } });
-      writeFileSync(join(outDir, `${vname}${page.replaceAll("/", "_") || "_root"}.jpg`), Buffer.from(shot.data, "base64"));
+      writeFileSync(join(outDir, `${vname}${page.replace(/[/?=]/g, "_") || "_root"}.jpg`), Buffer.from(shot.data, "base64"));
     }
   }
 } catch (e) { problems.push("Abbruch: " + e.message); }
