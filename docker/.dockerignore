@@ -4,5 +4,6 @@
 !src/**
 !app/**
 !rootfs/**
+!licenses/**
 **/__pycache__
 **/*.pyc
