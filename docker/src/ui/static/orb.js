@@ -19,8 +19,11 @@
   const cur = { level: 0, listen: 0, think: 0, speak: 0, off: 0, err: 0 };
   let calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let running = true, t0 = performance.now(), last = 0, time = 0;
+  // Aufloesung: kleine Orbs (< 300x300 CSS-px, z. B. 70 px in der Verwaltung) IMMER mit vollem devicePixelRatio
+  // (bis 3) – der Aufwand ist winzig, sonst wirkt der Orb auf HiDPI unscharf. Grosse Orbs hoechstens DPR 2 und adaptiv:
+  // bei dauerhaft langsamen Frames runter, nach Erholung wieder hoch (frueher nur runter -> blieb nach Last verpixelt).
   let scale = Math.min(window.devicePixelRatio || 1, 2);
-  let slowFrames = 0;
+  let slowFrames = 0, fastFrames = 0, small = false, maxScale = scale, lastDpr = window.devicePixelRatio || 1;
 
   const VERT = "attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}";
   const FRAG = `
@@ -144,7 +147,11 @@ void main(){
   canvas.addEventListener("webglcontextlost", (e) => { e.preventDefault(); fallback2d("Kontext verloren"); });
 
   function resize() {
-    const r = canvas.getBoundingClientRect();
+    const r = canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    small = r.width * r.height < 300 * 300;
+    maxScale = small ? Math.min(dpr, 3) : Math.min(dpr, 2);
+    if (small || dpr !== lastDpr) scale = maxScale;           // klein: immer scharf; DPR gewechselt: neu anfangen
+    scale = Math.min(scale, maxScale); lastDpr = dpr;
     const w = Math.max(1, Math.round(r.width * scale)), h = Math.max(1, Math.round(r.height * scale));
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
   }
@@ -173,9 +180,13 @@ void main(){
     const minDt = calm ? 1000 / 20 : 0;
     if (now - last < minDt) return;
     const dt = Math.min(0.1, (now - (last || now)) / 1000);
-    // adaptive Aufloesung: bei dauerhaft langsamen Frames runterskalieren
-    if (!calm && last && now - last > 24) { if (++slowFrames > 40 && scale > 1) { scale = Math.max(1, scale - 0.25); slowFrames = 0; resize(); } }
-    else slowFrames = Math.max(0, slowFrames - 1);
+    // adaptive Aufloesung (nur grosse Orbs): dauerhaft langsam -> runter, wieder fluessig -> hoch bis maxScale
+    if ((window.devicePixelRatio || 1) !== lastDpr) resize();
+    if (!small && !calm && last) {
+      const ft = now - last;
+      if (ft > 24) { fastFrames = 0; if (++slowFrames > 40 && scale > 1) { scale = Math.max(1, scale - 0.25); slowFrames = 0; resize(); } }
+      else { slowFrames = Math.max(0, slowFrames - 1); if (ft < 20 && ++fastFrames > 180 && scale < maxScale) { scale = Math.min(maxScale, scale + 0.25); fastFrames = 0; resize(); } }
+    }
     last = now;
     time += dt * (calm ? 0.25 : 1);
     const k = 1 - Math.pow(0.0015, dt);       // weiche Uebergaenge der Zustaende
@@ -219,6 +230,6 @@ void main(){
     get webgl() { return !!gl; },
     get renderer() { return canvas.dataset.renderer; },
     _forceFallback(kind) { if (kind === "css") cssOnly("Test"); else fallback2d("Test"); },
-    get scale() { return scale; },
+    get scale() { return scale; }, get maxScale() { return maxScale; },
   };
 })();

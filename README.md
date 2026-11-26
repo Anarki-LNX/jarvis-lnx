@@ -2,6 +2,9 @@
 
 **Your own private voice assistant – self-hosted in one Docker container, used from your phone.**
 
+**→ [Install guide](INSTALL.md) · [Installationsanleitung](INSTALL.de.md)** – one command:
+`curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/install.sh | bash`
+
 **NuOrb** (say "Nu-Orb") is the assistant you get: on first start it introduces itself – *"My creator named me NuOrb.
 If that's too complicated, just tell me what you'd like to call me"* – and you can rename it any time ("From now on you're Max").
 The NuOrb server is open source. It runs a complete voice assistant on your own hardware: an agent ([Hermes Agent](https://github.com/NousResearch/hermes-agent)),
@@ -27,11 +30,8 @@ Audio is processed on your server; nothing is sent anywhere unless you choose a 
 | **4. Pair** | Admin panel → *Pair device* → scan the QR code with the app. Done. |
 
 ```bash
-git clone https://github.com/Anarki-LNX/nuorb && cd nuorb/docker
-cp .env.example .env && nano .env        # at least NUORB_HOSTS (your server IP), NUORB_LANG, TZ
-docker compose up -d                      # pulls ghcr.io/anarki-lnx/nuorb
-docker compose logs nuorb | grep -i "setup code"
-# then open https://<server-ip>:8444
+curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/install.sh | bash
+# checks Docker and the firewall, asks 2–3 questions, starts NuOrb and shows the admin address + setup code
 ```
 
 **You need:** Docker with Compose v2, ~4 GB free RAM, ~8 GB disk, internet once for the speech models (~530 MB),
@@ -248,7 +248,7 @@ eigenen **Ollama** oder **Claude** (oder beidem, umschaltbar). Bedient wird per 
 oder Browser im Heimnetz. Der Assistent heißt **NuOrb** („Nu-Orb“), stellt sich beim ersten Start vor
 („Mein Schöpfer hat mich NuOrb getauft …“) und lässt sich jederzeit umbenennen. Container starten, Einrichtung im Admin-Panel, Smartphone per QR-Code koppeln – fertig.
 Umstieg von v0.3.x: `docker compose -p nuorb down` (ohne `-v`), neue `compose.yaml` holen, `docker compose up -d` – Daten bleiben.
-Anleitung: [`docker/README.md`](docker/README.md).
+Installation mit einem Befehl: `curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/install.sh | bash -s -- --lang de` – Anleitung: [INSTALL.de.md](INSTALL.de.md).
 
 **Für Bastler:** Das Projekt begann mit einem alten **Xiaomi Mi 11 Lite 4G**, auf dem jetzt **NixOS** läuft und
 NuOrb die einzige Oberfläche ist (mit Weckwort und Gerätesteuerung). Das ist gerätespezifisch und löscht das

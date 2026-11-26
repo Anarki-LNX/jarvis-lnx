@@ -7,8 +7,11 @@ dein eigenes **Ollama** (z. B. Gaming-PC), **Claude** über die Anthropic-API od
 Die **NuOrb-App für Android** und jeder Browser im Heimnetz verbinden sich damit, nachdem sie einmal gekoppelt
 wurden (QR-Code oder Code im Admin-Panel).
 
-> **Kurzfassung:** `.env` anlegen → `docker compose up -d` → `https://<server>:8444` öffnen → Einrichtungscode aus
-> dem Log eingeben → Gehirn wählen → Smartphone koppeln. Dauert etwa 10 Minuten, davon die meiste Zeit Downloads.
+> **Am einfachsten:** `curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/install.sh | bash -s -- --lang de`
+> – prüft Docker und Firewall, fragt kurz nach, startet NuOrb und zeigt Adresse und Einrichtungscode.
+> Ausführliche Anleitung: [INSTALL.de.md](../INSTALL.de.md) · [INSTALL.md](../INSTALL.md) (English).
+> Von Hand: `.env` anlegen → `docker compose up -d` → `https://<server>:8444` öffnen → Einrichtungscode eingeben →
+> Gehirn wählen → Smartphone koppeln. Dauert etwa 10 Minuten, davon die meiste Zeit Downloads.
 
 ---
 
