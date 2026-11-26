@@ -221,6 +221,24 @@ async def setup_models(request: Request):
     return models_info()
 
 
+def about_info() -> dict:
+    """Seite „Über“: Version, Spracherkennung und aktive Stimme mit Lizenz und Namensnennung."""
+    voice = jc.voice_name()
+    voices = [{"id": v, "lang": lg, "active": v == voice, **jc.VOICE_CREDITS.get(v, {"name": label})}
+              for lg, opts in jc.VOICE_CHOICES.items() for v, label in opts]
+    if voice not in {v["id"] for v in voices}:
+        voices.insert(0, {"id": voice, "lang": voice[:2], "active": True, "name": voice, "license": "?"})
+    return {"server": jc.server_label(), "brand": jc.brand(), "ui_lang": jc.ui_lang_setting(),
+            "stt": {**jc.STT_CREDIT, "ready": models_info().get("stt_ready")},
+            "voice": voice, "voices": voices,
+            "licenses_url": "https://github.com/Anarki-LNX/nuorb/blob/main/THIRD_PARTY_LICENSES.md",
+            "licenses_path": "/usr/share/doc/nuorb/"}
+
+
+async def about_get(request: Request):
+    return about_info()
+
+
 PERSONA_DEFAULTS = None
 
 
@@ -537,6 +555,7 @@ NEW = [
     APIRoute("/api/setup/apply", setup_apply, methods=["POST"]),
     APIRoute("/api/setup/language", setup_language, methods=["POST"]),
     APIRoute("/api/setup/models", setup_models, methods=["GET"]),
+    APIRoute("/api/about", about_get, methods=["GET"]),
     APIRoute("/api/pairing/new", pairing_new, methods=["POST"]),
     APIRoute("/api/pairing/devices", pairing_devices, methods=["GET"]),
     APIRoute("/api/pairing/revoke", pairing_revoke, methods=["POST"]),

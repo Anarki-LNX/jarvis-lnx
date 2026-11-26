@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NuOrb · About</title>
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="/ui/tokens.css">
+<link rel="stylesheet" href="/static/docker/docker.css">
+</head>
+<body>
+<main>
+  <div class="top"><a class="back" href="/" data-t="back">← Back to admin</a><div class="lang-toggle" role="group" aria-label="Language" id="langSwitch" data-langtoggle data-noi18n></div></div>
+  <h1 data-t="title">About</h1>
+  <p class="lead" id="server"></p>
+
+  <section class="panel" id="pModels">
+    <h2 data-t="h_models">Speech models</h2>
+    <h3 data-t="h_stt">Speech recognition</h3>
+    <p id="stt"></p>
+    <h3 data-t="h_voice">Voices</h3>
+    <table><thead><tr><th data-t="th_voice">Voice</th><th data-t="th_lic">License</th><th data-t="th_credit">Recordings · base voice</th></tr></thead>
+      <tbody id="voices"></tbody></table>
+    <p class="muted" data-t="voice_note">Speech is generated on this server. Both voices are CC0: free to use, also commercially.</p>
+  </section>
+
+  <section class="panel">
+    <h2 data-t="h_lic">Licenses</h2>
+    <p data-t="lic_own">NuOrb's own code is under the MIT license. It builds on many open-source projects and models; each keeps its own license.</p>
+    <p><a id="licLink" target="_blank" rel="noopener" data-t="lic_link">Third-party components and licenses</a></p>
+    <p class="muted"><span data-t="lic_path">In the container:</span> <span class="mono" id="licPath"></span></p>
+  </section>
+</main>
+<script src="/static/i18n-en.js"></script>
+<script src="/static/docker/nuorb-lang.js"></script>
+<script src="/static/docker/ueber.js"></script>
+</body>
+</html>

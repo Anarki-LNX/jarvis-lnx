@@ -48,3 +48,4 @@ th { color: var(--text-3); font-weight: 500; font-size: 12px; }
 /* Firewall-Befehle bei „nicht erreichbar“ (Einrichtung) */
 .fwcmd { white-space: pre-wrap; word-break: break-all; font-size: .85em; padding: .6em .8em; border-radius: 8px;
   background: rgba(127,127,127,.12); user-select: all; margin: .3em 0 1em; }
+h3 { font-size: 15px; margin: 14px 0 6px; }

@@ -10,7 +10,7 @@ docker compose exec nuorb ls /usr/share/doc/nuorb
 docker compose exec nuorb cat /usr/share/doc/nuorb/python-packages.tsv
 ```
 
-Checked for NuOrb 0.6.3 (inventory of image 0.6.2, base `nousresearch/hermes-agent:v0.23.4`). This is a best-effort inventory, not
+Checked for NuOrb 0.6.4 (inventory of image 0.6.2, base `nousresearch/hermes-agent:v0.23.4`). This is a best-effort inventory, not
 legal advice. Corrections are welcome as an issue.
 
 ## 1. Components that come with obligations
@@ -22,8 +22,8 @@ legal advice. Corrections are welcome as an issue.
 | [python-zeroconf](https://github.com/python-zeroconf/python-zeroconf) (mDNS announcement) | 0.154.0 | LGPL-2.1-or-later | Unmodified, loaded as a separate Python package; you may replace it. |
 | [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) (Hermes) | 22.8 | LGPL-3.0-only | Unmodified, part of Hermes. |
 | Debian GNU/Linux 13 base system (277 packages, e.g. bash, coreutils, Python 3.13, OpenSSL) | trixie | mostly GPL/LGPL/BSD/MIT, see `/usr/share/doc/<package>/copyright` | Sources: <https://snapshot.debian.org> (exact package versions: `dpkg -l` in the container). |
-| [NVIDIA Parakeet-TDT-0.6B-v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3), int8 conversion by [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) (speech recognition, **downloaded at first start**, not in the image) | v3 | **CC-BY-4.0** | Commercial use allowed. Attribution: "Speech recognition: NVIDIA Parakeet-TDT-0.6B-v3 (CC-BY-4.0), ONNX export by k2-fsa/sherpa-onnx". |
-| webgl-noise by Ashima Arts and Stefan Gustavson (simplex noise in `ui/static/orb.js`) | 2011–2016 | MIT | Copyright notice: [`webgl-noise-LICENSE.txt`](docker/licenses/webgl-noise-LICENSE.txt). |
+| [NVIDIA Parakeet-TDT-0.6B-v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3), int8 conversion by [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) (speech recognition, **downloaded at first start**, not in the image) | v3 | **CC-BY-4.0** | Commercial use allowed. Attribution: "Speech recognition: NVIDIA Parakeet-TDT-0.6B-v3 (CC-BY-4.0), ONNX export by k2-fsa/sherpa-onnx" – shown in the admin panel under **Docker → About**. |
+| webgl-noise by Ashima Arts and Stefan Gustavson (simplex noise in `ui/static/orb.js`) | 2011–2016 | MIT | Copyright and license notice in the header of `orb.js` and in [`webgl-noise-LICENSE.txt`](docker/licenses/webgl-noise-LICENSE.txt). |
 | Fonts [Inter](https://github.com/rsms/inter), [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), [Space Grotesk](https://github.com/floriankarsten/space-grotesk) | – | SIL OFL 1.1 | License texts next to the font files (`ui/static/fonts/LICENSE-*.txt`). |
 
 ## 2. Voices (Piper, downloaded at runtime)
@@ -44,7 +44,7 @@ RyanSpeech (CC-BY-NC-SA 4.0), or their license cannot be verified. Since 0.6.3 N
 installations that used one switch automatically to Joe (English) or Thorsten (German) and the old voice files are
 deleted from the models volume.
 
-Audio that NuOrb speaks is generated on your machine; the voice license decides what you may do with it.
+Audio that NuOrb speaks is generated on your machine; the voice license decides what you may do with it. The admin panel shows the active voice with its license under **Docker → About**.
 
 ## 3. Everything else (permissive licenses)
 

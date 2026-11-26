@@ -300,6 +300,10 @@ def main() -> int:
         time.sleep(3)
     check("Englisch mit Joe eingestellt", ok and su.get("voice") == "en_US-joe-medium" and bool((su.get("models") or {}).get("voice_ready")),
           f"{st} voice={su.get('voice')} ready={(su.get('models') or {}).get('voice_ready')}")
+    st, ab = adm.req("GET", "/api/about")
+    act = [v for v in (ab.get("voices") or []) if v.get("active")] if isinstance(ab, dict) else []
+    check("Über: aktive Stimme Joe mit CC0 genannt", st == 200 and len(act) == 1 and act[0].get("id") == "en_US-joe-medium"
+          and act[0].get("license") == "CC0-1.0", str(act)[:120])
     st, wav = app.req("POST", "/api/tts", {"text": "Good evening. All systems are running."}, timeout=60)
     if st == 200 and isinstance(wav, bytes) and wav[:4] == b"RIFF":
         body, ct = multipart("audio", "test.wav", wav, "audio/wav")
@@ -311,6 +315,19 @@ def main() -> int:
     st, d = adm.req("POST", "/api/setup/language", {"lang": "de", "voice": "de_DE-thorsten-medium"}, timeout=120)
     st2, wav = app.req("POST", "/api/tts", {"text": "Zurück auf Deutsch."}, timeout=60)
     check("Zurück auf Deutsch mit Thorsten", st == 200 and st2 == 200 and isinstance(wav, bytes) and wav[:4] == b"RIFF", str(st))
+
+    # ---------------------------------------------------------------- Namensnennung (v0.6.4)
+    st, ab = adm.req("GET", "/api/about")
+    stt = ab.get("stt") or {} if isinstance(ab, dict) else {}
+    act = [v.get("id") for v in (ab.get("voices") or []) if v.get("active")] if isinstance(ab, dict) else []
+    check("Über: Parakeet CC-BY-4.0 und Thorsten aktiv", st == 200 and "Parakeet" in str(stt.get("name")) and stt.get("license") == "CC-BY-4.0"
+          and act == ["de_DE-thorsten-medium"], f"{stt.get('name')} {stt.get('license')} {act}")
+    st, page = adm.req("GET", "/static/docker/ueber.html")
+    st2, js = adm.req("GET", "/static/docker/admin-extra.js")
+    check("Über-Seite ausgeliefert und in der Navigation", st == 200 and b"ueber.js" in page and st2 == 200 and b"ueber.html" in js, f"{st} {st2}")
+    st, orb = app.req("GET", "/orb.js")
+    check("orb.js trägt den webgl-noise-Copyright-Hinweis", st == 200 and isinstance(orb, bytes) and b"Ashima Arts" in orb[:600]
+          and b"MIT License" in orb[:800], str(st))
 
     # ---------------------------------------------------------------- Browser
     br = Client(a.ui, insecure)
