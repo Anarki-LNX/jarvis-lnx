@@ -185,7 +185,7 @@ def setup_state() -> dict:
     prov = (cfg.get("providers") or {}).get(OLLAMA_PROVIDER) or {}
     return {"done": SETUP_DONE.exists(), "lang": jc.lang(), "ui_lang": jc.ui_lang_setting(), "name": jc.server_name(),
             "ollama_url": (adm.ollama_base(cfg) if hasattr(adm, "ollama_base") else (prov.get("api") or "").removesuffix("/v1"))
-            or jc.env("NUORB_INIT_OLLAMA_URL").removesuffix("/v1"),
+            or jc.env("NUORB_INIT_OLLAMA_URL").removesuffix("/v1") or _bundled_ollama(),
             "ollama_model": (model.get("default") if str(model.get("provider", "")).startswith("custom:") else "")
             or jc.env("NUORB_INIT_OLLAMA_MODEL"),
             "anthropic_key": adm.mask(adm.env_value("ANTHROPIC_API_KEY")),
@@ -194,6 +194,16 @@ def setup_state() -> dict:
             "voice": jc.voice_name(), "voice_choices": jc.VOICE_CHOICES,
             "voices_installed": sorted(p.stem for p in (jc.MODELS / "voices").glob("*.onnx")),
             "models": models_info(), **assistant_state()}
+
+
+def _bundled_ollama() -> str:
+    """Vorschlag nur, wenn das Compose-Profil „ollama“ wirklich läuft (Dienstname auflösbar)."""
+    import socket
+    try:
+        socket.getaddrinfo("ollama", 11434)
+        return "http://ollama:11434"
+    except OSError:
+        return ""
 
 
 def models_info() -> dict:

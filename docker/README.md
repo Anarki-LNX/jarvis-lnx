@@ -204,13 +204,29 @@ docker compose exec nuorb /command/s6-svstat /run/service/nuorb-ui    # einzelne
 | Browser: „Verbindung nicht sicher“ | Erwartet beim selbst ausgestellten Zertifikat, einmal bestätigen (oder CA importieren). |
 | Einrichtungscode nicht im Log | `docker compose exec nuorb cat /opt/data/nuorb/admin/setup-code.txt` |
 | „Nur im Heimnetz erreichbar“ | Zugriff kommt aus einem nicht erlaubten Netz → `NUORB_ALLOWED_NETS` ergänzen. |
-| Spracherkennung offline nach dem Start | Modelle laden noch (Fortschritt in der Einrichtung). Ohne Internet: Meldung dort, Container versucht es weiter. |
+| Spracherkennung offline nach dem Start | Modelle laden noch (Fortschritt in der Einrichtung). Meldet die Einrichtung „keine Internetverbindung“: siehe unten. |
 | NuOrb antwortet „hat noch kein Gehirn“ | Einrichtung im Admin abschließen. |
 | Antworten leer oder Fehler „context window … below 64,000“ | Ollama-Kontext zu klein, siehe oben. |
 | App: Zertifikatsfehler | Server-IP fehlt in `NUORB_HOSTS` → eintragen, `docker compose up -d`, neu koppeln. |
-| Ollama „nicht erreichbar“ | Vom Server aus testen: `curl http://<ollama-ip>:11434/api/version`; Ollama auf `0.0.0.0` lauschen lassen, Firewall. |
+| Ollama „nicht erreichbar“ | Die IP des Ollama-Rechners eintragen (z. B. `http://192.168.1.50:11434`), auch wenn Ollama auf demselben PC läuft; Ollama mit `OLLAMA_HOST=0.0.0.0` starten. `.local`-Namen lösen im Container oft nicht auf. Testen: `docker compose exec nuorb curl -s <adresse>/api/version`. Firewall siehe unten. Alternative für denselben PC: in `compose.yaml` die `extra_hosts`-Zeile aktivieren, dann `http://host.docker.internal:11434`. |
 | Port 8443/8444 belegt | `NUORB_UI_PORT_PUBLIC` / `NUORB_ADMIN_PORT_PUBLIC` ändern. |
 | Uhrzeit falsch | `TZ` in der `.env` setzen. |
+
+### Kein Netz im Container (ufw, firewalld)
+
+Zeigt die Einrichtung „Der Container hat keine Internetverbindung“, steht der Modell-Download bei „Verbinde …“ oder
+erreicht NuOrb dein Ollama nicht, blockiert meist die Firewall des Rechners den weitergeleiteten Verkehr der Container.
+
+* **ufw** (Ubuntu, CachyOS, Arch …): Standard ist `DEFAULT_FORWARD_POLICY="DROP"`. Freigeben:
+  ```bash
+  sudo ufw default allow routed && sudo ufw reload
+  ```
+  Ollama auf demselben PC zusätzlich vom Docker-Netz erlauben: `sudo ufw allow from 172.16.0.0/12 to any port 11434 proto tcp`.
+* **firewalld** (Fedora, openSUSE): `sudo firewall-cmd --permanent --zone=trusted --add-interface=docker0 && sudo firewall-cmd --reload`
+  (Compose-Netze heißen `br-…`; bei Bedarf ebenso hinzufügen).
+* Danach `docker compose restart`. Prüfen: `docker compose exec nuorb curl -sI https://huggingface.co | head -1`.
+
+Die Ports 8443/8444 bleiben dabei nur im Heimnetz erreichbar, solange du sie am Router nicht freigibst.
 
 ## Für Entwickler
 
@@ -244,6 +260,10 @@ Volumes, `.env`, certificates and paired devices stay, because the compose proje
 **Smart home (optional):** off by default. Enter Home Assistant / ioBroker access under “Smart Home” in the admin panel (or put
 `/opt/data/smarthome.env` in place and set `NUORB_SMARTHOME=1`). Reading needs no confirmation, switching always shows a
 confirmation card. Reliable with Claude; with a local model it is limited (turn off `tools.tool_search`).
+
+**Troubleshooting:** enter the IP of the computer running Ollama, even if it is the same PC (start Ollama with `OLLAMA_HOST=0.0.0.0`); `.local` names often don't resolve inside the container.
+No network inside the container (setup says “no internet connection”, often ufw with `DEFAULT_FORWARD_POLICY="DROP"`):
+`sudo ufw default allow routed && sudo ufw reload`, then `docker compose restart`.
 
 Never expose the ports to the internet; use a VPN. The QR code carries the fingerprint of the server's own CA, so the
 app trusts exactly this server.

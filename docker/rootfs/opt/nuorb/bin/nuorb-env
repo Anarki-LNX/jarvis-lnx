@@ -17,8 +17,10 @@ export HERMES_URL=http://127.0.0.1:$HERMES_API_PORT
 export STT_URL=http://127.0.0.1:$STT_ROUTER_PORT/v1/audio/transcriptions STT_HEALTH_URL=http://127.0.0.1:$STT_ROUTER_PORT/health
 export STT_ROUTER_HOST=127.0.0.1 PARAKEET_DIR=/opt/models/stt/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8
 export NUORB_UI_URL=$SCHEME://127.0.0.1:$UI_PORT ADMIN_URL=$SCHEME://127.0.0.1:$ADMIN_PORT
-export OLLAMA_URL="${NUORB_INIT_OLLAMA_URL:-http://ollama:11434}"
-export BRAIN_URL="${OLLAMA_URL%/}/api/version"
+# Ollama: keine erfundene Vorgabe mehr (früher http://ollama:11434 = optionales Profil, meist nicht aktiv).
+# Leer = Feld in der Einrichtung bleibt leer (Vorschlag nur, wenn das gebündelte Ollama-Profil läuft).
+export OLLAMA_URL="${NUORB_INIT_OLLAMA_URL:-}"
+export BRAIN_URL="${OLLAMA_URL:-http://127.0.0.1:11434}"; BRAIN_URL="${BRAIN_URL%/}/api/version"; export BRAIN_URL
 NETS="${NUORB_ALLOWED_NETS:-127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,fc00::/7,fe80::/10}"
 export UI_ALLOWED_NETS="$NETS" ADMIN_ALLOWED_NETS="$NETS"
 # Marke/Oberflächensprache (NuOrb-Oberfläche): BRAND_NAME, UI_LANG=de|en|auto, WAKE_PHRASE; ui.json hat Vorrang
