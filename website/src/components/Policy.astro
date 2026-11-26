@@ -1,0 +1,36 @@
+---
+// Datenschutzerklärung der Website (nicht der App). Rechtliche Angaben zum Betreiber stehen im Impressum von loopout.tech.
+import Base from "../layouts/Base.astro";
+import Nav from "./Nav.astro";
+import Footer from "./Footer.astro";
+import { t, other, policyPath, type Lang } from "../i18n";
+import { LEGAL } from "../config";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const d = t(lang);
+const p = d.policy;
+---
+<Base lang={lang} title={`${p.title} – NuOrb`} description={p.title} path={policyPath(lang)} alternates={{ en: policyPath("en"), de: policyPath("de") }}>
+  <Nav lang={lang} altPath={policyPath(other(lang))} home={false} />
+  <main id="main" class="wrap legal">
+    <h1>{p.title}</h1>
+    <p class="upd">{p.updated}</p>
+    {p.sections.map(([h, txt]) => (<section><h2>{h}</h2><p>{txt}</p></section>))}
+    <p class="links">
+      <a href={lang === "de" ? LEGAL.imprintDe : LEGAL.imprintEn} rel="noopener">{d.footer.imprint}</a>
+      <a href="https://anarki-lnx.github.io/nuorb/privacy/" rel="noopener">{p.appPolicy}</a>
+      <a href={`/${lang}/`}>{p.back}</a>
+    </p>
+  </main>
+  <Footer lang={lang} home={false} />
+  <script>import "../scripts/site.ts";</script>
+</Base>
+<style>
+  .legal { max-width: 820px; padding-block: clamp(3rem, 8vw, 6rem); }
+  h1 { font-size: clamp(2rem, 5vw, 3rem); }
+  .upd { color: var(--text-3); margin: .8rem 0 2.5rem; font: 500 .85rem/1.4 var(--f-mono); }
+  section { padding: 1.3rem 0; border-top: 1px solid var(--line); }
+  h2 { font-size: 1.2rem; margin-bottom: .5rem; }
+  section p { color: var(--text-2); }
+  .links { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line); }
+</style>

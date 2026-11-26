@@ -1,0 +1,37 @@
+<!doctype html>
+<!-- Vorlage für die Open-Graph-Bilder (1200×630). Erzeugt mit: npm run og (headless Chromium). -->
+<html><head><meta charset="utf-8"><style>
+@font-face { font-family: SG; src: url("../public/fonts/space-grotesk-latin-wght-normal.woff2"); font-weight: 300 700; }
+@font-face { font-family: IN; src: url("../public/fonts/inter-latin-wght-normal.woff2"); font-weight: 100 900; }
+@font-face { font-family: JB; src: url("../public/fonts/jetbrains-mono-latin-wght-normal.woff2"); font-weight: 100 800; }
+html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; background: #05060a; color: #eef2fb; }
+body { position: relative; font-family: IN; background:
+  radial-gradient(700px 500px at 900px 315px, rgba(56,217,255,.18), transparent 62%),
+  radial-gradient(500px 400px at 100px 0, rgba(79,125,255,.14), transparent 60%), #05060a; }
+.grid { position: absolute; inset: 0; opacity: .35; background-image: linear-gradient(rgba(170,190,255,.10) 1px, transparent 1px), linear-gradient(90deg, rgba(170,190,255,.10) 1px, transparent 1px);
+  background-size: 60px 60px; -webkit-mask-image: radial-gradient(ellipse at 75% 50%, #000 10%, transparent 65%); }
+.orb { position: absolute; left: 740px; top: 125px; width: 380px; height: 380px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 38%, rgba(56,217,255,.45), rgba(2,14,20,.96) 62%, rgba(56,217,255,.6) 92%, rgba(56,217,255,.95) 100%);
+  box-shadow: 0 0 0 2px rgba(56,217,255,.9), 0 0 90px rgba(56,217,255,.55), inset 0 0 70px rgba(56,217,255,.3); }
+.ring { position: absolute; left: 700px; top: 85px; width: 456px; height: 456px; border-radius: 50%; border: 1.5px dashed rgba(56,217,255,.3); }
+.ring2 { position: absolute; left: 680px; top: 65px; width: 496px; height: 496px; border-radius: 50%; border: 2px solid transparent; border-top-color: rgba(56,217,255,.8); transform: rotate(-30deg); }
+.copy { position: absolute; left: 80px; top: 92px; width: 620px; }
+.brand { display: flex; align-items: center; gap: 14px; font: 700 34px/1 SG; letter-spacing: -.01em; }
+.dot { width: 26px; height: 26px; border-radius: 50%; background: radial-gradient(circle at 50% 38%, rgba(56,217,255,.5), #02101a 62%, rgba(56,217,255,.7) 92%); box-shadow: 0 0 0 2px rgba(56,217,255,.9), 0 0 16px rgba(56,217,255,.5); }
+h1 { margin: 54px 0 0; font: 700 76px/1 SG; letter-spacing: -.035em; }
+h1 span { display: block; } h1 .b { background: linear-gradient(92deg,#fff,#38d9ff 55%,#4f7dff); -webkit-background-clip: text; color: transparent; } h1 .c { color: #a9b2c7; }
+.tags { margin-top: 44px; display: flex; gap: 12px; flex-wrap: wrap; }
+.tags span { font: 500 15px/1 JB; letter-spacing: .1em; text-transform: uppercase; color: #a9b2c7; padding: 10px 14px; border: 1px solid rgba(170,190,255,.22); border-radius: 999px; }
+.url { position: absolute; left: 80px; bottom: 54px; font: 500 18px/1 JB; color: #38d9ff; letter-spacing: .04em; }
+</style></head><body>
+<div class="grid"></div><div class="ring2"></div><div class="ring"></div><div class="orb"></div>
+<div class="copy"><div class="brand"><span class="dot"></span>NuOrb</div>
+<h1 id="h"></h1><div class="tags" id="t"></div></div>
+<div class="url">nuorb.loopout.tech</div>
+<script>
+const de = location.hash === "#de";
+const L = de ? ["Deine KI.", "Deine Stimme.", "Dein Zuhause."] : ["Your AI.", "Your Voice.", "Your Home."];
+const T = de ? ["Open Source", "Selbst gehostet", "Lokale KI", "Privatsphäre zuerst"] : ["Open Source", "Self-Hosted", "Local AI", "Privacy First"];
+document.getElementById("h").innerHTML = L.map((l, i) => `<span class="${"abc"[i]}">${l}</span>`).join("");
+document.getElementById("t").innerHTML = T.map((x) => `<span>${x}</span>`).join("");
+</script></body></html>

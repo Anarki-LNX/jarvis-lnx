@@ -1,0 +1,32 @@
+---
+// Sprachwahl. Keine erzwungene Weiterleitung: nur eine früher selbst getroffene Wahl (localStorage "nuorb-lang") führt direkt weiter.
+import Base from "../layouts/Base.astro";
+import { t } from "../i18n";
+const en = t("en"), de = t("de");
+---
+<Base lang="en" title="NuOrb — Your AI. Your Voice. Your Home. | Deine KI. Deine Stimme. Dein Zuhause." description={en.meta.description} path="/" alternates={{ en: "/en/", de: "/de/" }}>
+  <main id="main" class="pick" data-picker>
+    <div class="orb" aria-hidden="true"></div>
+    <h1>NuOrb</h1>
+    <p class="claim"><span lang="en">{en.picker.text}</span><span lang="de">{de.picker.text}</span></p>
+    <nav class="choices" aria-label="Language / Sprache">
+      <a class="btn btn--primary" href="/en/" hreflang="en" lang="en" data-lang="en">{en.picker.en}</a>
+      <a class="btn btn--glass" href="/de/" hreflang="de" lang="de" data-lang="de">{de.picker.de}</a>
+    </nav>
+    <p class="sub"><span lang="en">{en.hero.eyebrow}</span> · <span lang="de">{de.hero.eyebrow}</span></p>
+  </main>
+  <script>import "../scripts/site.ts";</script>
+</Base>
+<style>
+  .pick { min-height: 100svh; display: grid; place-content: center; justify-items: center; gap: 1.4rem; padding: 2rem var(--pad); text-align: center;
+    background: radial-gradient(700px 500px at 50% 35%, rgba(56, 217, 255, .12), transparent 65%); }
+  .orb { width: 140px; height: 140px; border-radius: 50%; background: radial-gradient(circle at 50% 38%, rgba(56,217,255,.4), #02101a 62%, rgba(56,217,255,.6) 92%, rgba(56,217,255,.95));
+    box-shadow: 0 0 0 1.5px rgba(56,217,255,.9), 0 0 60px rgba(56,217,255,.45), inset 0 0 40px rgba(56,217,255,.25); animation: br 4.5s ease-in-out infinite; }
+  @keyframes br { 50% { filter: brightness(1.2); transform: scale(1.03); } }
+  h1 { font-size: clamp(3rem, 10vw, 5.5rem); }
+  .claim { display: grid; gap: .3rem; font: 600 clamp(1.1rem, 2.6vw, 1.5rem)/1.3 var(--f-display); }
+  .claim span + span { color: var(--text-2); }
+  .choices { display: flex; flex-wrap: wrap; gap: .8rem; justify-content: center; margin-top: .6rem; }
+  .choices .btn { min-width: 170px; }
+  .sub { font-size: .9rem; color: var(--text-3); }
+</style>

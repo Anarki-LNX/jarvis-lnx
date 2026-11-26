@@ -1,0 +1,20 @@
+---
+import Base from "../layouts/Base.astro";
+import { t } from "../i18n";
+const en = t("en"), de = t("de");
+---
+<Base lang="en" title="404 – NuOrb" description={en.notFound.text} path="/404" noindex>
+  <main id="main" class="nf">
+    <div class="orb" aria-hidden="true"></div>
+    <h1><span lang="en">{en.notFound.title}</span><span lang="de">{de.notFound.title}</span></h1>
+    <p><span lang="en">{en.notFound.text}</span> <span lang="de">{de.notFound.text}</span></p>
+    <nav class="row"><a class="btn btn--primary" href="/en/" lang="en">{en.notFound.home}</a><a class="btn btn--glass" href="/de/" lang="de">{de.notFound.home}</a></nav>
+  </main>
+</Base>
+<style>
+  .nf { min-height: 100svh; display: grid; place-content: center; justify-items: center; gap: 1.2rem; padding: 2rem var(--pad); text-align: center; }
+  .orb { width: 110px; height: 110px; border-radius: 50%; background: radial-gradient(circle at 50% 38%, rgba(120,160,255,.35), #02101a 62%, rgba(120,160,255,.6) 92%); box-shadow: 0 0 0 1.5px rgba(120,160,255,.8), 0 0 50px rgba(120,160,255,.35); }
+  h1 { display: grid; gap: .3rem; font-size: clamp(1.8rem, 5vw, 2.6rem); } h1 span + span { color: var(--text-2); font-size: .7em; }
+  p { color: var(--text-2); max-width: 50ch; }
+  .row { display: flex; gap: .8rem; flex-wrap: wrap; justify-content: center; }
+</style>

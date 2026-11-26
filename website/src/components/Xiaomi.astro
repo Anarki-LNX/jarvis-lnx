@@ -1,0 +1,54 @@
+---
+// Experimentelles, gerätespezifisches Xiaomi/NixOS-Setup – klar gekennzeichnet, mit Warnungen. Projektteil ruht.
+import { t, type Lang } from "../i18n";
+import { GITHUB } from "../config";
+import Icon from "./Icon.astro";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const d = t(lang).xiaomi;
+---
+<section class="section xi" id="xiaomi" aria-labelledby="xiaomi-title">
+  <div class="wrap">
+    <div class="grid">
+      <div class="copy reveal">
+        <p class="kicker">{d.kicker}</p>
+        <span class="badge badge--warn">{d.badge}</span>
+        <h2 id="xiaomi-title">{d.title}</h2>
+        <p class="lead">{d.text}</p>
+        <p class="paused">{d.paused}</p>
+        <dl class="facts">{d.facts.map(([k, v]) => <div><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
+      </div>
+      <div class="art reveal" aria-hidden="true">
+        <div class="ph" data-orb="css" data-state="idle">
+          <div class="ph__screen"><div class="ph__orb"><div class="orb-css"><div class="oc-glow"></div><div class="oc-ring r1"></div><div class="oc-ring r2"></div><div class="oc-core"></div></div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="notice notice--warn warn reveal" role="note">
+      <Icon name="warn" />
+      <div>
+        <strong>{d.warnTitle}</strong>
+        <ul>{d.warn.map((w) => <li>{w}</li>)}</ul>
+        <a href={GITHUB.nixos} rel="noopener">{d.more}</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .xi { background: radial-gradient(700px 400px at 85% 30%, rgba(255, 180, 84, .05), transparent 70%); }
+  .grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, .6fr); gap: clamp(2rem, 5vw, 4rem); align-items: center; }
+  .copy { display: grid; gap: 1.1rem; justify-items: start; }
+  .paused { font: 500 .85rem/1.4 var(--f-mono); color: var(--amber); }
+  .facts { margin: .5rem 0 0; display: grid; gap: 0; width: 100%; border-top: 1px solid var(--line); }
+  .facts div { display: grid; grid-template-columns: minmax(110px, .35fr) 1fr; gap: 1rem; padding: .75rem 0; border-bottom: 1px solid var(--line); }
+  dt { font: 500 .78rem/1.5 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+  dd { margin: 0; color: var(--text-2); font-size: .95rem; }
+  .art { display: grid; place-items: center; }
+  .ph { width: min(220px, 60vw); aspect-ratio: 9 / 19.5; border-radius: 36px; padding: 10px; background: #0b0f1a; border: 1px solid var(--line-2); box-shadow: 0 40px 100px -30px rgba(0,0,0,.8); }
+  .ph__screen { height: 100%; border-radius: 28px; background: #000; display: grid; place-items: center; }
+  .ph__orb { position: relative; width: 78%; aspect-ratio: 1; }
+  .warn { margin-top: clamp(2rem, 4vw, 3rem); }
+  .warn ul { margin: .5rem 0 .8rem; padding-left: 1.1rem; display: grid; gap: .35rem; color: var(--text-2); }
+  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } .art { order: -1; } }
+</style>

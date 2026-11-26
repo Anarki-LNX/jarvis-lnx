@@ -1,0 +1,38 @@
+---
+// Unterstützung. PayPal-Button nur aktiv, wenn PAYPAL_URL in config.ts gesetzt und gültig ist (paypal.com / paypal.me).
+import { t, type Lang } from "../i18n";
+import { GITHUB, PAYPAL_URL, validPaypal } from "../config";
+import Icon from "./Icon.astro";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const d = t(lang).support;
+const pp = validPaypal(PAYPAL_URL) ? PAYPAL_URL : null;
+---
+<section class="section" id="support" aria-labelledby="support-title">
+  <div class="wrap">
+    <div class="box reveal">
+      <Icon name="heart" class="heart" />
+      <p class="kicker">{d.kicker}</p>
+      <h2 id="support-title">{d.title}</h2>
+      <p class="lead">{d.text}</p>
+      {pp ? (
+        <a class="btn btn--primary" href={pp} rel="noopener">{d.button}<Icon name="external" /></a>
+      ) : (
+        <>
+          <span class="btn btn--primary" role="link" aria-disabled="true">{d.button}</span>
+          <p class="pending">{d.pending}</p>
+        </>
+      )}
+      <p class="other">{d.other} <a href={GITHUB.repo} rel="noopener">GitHub</a></p>
+    </div>
+  </div>
+</section>
+
+<style>
+  .box { display: grid; justify-items: center; text-align: center; gap: 1.1rem; max-width: 760px; margin-inline: auto; }
+  .box .lead { margin-inline: auto; }
+  .box :global(.heart) { width: 40px; height: 40px; color: var(--violet); filter: drop-shadow(0 0 16px rgba(139, 108, 255, .6)); }
+  .box .btn { margin-top: .6rem; }
+  .pending { font-size: .88rem; color: var(--text-3); }
+  .other { font-size: .92rem; color: var(--text-2); }
+</style>
