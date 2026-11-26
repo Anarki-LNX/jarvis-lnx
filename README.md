@@ -2,7 +2,7 @@
 
 **Your own private voice assistant – self-hosted in one Docker container, used from your phone.**
 
-**→ [Install guide](INSTALL.md) · [Installationsanleitung](INSTALL.de.md) · [Contributing](CONTRIBUTING.md) · [AI declaration](AI_DECLARATION.md)** – one command:
+**→ [Install guide](INSTALL.md) · [Installationsanleitung](INSTALL.de.md) · [▶ Video tutorial](https://youtu.be/NO66dwKtCvg) · [Contributing](CONTRIBUTING.md) · [AI declaration](AI_DECLARATION.md)** – one command:
 `curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/install.sh | bash`
 
 **NuOrb** (say "Nu-Orb") is the assistant you get: on first start it introduces itself – *"My creator named me NuOrb.
