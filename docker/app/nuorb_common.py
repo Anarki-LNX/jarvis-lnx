@@ -409,6 +409,13 @@ def llm_detect(base: str, api_key: str = "", timeout: float = 5) -> dict:
         out["ctx"] = next((d.get("max_model_len") for d in data if isinstance(d, dict) and d.get("max_model_len")), None)
     elif "organization_owner" in owners or get("/api/v0/models")[0] == 200:
         out["server"] = "LM Studio"
+        # nur Sprachmodelle (keine Embeddings), geladene zuerst; Kontext = loaded_context_length der geladenen
+        v = get("/api/v0/models")[1].get("data")
+        if isinstance(v, list):
+            llms = [d for d in v if isinstance(d, dict) and d.get("id") and d.get("type", "llm") in ("llm", "vlm")]
+            loaded = [d for d in llms if d.get("state") == "loaded" and isinstance(d.get("loaded_context_length"), int)]
+            out["models"] = [d["id"] for d in loaded] + [d["id"] for d in llms if d not in loaded] or out["models"]
+            out["ctx"] = min((d["loaded_context_length"] for d in loaded), default=None)
     elif get("/readyz")[0] == 200:
         out["server"] = "LocalAI"
     return out

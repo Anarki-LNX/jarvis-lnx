@@ -100,15 +100,36 @@ vllm serve Qwen/Qwen3-8B --host 0.0.0.0 --port 8000 --max-model-len 65536 \
 ```
 - Tool parser per model family: Qwen2.5/3 → `hermes`, Llama 3.1+ → `llama3_json`, Mistral → `mistral`, gpt-oss → `openai`.
 - Without `--enable-auto-tool-choice` vLLM rejects requests with tools (HTTP 400) and NuOrb does not answer.
+- Model with a native 32k window (e.g. Qwen2.5): stretch it with YaRN –
+  `--hf-overrides '{"rope_parameters":{"rope_type":"yarn","factor":2.0,"original_max_position_embeddings":32768,"rope_theta":1000000.0},"max_position_embeddings":65536}'`
+  (`rope_theta` from the model's `config.json`; without it vLLM 0.34 fails at start).
+- Optional `--api-key YOUR_KEY`; NuOrb then reports a missing or wrong key in the connection test.
+- Without an NVIDIA GPU there is the official CPU image `vllm/vllm-openai-cpu` (slow, only for small models): add
+  `--shm-size 512m` to `docker run` and `-e VLLM_CPU_KVCACHE_SPACE=2` (GB for the context).
+- Tested: vLLM 0.34.0 (CPU image) with Qwen2.5-0.5B-Instruct and 64k context (YaRN) – detection, version,
+  context, API key errors, tool calls and the confirmation card work. The 0.5B model itself answers poorly;
+  for everyday use take 8B or larger on a GPU.
 
 **LM Studio** (port 1234): Developer tab → start the server, switch on *Serve on Local Network*. When loading the
-model set **Context Length ≥ 65536** (the default is often 4096). Headless: `lms server start --port 1234` and
-`lms load <model> --context-length 65536`.
+model set **Context Length ≥ 65536** (the default is often 4096). Headless (`llmster`, installer from lmstudio.ai):
+```bash
+lms daemon up
+lms server start --port 1234 --bind 0.0.0.0
+lms load qwen3-4b-instruct-2507 --context-length 65536 --gpu max --identifier qwen3-4b
+```
+- **Load the model before NuOrb asks.** A model LM Studio loads on demand gets the default context and already the
+  first question fails (“conversation has grown too long”). The connection test shows the loaded context and warns
+  when no model is loaded or the context is below 64k.
+- Embedding models from LM Studio are not offered as brain.
+- API tokens: switch on *Require Authentication* in the app (Developer → Server Settings) and enter the token in NuOrb.
+  `lms` (llmster 0.1.2) has no option for it – without it LM Studio accepts any key.
+- Tested: LM Studio llmster 0.1.2 (llama.cpp Vulkan runtime 2.83.0) with Qwen3-4B-Instruct-2507 Q4_K_M and 64k context –
+  knowledge questions, clock via tool and the confirmation card work.
 
 **LocalAI** (port 8080): in the model YAML set `context_size: 65536` and enable the function template.
 
-Not every server is tested equally: llama.cpp and Ollama were tested with NuOrb; vLLM, LM Studio and LocalAI follow
-their documentation. Existing Ollama installations keep working unchanged.
+Not every server is tested equally: llama.cpp, Ollama, vLLM (CPU image) and LM Studio were tested with NuOrb;
+LocalAI follows its documentation. Existing Ollama installations keep working unchanged.
 
 ### Claude (no own GPU needed, costs per question)
 

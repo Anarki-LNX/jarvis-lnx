@@ -118,6 +118,7 @@ window.I18N_EN = {
  "Der Dienst wird kurz unterbrochen. {0}": "The service will be briefly interrupted. {0}",
  "Der Einrichtungscode stimmt nicht.": "The setup code is incorrect.",
  "Der Neustart-Helfer (nuorb-admin-ctl) ist nicht eingerichtet.": "The restart helper (nuorb-admin-ctl) isn't set up.",
+ "In LM Studio ist kein Sprachmodell geladen. Modell mit 64k Kontext laden: lms load <modell> -c 65536 (oder Context Length 65536 beim Laden in der App).": "No language model is loaded in LM Studio. Load the model with 64k context: lms load <model> -c 65536 (or Context Length 65536 when loading it in the app).",
  "Der Server bietet nur {0} Token Kontext, NuOrb braucht mindestens 64k. Startbefehl siehe Hilfe.": "The server only offers {0} tokens of context; NuOrb needs at least 64k. See the help for the start command.",
  "Der Server hat kein Werkzeug aufgerufen.": "The server didn't call the tool.",
  "Der Server verlangt einen API-Key.": "The server requires an API key.",

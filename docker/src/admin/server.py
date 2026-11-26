@@ -1161,6 +1161,12 @@ async def llm_detect(typ: str, base: str, key: str = "", prefer_ip: str = "") ->
                     st, v = await get("/api/v0/models", 3)
                     if (st == 200 and isinstance(v, dict) and isinstance(v.get("data"), list)) or "organization_owner" in owned:
                         out["server"] = "LM Studio"
+                        lm = lmstudio_info(v)
+                        if lm:
+                            out["models"] = lm["models"] or out["models"]
+                            out["ctx"] = lm["ctx"]
+                            if lm["warn"]:
+                                out["warn"] = lm["warn"]
                     else:
                         st, _ = await get("/readyz", 3)
                         if st == 200:
@@ -1169,6 +1175,21 @@ async def llm_detect(typ: str, base: str, key: str = "", prefer_ip: str = "") ->
         out["warn"] = f"Der Server bietet nur {out['ctx']} Token Kontext, NuOrb braucht mindestens 64k. Startbefehl siehe Hilfe."
     out["ok"] = True
     return out
+
+
+def lmstudio_info(v) -> dict | None:
+    """LM Studio /api/v0/models: nur Sprachmodelle (keine Embedding-Modelle) und der Kontext der geladenen Modelle.
+    LM Studio lädt ein nicht geladenes Modell bei der ersten Anfrage mit seinem Standard-Kontext (oft 4096) –
+    dann scheitert schon die erste Frage. Deshalb warnen, wenn kein Sprachmodell mit Kontext geladen ist."""
+    if not isinstance(v, dict) or not isinstance(v.get("data"), list):
+        return None
+    llms = [d for d in v["data"] if isinstance(d, dict) and d.get("id") and d.get("type", "llm") in ("llm", "vlm")]
+    loaded = [d for d in llms if d.get("state") == "loaded" and isinstance(d.get("loaded_context_length"), int)]
+    ctx = min((d["loaded_context_length"] for d in loaded), default=None)
+    warn = "" if loaded else ("In LM Studio ist kein Sprachmodell geladen. Modell mit 64k Kontext laden: "
+                              "lms load <modell> -c 65536 (oder Context Length 65536 beim Laden in der App).")
+    # geladene zuerst, damit die Auswahl auf das laufende Modell fällt
+    return {"models": [d["id"] for d in loaded] + [d["id"] for d in llms if d not in loaded], "ctx": ctx, "warn": warn}
 
 
 async def llm_tools_probe(base: str, key: str, model: str) -> dict:
