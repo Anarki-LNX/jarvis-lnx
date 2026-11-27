@@ -5,6 +5,8 @@
 **→ [Install guide](INSTALL.md) · [Installationsanleitung](INSTALL.de.md) · [▶ Video tutorial](https://youtu.be/NO66dwKtCvg) · [▶ Video-Anleitung (DE)](https://youtu.be/xUsvfRHpvc8) · [Contributing](CONTRIBUTING.md) · [AI declaration](AI_DECLARATION.md)**. One command:
 `curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/install.sh | bash`
 
+Image (amd64, arm64): `ghcr.io/anarki-lnx/nuorb` · also on [Docker Hub](https://hub.docker.com/r/anarkilnx/nuorb): `anarkilnx/nuorb`
+
 **NuOrb** (say "Nu-Orb") is the assistant you get: on first start it introduces itself: *"My creator named me NuOrb.
 If that's too complicated, just tell me what you'd like to call me"*. You can rename it any time ("From now on you're Max").
 The NuOrb server is open source. It runs a complete voice assistant on your own hardware: an agent ([Hermes Agent](https://github.com/NousResearch/hermes-agent)),

@@ -197,6 +197,10 @@ docker compose logs -f nuorb    # auf „setup code“ warten, Strg+C
 ```
 Die Einstellungen heißen aus historischen Gründen `NUORB_…`; sie sind in der `.env` erklärt.
 
+Das Image liegt auf GitHub (`ghcr.io/anarki-lnx/nuorb`) und mit gleichem Inhalt auf
+[Docker Hub](https://hub.docker.com/r/anarkilnx/nuorb) (`anarkilnx/nuorb`, ab Version 0.6.6). Für Docker Hub änderst du in
+der `compose.yaml` die Zeile `image:` auf `anarkilnx/nuorb:${NUORB_VERSION:-latest}`.
+
 ## 7. Update, Sicherung, Deinstallation
 
 - **Update:** den Installationsbefehl noch einmal ausführen, oder `cd ~/nuorb && docker compose pull && docker compose up -d`.
