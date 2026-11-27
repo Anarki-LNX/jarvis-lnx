@@ -1,0 +1,100 @@
+# Builds the ready made Proxmox LXC template for every tag v* and attaches it to
+# the release: nuorb-lxc-<version>-amd64.tar.zst, .sha256 and the package list.
+# The NuOrb image is not inside (about 3.5 GB unpacked); the container pulls it
+# at its first start, see proxmox/build-template.sh.
+# If the release for the tag does not exist yet, a draft is created; publish it
+# with the release notes as usual (gh release edit <tag> --draft=false ...).
+name: lxc-template
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version for the file name, e.g. 0.6.6 (manual runs keep the files as a workflow artifact only)"
+        required: true
+permissions:
+  contents: write
+concurrency:
+  group: lxc-template-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  template:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version
+        id: v
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          v="${INPUT_VERSION:-$GITHUB_REF_NAME}"
+          v="${v#v}"
+          if ! [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.+~-][0-9A-Za-z.]+)?$ ]]; then
+            echo "::error::invalid version: $v"; exit 1
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq debootstrap debian-archive-keyring zstd shellcheck
+
+      - name: shellcheck and mock tests of the Proxmox scripts
+        run: |
+          shellcheck -x proxmox/*.sh proxmox/tests/*.sh
+          NUORB_TEST_DIR="$RUNNER_TEMP/nuorb-lxc-test" proxmox/tests/mock-test.sh
+
+      - name: Build the template
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+          BUILD_DIR: ${{ runner.temp }}
+        run: sudo --preserve-env=BUILD_DIR NUORB_REF=main proxmox/build-template.sh "$VERSION" dist
+
+      - name: Check the archive
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          cd dist
+          f="nuorb-lxc-${VERSION}-amd64.tar.zst"
+          sha256sum -c "$f.sha256"
+          tar --zstd -tvf "$f" > "$RUNNER_TEMP/list.txt"
+          for p in ./usr/sbin/init ./usr/bin/dockerd ./usr/local/bin/update ./usr/local/sbin/nuorb-firstboot ./etc/nuorb/template; do
+            grep -q " $p\( \|$\)" "$RUNNER_TEMP/list.txt" || { echo "::error::$p missing in $f"; exit 1; }
+          done
+          ls -l
+          {
+            echo "### NuOrb LXC template ${VERSION}"
+            echo '```'
+            ls -l
+            cat "$f.sha256"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nuorb-lxc-${{ steps.v.outputs.version }}-amd64
+          path: |
+            dist/nuorb-lxc-*.tar.zst
+            dist/nuorb-lxc-*.sha256
+            dist/nuorb-lxc-*.packages.txt
+          retention-days: 7
+          compression-level: 0
+
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --draft --verify-tag --title "NuOrb $TAG" \
+              --notes "Release notes follow. The Proxmox LXC template is attached."
+          fi
+          gh release upload "$TAG" --clobber \
+            "dist/nuorb-lxc-${VERSION}-amd64.tar.zst" \
+            "dist/nuorb-lxc-${VERSION}-amd64.tar.zst.sha256" \
+            "dist/nuorb-lxc-${VERSION}-amd64.packages.txt"
