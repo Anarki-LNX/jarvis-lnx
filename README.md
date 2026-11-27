@@ -24,7 +24,7 @@ Audio is processed on your server; nothing is sent anywhere unless you choose a 
 
 | Step | What |
 |---|---|
-| **1. Server** | Run the Docker container on any Proxmox VM/LXC, home server or PC (amd64 or arm64): **[`docker/README.md`](docker/README.md)** |
+| **1. Server** | Run the Docker container on any home server, VM or PC (amd64 or arm64): **[`docker/README.md`](docker/README.md)**, or use the ready-made **[Proxmox LXC](docs/proxmox.md)** |
 | **2. Brain** | In the setup wizard choose your Ollama (≥ 64k context) and/or enter a Claude API key |
 | **3. App** | Install the **NuOrb** Android app (Google Play release coming soon), or just use any browser in your home network |
 | **4. Pair** | Admin panel → *Pair device* → scan the QR code with the app. Done. |
@@ -34,7 +34,21 @@ curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/install.sh | 
 # checks Docker and the firewall, asks 2-3 questions, starts NuOrb and shows the admin address + setup code
 ```
 
-**You need:** Docker with Compose v2, ~4 GB free RAM, ~8 GB disk, internet once for the speech models (~530 MB),
+**Three ways to install:**
+
+| Way | For whom | How |
+|---|---|---|
+| **Installer** (Docker) | most people: any Linux machine, home server, VM or PC, amd64 or arm64 | one command, see below |
+| **Docker Compose** (manual) | people who manage their containers with Compose themselves | `compose.yaml` + `.env`, see section 6 |
+| **Proxmox LXC** | Proxmox VE users (amd64) who want NuOrb as its own container with `vzdump` backups | one command in the host shell or a ready-made template: **[docs/proxmox.md](docs/proxmox.md)** |
+
+On Proxmox VE, in the host shell:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/proxmox/nuorb-lxc.sh)"
+```
+
+**You need:** Docker with Compose v2 (not for the Proxmox LXC), ~4 GB free RAM, ~8 GB disk, internet once for the speech models (~530 MB),
 and either an Ollama server or an [Anthropic API key](https://console.anthropic.com).
 Phone and server in the same network, or connected via VPN (WireGuard, Tailscale). **Never expose the ports to the internet.**
 
@@ -263,6 +277,13 @@ oder Browser im Heimnetz. Der Assistent heißt **NuOrb** („Nu-Orb“), stellt 
 („Mein Schöpfer hat mich NuOrb getauft …“) und lässt sich jederzeit umbenennen. Container starten, Einrichtung im Admin-Panel, Smartphone per QR-Code koppeln. Fertig.
 Umstieg von v0.3.x: `docker compose -p nuorb down` (ohne `-v`), neue `compose.yaml` holen, `docker compose up -d`. Daten bleiben.
 Installation mit einem Befehl: `curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/install.sh | bash -s -- --lang de`. Anleitung: [INSTALL.de.md](INSTALL.de.md).
+Auf **Proxmox VE** gibt es NuOrb auch als fertiges LXC (Einzeiler in der Host-Shell oder Template zum Herunterladen): [docs/proxmox.de.md](docs/proxmox.de.md).
+
+| Weg | Für wen |
+|---|---|
+| **Installationsskript** (Docker) | die meisten: jeder Linux-Rechner, Heimserver, VM oder PC |
+| **Docker Compose** (von Hand) | wer seine Container selbst mit Compose verwaltet |
+| **Proxmox-LXC** | Nutzer von Proxmox VE (amd64), die einen eigenen CT mit `vzdump`-Sicherung wollen |
 
 **Für Bastler:** Das Projekt begann mit einem alten **Xiaomi Mi 11 Lite 4G**, auf dem jetzt **NixOS** läuft und
 NuOrb die einzige Oberfläche ist (mit Weckwort und Gerätesteuerung). Das ist gerätespezifisch und löscht das

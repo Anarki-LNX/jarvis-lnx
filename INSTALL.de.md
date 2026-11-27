@@ -7,6 +7,28 @@
 NuOrb ist ein privater Sprachassistent zum Selbstbetreiben: **ein Docker-Container** auf einem Heimserver, einer
 Proxmox-VM/LXC oder deinem PC. Dein Smartphone (NuOrb-App) oder jeder Browser im Heimnetz spricht mit ihm.
 
+## Welcher Weg?
+
+| Weg | Für wen | Wie |
+|---|---|---|
+| **Installationsskript** (Docker) | die meisten: jeder Linux-Rechner, Heimserver, VM oder PC, amd64 oder arm64 | ein Befehl, siehe unten |
+| **Docker Compose** (von Hand) | wer seine Container selbst mit Compose verwaltet | `compose.yaml` + `.env`, siehe Abschnitt 6 |
+| **Proxmox-LXC** | Nutzer von Proxmox VE (amd64), die NuOrb als eigenen Container mit `vzdump`-Sicherung wollen | ein Befehl in der Host-Shell oder ein fertiges Template: **[docs/proxmox.de.md](docs/proxmox.de.md)** |
+
+### Proxmox-LXC
+
+Auf einem Proxmox-VE-Host in der **Host**-Shell ausführen (Knoten → *Shell*):
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/proxmox/nuorb-lxc.sh)"
+```
+
+Ein Dialog fragt die Einstellungen ab (Standard: Debian 12, unprivilegiert, 4 Kerne, 6 GB RAM, 24 GB Platte, DHCP auf
+`vmbr0`), legt den Container an und zeigt am Ende die Adresse der Verwaltung und den Einrichtungscode. Lieber ein
+fertiges Template? Es liegt auf der [Release-Seite](https://github.com/Anarki-LNX/nuorb/releases/latest). Alles Weitere
+(Template, Update, Sicherung, Deinstallation, Fehlersuche): **[docs/proxmox.de.md](docs/proxmox.de.md)**. Die Abschnitte 3
+bis 5 dieser Anleitung gelten auch für das LXC.
+
 ## 1. Voraussetzungen
 
 | | Mindestens |
@@ -17,7 +39,8 @@ Proxmox-VM/LXC oder deinem PC. Dein Smartphone (NuOrb-App) oder jeder Browser im
 | Gehirn | ein [Ollama](https://ollama.com)-Server oder ein OpenAI-kompatibler Server (llama.cpp, vLLM, LM Studio) **oder** ein [Anthropic-API-Schlüssel](https://console.anthropic.com) (Claude), oder beides |
 | Netz | Smartphone und Server im selben Heimnetz oder per VPN verbunden (WireGuard, Tailscale) |
 
-Proxmox-LXC: vorher Nesting und keyctl einschalten. Auf dem Proxmox-Host: `pct set <ID> -features nesting=1,keyctl=1`.
+Docker in einem eigenen Proxmox-LXC: vorher Nesting und keyctl einschalten. Auf dem Proxmox-Host: `pct set <ID> -features nesting=1,keyctl=1`.
+Oder gleich das fertige [Proxmox-LXC](docs/proxmox.de.md) nehmen.
 
 ## 2. Installation mit einem Befehl
 
