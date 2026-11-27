@@ -420,7 +420,10 @@ check_ports() {
     in_use=$(ss -ltnH "sport = :$p" 2>/dev/null | head -1 || true)
     [ -z "$in_use" ] && continue
     # belegt von unserem eigenen Container (Update) -> in Ordnung
-    if "${DOCKER[@]}" ps --format '{{.Names}} {{.Ports}}' | grep -E "^$NAME .*:$p->" >/dev/null; then continue; fi
+    # Host-Ports des eigenen Containers aus inspect (docker ps zeigt ab Docker 29 Bereiche wie 8443-8444->8443-8444)
+    # shellcheck disable=SC2016  # Go-Template, kein Shell-Ausdruck
+    if "${DOCKER[@]}" inspect "$NAME" --format '{{range $p, $b := .NetworkSettings.Ports}}{{range $b}}{{.HostPort}} {{end}}{{end}}' 2>/dev/null \
+         | tr ' ' '\n' | grep -qx "$p"; then continue; fi
     fail "$(t "Port $p is already in use by another program." "Port $p wird schon von einem anderen Programm benutzt.")" \
          "$(t "Use other ports, e.g.:" "Andere Ports nehmen, z. B.:") ... | bash -s -- --ports 9443,9444"
   done
