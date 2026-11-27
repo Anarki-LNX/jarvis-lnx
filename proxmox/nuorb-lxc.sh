@@ -237,7 +237,7 @@ dialog() {
     wt --title "$title" --default-item "$STORAGE" --menu "$(t "Storage for the container disk" "Speicher für die Container-Disk")" 16 60 6 "${list[@]}"; STORAGE="$A"
   fi
   list=()
-  while read -r s; do [ -n "$s" ] && list+=("$s" ""); done < <(ip -o link show type bridge 2>/dev/null | awk -F': ' '{print $2}' | cut -d@ -f1)
+  while read -r s; do [ -n "$s" ] && list+=("$s" ""); done < <(ip -o link show type bridge 2>/dev/null | awk -F': ' '{print $2}' | cut -d@ -f1 | grep -Ev '^(fwbr|docker|br-|virbr)')
   if [ ${#list[@]} -gt 2 ]; then
     wt --title "$title" --default-item "$BRIDGE" --menu "$(t "Network bridge" "Netzwerk-Bridge")" 16 60 6 "${list[@]}"; BRIDGE="$A"
   fi
@@ -286,7 +286,7 @@ cleanup() {
 trap cleanup EXIT
 trap 'printf "  %s(line %s)%s\n" "$R" "$LINENO" "$N" >&2' ERR
 
-ct_ip() { pct exec "$1" -- ip -4 -o addr show scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | head -n 1 || true; }
+ct_ip() { pct exec "$1" -- ip -4 -o addr show dev eth0 scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | head -n 1 || true; }
 
 wait_network() {   # wait_network ID
   printf '  %s' "$(t "Waiting for the network " "Warte auf das Netz ")"
@@ -316,6 +316,9 @@ setup_ct() {   # setup_ct ID: Docker, update command, login notice
       pct exec "$1" -- bash -c 'NUORB_REF="$1" /root/ct-setup.sh; rc=$?; rm -f /root/ct-setup.sh; exit $rc' _ "$REF"
 }
 
+# install.sh output on screen up to its own summary (this script prints one for the container); all of it goes to the log
+screen() { awk '/══════/ {skip = 1} !skip {print; fflush()}'; }
+
 # install.sh inside the container, output live and in the log
 install_nuorb() {   # install_nuorb ID IP
   local llm="${LLM:-none}"
@@ -324,7 +327,7 @@ install_nuorb() {   # install_nuorb ID IP
   # shellcheck disable=SC2016  # $1..$5 expand inside the container
   if ! pct exec "$1" -- env HOME=/root NUORB_REF="$REF" bash -c \
       'curl -fsSL --retry 3 "$1" -o /root/nuorb-install.sh && bash /root/nuorb-install.sh --yes --no-firewall --lang "$2" --ip "$3" --llm "$4" --ports "$5"; rc=$?; rm -f /root/nuorb-install.sh; exit $rc' \
-      _ "$RAW/install.sh" "$NU_LANG" "$2" "$llm" "$PORTS" 2>&1 | tee -a "$LOG"; then
+      _ "$RAW/install.sh" "$NU_LANG" "$2" "$llm" "$PORTS" 2>&1 | tee -a "$LOG" | screen; then
     die "$(t "install.sh failed in container $1. Log:" "install.sh ist in Container $1 fehlgeschlagen. Log:") $LOG"
   fi
 }
@@ -382,10 +385,12 @@ cmd_install() {
   [ "$NET_IP" != dhcp ] && net="${net},gw=${GW}"
   [ -n "$VLAN" ] && net="${net},tag=${VLAN}"
   local text
-  text="$(t "Container" "Container")   ${CTID} (${CT_HOSTNAME}), Debian 12, $(t "unprivileged" "unprivilegiert"), nesting, keyctl
-$(t "Resources" "Ressourcen")  ${CORES} $(t "cores" "Kerne"), ${RAM} MB RAM, ${DISK} GB $(t "on" "auf") ${STORAGE}
-$(t "Network" "Netz")       ${BRIDGE}, ${NET_IP}${GW:+, gw $GW}${VLAN:+, VLAN $VLAN}
-NuOrb       $(t "language" "Sprache") ${NU_LANG}, $(t "ports" "Ports") ${PORTS/,//}, $(t "brain" "Gehirn") ${LLM:-$(t "choose in the setup" "in der Einrichtung wählen")}"
+  text=$(
+    printf '%-11s %s\n' "Container" "${CTID} (${CT_HOSTNAME}), Debian 12, $(t "unprivileged" "unprivilegiert"), nesting, keyctl"
+    printf '%-11s %s\n' "$(t "Resources" "Ressourcen")" "${CORES} $(t "cores" "Kerne"), ${RAM} MB RAM, ${DISK} GB $(t "on" "auf") ${STORAGE}"
+    printf '%-11s %s\n' "$(t "Network" "Netz")" "${BRIDGE}, ${NET_IP}${GW:+, gw $GW}${VLAN:+, VLAN $VLAN}"
+    printf '%-11s %s\n' "NuOrb" "$(t "language" "Sprache") ${NU_LANG}, $(t "ports" "Ports") ${PORTS/,//}, $(t "brain" "Gehirn") ${LLM:-$(t "choose in the setup" "in der Einrichtung wählen")}"
+  )
   if [ "$WT" = 1 ]; then
     yesno "$(t "Create the NuOrb container?" "NuOrb-Container anlegen?")" "$text" 13 || { t "Nothing changed." "Nichts geändert."; echo; exit 0; }
   else
@@ -441,7 +446,7 @@ cmd_update() {
   printf '\n## %s  update in %s\n' "$(date '+%F %T')" "$id" >> "$LOG"
   local lang_arg=()
   [ -n "$NU_LANG" ] && lang_arg=(--lang "$NU_LANG")
-  pct exec "$id" -- env NUORB_REF="$REF" /usr/local/bin/update "${lang_arg[@]}" 2>&1 | tee -a "$LOG" \
+  pct exec "$id" -- env NUORB_REF="$REF" /usr/local/bin/update "${lang_arg[@]}" 2>&1 | tee -a "$LOG" | screen \
     || die "$(t "Update failed in container $id. Log:" "Update in Container $id fehlgeschlagen. Log:") $LOG"
   summary "$id"
 }
