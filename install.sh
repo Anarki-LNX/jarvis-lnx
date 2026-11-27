@@ -236,7 +236,7 @@ fetch_files() {
   # zweite Instanz bzw. Entwicklungs-Image: eigene Namen über compose.override.yaml (wird von Compose automatisch gelesen)
   if [ "$NAME" != nuorb ] || [ -n "$IMAGE" ] || [ "$VOL_PREFIX" != nuorb ]; then
     {
-      echo "# Written by install.sh ($(date +%F)) – do not edit, run the installer again instead."
+      echo "# Written by install.sh ($(date +%F)). Do not edit, run the installer again instead."
       [ "$NAME" != nuorb ] && echo "name: $NAME"
       echo "services:"
       echo "  nuorb:"
@@ -368,7 +368,7 @@ configure() {
     if [ -n "$found" ]; then
       ok "$(t "Language model server on this machine:" "Sprachmodell-Server auf diesem Rechner:")"
       printf '%s\n' "$found" | while IFS='|' read -r p ty sv bd; do
-        printf '      · %s  http://%s:%s%s\n' "$sv" "$IP" "$p" "$([ "$bd" = loopback ] && t "  (only 127.0.0.1 – not reachable from the container)" "  (nur 127.0.0.1 – vom Container nicht erreichbar)")"
+        printf '      · %s  http://%s:%s%s\n' "$sv" "$IP" "$p" "$([ "$bd" = loopback ] && t "  (only 127.0.0.1, not reachable from the container)" "  (nur 127.0.0.1, vom Container nicht erreichbar)")"
       done
       first=$(printf '%s\n' "$found" | head -1)
       if [ "$(printf '%s' "$first" | cut -d'|' -f4)" = loopback ]; then
@@ -376,8 +376,8 @@ configure() {
       fi
       url=$(ask "$(t "Brain address (- = set up later)" "Adresse des Gehirns (- = später einrichten)")" "http://$IP:$(printf '%s' "$first" | cut -d'|' -f1)")
     else
-      url=$(ask "$(t "Address of Ollama or an OpenAI-compatible server (llama.cpp, vLLM, LM Studio), e.g. http://192.168.1.50:11434 – Enter = later / Claude only" \
-                     "Adresse von Ollama oder einem OpenAI-kompatiblen Server (llama.cpp, vLLM, LM Studio), z. B. http://192.168.1.50:11434 – Enter = später / nur Claude")" "-")
+      url=$(ask "$(t "Address of Ollama or an OpenAI-compatible server (llama.cpp, vLLM, LM Studio), e.g. http://192.168.1.50:11434. Enter = later / Claude only" \
+                     "Adresse von Ollama oder einem OpenAI-kompatiblen Server (llama.cpp, vLLM, LM Studio), z. B. http://192.168.1.50:11434. Enter = später / nur Claude")" "-")
     fi
   elif [ "$OLLAMA" != none ]; then url="$OLLAMA"; fi
   case "$url" in ""|-|none) ok "$(t "Brain: choose in the setup wizard (local server or Claude)." "Gehirn: im Einrichtungsassistenten wählen (lokaler Server oder Claude).")"; return 0 ;; esac
@@ -393,8 +393,8 @@ configure() {
   fi
   if [ -z "$ltype" ] || [ "$code" != 200 ]; then
     set_env NUORB_INIT_OLLAMA_URL "$url"
-    warn "$(t "No language model server answers at $url (HTTP ${code:-–}). Check the address/port, that the server listens on the network and the firewall – or fix it later in the setup wizard." \
-              "Unter $url antwortet kein Sprachmodell-Server (HTTP ${code:-–}). Adresse/Port prüfen, ob der Server im Netz lauscht, und die Firewall – oder später im Einrichtungsassistenten ändern.")"
+    warn "$(t "No language model server answers at $url (HTTP ${code:-none}). Check the address/port, that the server listens on the network and the firewall, or fix it later in the setup wizard." \
+              "Unter $url antwortet kein Sprachmodell-Server (HTTP ${code:-keine}). Adresse/Port prüfen, ob der Server im Netz lauscht, und die Firewall, oder später im Einrichtungsassistenten ändern.")"
     return 0
   fi
   set_env NUORB_INIT_LLM_TYPE "$ltype"; set_env NUORB_INIT_OLLAMA_URL "$url"
@@ -409,7 +409,7 @@ configure() {
     set_env NUORB_INIT_OLLAMA_MODEL "$model"
     ok "$server $url · $model ($(t "needs at least 64k context" "braucht mindestens 64k Kontext"))"
   else
-    warn "$(t "$server answers but lists no model – choose it later in the setup wizard." "$server antwortet, nennt aber kein Modell – später im Einrichtungsassistenten wählen.")"
+    warn "$(t "$server answers but lists no model. Choose it later in the setup wizard." "$server antwortet, nennt aber kein Modell. Später im Einrichtungsassistenten wählen.")"
   fi
 }
 
@@ -472,7 +472,7 @@ start() {
   if ! "${DOCKER[@]}" run --rm --entrypoint curl "$img" -fsS -m 10 -o /dev/null https://huggingface.co 2>/dev/null; then
     warn "$(t "Containers have no internet access. The speech models (~530 MB) cannot be downloaded." \
               "Container haben keinen Internetzugang. Die Sprachmodelle (~530 MB) lassen sich so nicht laden.")"
-    if [ ${#FW_CMDS[@]} -gt 0 ]; then warn "$(t "Most likely the firewall – see the commands above." "Wahrscheinlich die Firewall – siehe Befehle oben.")"
+    if [ ${#FW_CMDS[@]} -gt 0 ]; then warn "$(t "Most likely the firewall, see the commands above." "Wahrscheinlich die Firewall, siehe Befehle oben.")"
     else cmdline "sudo ufw default allow routed && sudo ufw reload   $(t "# with ufw" "# bei ufw")"; fi
     confirm "$(t "Start anyway?" "Trotzdem starten?")" y || exit 1
   else ok "$(t "Container network ok." "Container-Netz ok.")"; fi
@@ -492,7 +492,7 @@ start() {
     printf '.'; sleep 2
   done
   echo
-  [ "$st" = healthy ] && ok "$(t "NuOrb is running." "NuOrb läuft.")" || warn "$(t "Still starting – check with: docker compose ps" "Startet noch – prüfen mit: docker compose ps")"
+  [ "$st" = healthy ] && ok "$(t "NuOrb is running." "NuOrb läuft.")" || warn "$(t "Still starting. Check with: docker compose ps" "Startet noch. Prüfen mit: docker compose ps")"
   # Ollama vom Container aus erreichbar?
   local ou; ou=$(get_env NUORB_INIT_OLLAMA_URL)
   local ok_code; ok_code=$("${DOCKER[@]}" exec "$cname" curl -s -m 6 -o /dev/null -w '%{http_code}' "$ou/v1/models" 2>/dev/null || true)
@@ -515,18 +515,18 @@ finish() {
   printf '   %s  %shttps://%s:%s%s\n' "$(t "Admin panel:" "Verwaltung: ")" "$B" "$IP" "$ADMIN_PORT" "$N"
   if [ -n "$code" ]; then
     printf '   %s  %s%s%s\n\n' "$(t "Setup code: " "Einrichtungscode:")" "$B$Y" "$code" "$N"
-    printf '   1. %s\n' "$(t "Open the address in a browser. The certificate warning is expected (own certificate) – continue." \
-                             "Adresse im Browser öffnen. Die Zertifikatswarnung ist erwartet (eigenes Zertifikat) – fortfahren.")"
+    printf '   1. %s\n' "$(t "Open the address in a browser. The certificate warning is expected (own certificate). Continue." \
+                             "Adresse im Browser öffnen. Die Zertifikatswarnung ist erwartet (eigenes Zertifikat). Fortfahren.")"
     printf '   2. %s\n' "$(t "Enter the setup code, choose a password, follow the setup (language, brain)." \
                              "Einrichtungscode eingeben, Passwort wählen, der Einrichtung folgen (Sprache, Gehirn).")"
     printf '   3. %s\n' "$(t "\"Pair device\": scan the QR code with the NuOrb app." "„Gerät koppeln“: QR-Code mit der NuOrb-App scannen.")"
   else
-    printf '\n   %s\n' "$(t "Already set up – log in with your password. Phones stay paired." "Schon eingerichtet – mit deinem Passwort anmelden. Smartphones bleiben gekoppelt.")"
+    printf '\n   %s\n' "$(t "Already set up. Log in with your password. Phones stay paired." "Schon eingerichtet. Mit deinem Passwort anmelden. Smartphones bleiben gekoppelt.")"
   fi
   local ms; ms=$("${DOCKER[@]}" exec "$CNAME" sh -c 'cat /opt/data/nuorb/models-status.json 2>/dev/null' 2>/dev/null | tr -d '\n ' || true)
   case "$ms" in *'"state":"ready"'*|"") ;; *)
-    printf '\n   %s\n' "$(t "Speech models (~530 MB) are still downloading – the setup page shows the progress; voice works afterwards." \
-                             "Die Sprachmodelle (~530 MB) laden noch – die Einrichtung zeigt den Fortschritt; Sprache geht danach.")" ;;
+    printf '\n   %s\n' "$(t "Speech models (~530 MB) are still downloading. The setup page shows the progress; voice works afterwards." \
+                             "Die Sprachmodelle (~530 MB) laden noch. Die Einrichtung zeigt den Fortschritt; Sprache geht danach.")" ;;
   esac
   printf '\n   %s %s\n' "$(t "Folder:" "Ordner:")" "$DIR"
   printf '   %s curl -fsSL https://raw.githubusercontent.com/%s/main/install.sh | bash\n' "$(t "Update/repair:" "Update/Reparatur:")" "$REPO"
@@ -536,7 +536,7 @@ finish() {
 # ------------------------------------------------------------------ main
 # Für Tests: nur die Funktionen laden (NUORB_LIB_ONLY=1 source install.sh)
 if [ "${NUORB_LIB_ONLY:-}" = 1 ]; then return 0 2>/dev/null || exit 0; fi
-printf '%sNuOrb%s – %s\n' "$B" "$N" "$(t "self-hosted voice assistant · installer" "selbst gehosteter Sprachassistent · Installation")"
+printf '%sNuOrb%s · %s\n' "$B" "$N" "$(t "self-hosted voice assistant · installer" "selbst gehosteter Sprachassistent · Installation")"
 check_docker
 [ "$UNINSTALL" = 1 ] && uninstall
 fetch_files

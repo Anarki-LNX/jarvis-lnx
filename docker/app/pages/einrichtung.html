@@ -62,12 +62,12 @@
     </div>
     <p class="muted" data-t="url_hint">Ollama: http://<IP>:11434. llama.cpp/LocalAI usually port 8080, vLLM 8000, LM Studio 1234. Use the IP of the computer running the server, also if it is this one; the server must listen on the network (0.0.0.0) and its port must be open in that computer's firewall.</p>
     <p class="muted" id="probeMsg"></p>
-    <div id="probeFw" hidden><p class="muted" data-t="fw_title">Open the port on the computer running the server – one of these, depending on its firewall:</p><pre class="fwcmd" id="probeFwCmd"></pre></div>
+    <div id="probeFw" hidden><p class="muted" data-t="fw_title">Open the port on the computer running the server, one of these, depending on its firewall:</p><pre class="fwcmd" id="probeFwCmd"></pre></div>
     <label for="model" data-t="l_model">Model</label>
-    <select id="model"><option value="">–</option></select>
+    <select id="model"><option value="">·</option></select>
     <label for="ctx" data-t="l_ctx">Context (tokens)</label>
     <select id="ctx"><option selected>65536</option><option>131072</option></select>
-    <p class="muted" data-t="ctx_hint">Important: NuOrb needs at least 64k tokens of context – Ollama: OLLAMA_CONTEXT_LENGTH=65536, llama.cpp: -c 65536, vLLM: --max-model-len 65536, LM Studio: Context Length 65536. The model must support tool calling (llama.cpp: --jinja, vLLM: --enable-auto-tool-choice).</p>
+    <p class="muted" data-t="ctx_hint">Important: NuOrb needs at least 64k tokens of context. Ollama: OLLAMA_CONTEXT_LENGTH=65536, llama.cpp: -c 65536, vLLM: --max-model-len 65536, LM Studio: Context Length 65536. The model must support tool calling (llama.cpp: --jinja, vLLM: --enable-auto-tool-choice).</p>
   </section>
 
   <section class="panel" id="pClaude">
@@ -77,7 +77,7 @@
     <p class="muted" id="keyState"></p>
     <label for="remote" data-t="l_remote">Claude model</label>
     <select id="remote"></select>
-    <p class="muted" data-t="cost">Cost: billed per token directly by Anthropic (console.anthropic.com). A short voice question costs about 0.1–0.5 cents with Haiku, a few cents with Sonnet. Set a spending limit there.</p>
+    <p class="muted" data-t="cost">Cost: billed per token directly by Anthropic (console.anthropic.com). A short voice question costs about 0.1-0.5 cents with Haiku, a few cents with Sonnet. Set a spending limit there.</p>
     <p class="muted warn" data-t="privacy">Privacy: with Claude, conversation text is sent to Anthropic (USA). Audio always stays local.</p>
   </section>
 

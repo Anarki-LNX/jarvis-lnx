@@ -532,7 +532,7 @@ def make_preview(key: str, new: str | None, desc: str, effect: str = "", danger:
     old = read_text(path)
     if new is not None:
         if new == old:
-            raise HTTPException(409, "Keine Änderung – der Inhalt ist bereits so gespeichert.")
+            raise HTTPException(409, "Keine Änderung: Der Inhalt ist bereits so gespeichert.")
         validate_content(kind, new)
     show = (lambda s: mask_env_text(s, SH_MASK)) if key == "smarthome" else mask_env_text if kind == "env" else (lambda s: s)
     nl = lambda s: s if (not s or s.endswith("\n")) else s + "\n"
@@ -629,7 +629,7 @@ async def change_apply(pid: str, request: Request):
             save_brain_saved(p["after_brain"])
     if (p.get("after_ui") or {}).get("brain_mode") == "remote":
         await unload_local_model()
-    audit(who(request), f"geändert: {label_of(key)} – {p['desc']} (Sicherung {bid})")
+    audit(who(request), f"geändert: {label_of(key)} · {p['desc']} (Sicherung {bid})")
     check = None
     if kind == "yaml" and key == "config":
         code, out = await run_hermes("config", "check", timeout=60)
@@ -1046,7 +1046,7 @@ CTX_MIN = 65536
 
 
 def ctx_short_text(name: str, ctx: int) -> str:
-    return (f"Modell {name} läuft nur mit {ctx} Token Kontext – lange Gespräche können abgeschnitten werden. "
+    return (f"Modell {name} läuft nur mit {ctx} Token Kontext. Lange Gespräche können abgeschnitten werden. "
             f"Ollama begrenzt auf das Trainingsfenster des Modells; ein größeres Modell wählen.")
 
 
@@ -1459,7 +1459,7 @@ def fb_block_model(text: str) -> str | None:
 def fb_block_set(text: str, model: str | None) -> str:
     ohne = FB_BLOCK.sub("", text)
     if re.search(r"^fallback_providers:", ohne, re.M):
-        raise HTTPException(409, "fallback_providers steht ausserhalb des markierten Blocks – bitte im Expertenmodus bereinigen.")
+        raise HTTPException(409, "fallback_providers steht ausserhalb des markierten Blocks. Bitte im Expertenmodus bereinigen.")
     neu = ohne.rstrip("\n") + "\n"
     if model:
         neu += ("# >>> nuorb-claude-fallback (scripts/steuerung-claude-fallback.sh)\n"
@@ -1541,8 +1541,8 @@ def build_brain_change(mode: str, remote_model: str | None, fallback_model: str 
             "remote": f"Gehirn: Remote ({rn}, PC wird geschont)"}[mode]
     privacy = "" if mode == "local" else "Datenschutz: Gesprächstexte gehen an Anthropic (USA). Audio bleibt lokal."
     return {"text": dump_rt(data), "desc": desc, "privacy": privacy, "saved": saved,
-            "effect": ("Gilt ab der nächsten Frage – kein Neustart nötig. Das lokale Modell wird aus dem PC-Grafikspeicher entladen."
-                       if mode == "remote" else "Gilt ab der nächsten Frage – kein Neustart nötig."),
+            "effect": ("Gilt ab der nächsten Frage, kein Neustart nötig. Das lokale Modell wird aus dem PC-Grafikspeicher entladen."
+                       if mode == "remote" else "Gilt ab der nächsten Frage, kein Neustart nötig."),
             "ui": {"brain_mode": mode, "brain_model": remote_model if mode == "remote" else local["default"],
                    "brain_model_remote": remote_model if mode == "remote" else (fallback_model if mode == "auto" else None)}}
 
@@ -1638,7 +1638,7 @@ async def internal_brain_set(request: Request):
         code, out = await run_hermes("config", "check", timeout=60)
         if code != 0:
             atomic_write(path, old)
-            audit(f"internal:{src}", f"Gehirn-Wechsel zurückgenommen (config check fehlgeschlagen) – {ch['desc']}")
+            audit(f"internal:{src}", f"Gehirn-Wechsel zurückgenommen (config check fehlgeschlagen): {ch['desc']}")
             raise HTTPException(500, "Umschalten fehlgeschlagen, alte Einstellung wiederhergestellt.")
         save_brain_saved(ch["saved"])
         write_ui_fields(ch["ui"], f"Gehirn-Modus via {src}")
@@ -1803,11 +1803,11 @@ def ui_field_check(k: str, v):
     if t is str:
         v = v.strip()
         if not re.fullmatch(rng, v):
-            raise HTTPException(400, f"{label}: 1–24 Zeichen, mit Buchstaben beginnen, danach Buchstaben, Ziffern, "
+            raise HTTPException(400, f"{label}: 1-24 Zeichen, mit Buchstaben beginnen, danach Buchstaben, Ziffern, "
                                      "Leerzeichen, Punkt oder Bindestrich.")
         return v
     if rng and not rng[0] <= v <= rng[1]:
-        raise HTTPException(400, f"{label}: erlaubt {rng[0]}–{rng[1]}.")
+        raise HTTPException(400, f"{label}: erlaubt {rng[0]}-{rng[1]}.")
     return v
 
 
@@ -2177,12 +2177,12 @@ def sh_block(script: Path, enabled: bool) -> str:
 
 def sh_insert(text: str, block: str) -> str:
     if re.search(r"^  smarthome(_schalten)?:", text, re.M):
-        raise HTTPException(409, "Es gibt schon einen MCP-Server smarthome außerhalb des markierten Blocks – bitte unter „MCP-Server“ bereinigen.")
+        raise HTTPException(409, "Es gibt schon einen MCP-Server smarthome außerhalb des markierten Blocks. Bitte unter „MCP-Server“ bereinigen.")
     kopf = re.compile(r"^mcp_servers:[ \t]*(\{\}|null|~)?[ \t]*$", re.M).search(text)
     if kopf:
         return text[:kopf.start()] + "mcp_servers:\n" + block + text[kopf.end() + 1:]
     if re.search(r"^mcp_servers:", text, re.M):
-        raise HTTPException(409, "mcp_servers hat eine ungewohnte Form – bitte im Expertenmodus prüfen.")
+        raise HTTPException(409, "mcp_servers hat eine ungewohnte Form. Bitte im Expertenmodus prüfen.")
     return text.rstrip("\n") + "\nmcp_servers:\n" + block
 
 
@@ -2228,11 +2228,11 @@ async def smarthome_access(request: Request):
         raise HTTPException(400, "Für Home Assistant fehlt das Zugriffstoken.")
     if on["iob"] and not (new.get("IOB_TOKEN") or (new.get("IOB_USER") and new.get("IOB_PASS"))):
         raise HTTPException(400, "Für ioBroker fehlen Benutzer und Passwort (oder ein Token).")
-    lines = ["# NuOrb Smart Home – Zugang (von der NuOrb-Verwaltung geschrieben, nicht weitergeben)"]
+    lines = ["# NuOrb Smart Home: Zugang (von der NuOrb-Verwaltung geschrieben, nicht weitergeben)"]
     for sysk, title in (("ha", "Home Assistant"), ("iob", "ioBroker (Adapter rest-api)")):
         keys = [k for k in SH_SYS[sysk] if new.get(k)]
         if keys:
-            lines.append(f"# {title}" + ("" if on[sysk] else " – ausgeschaltet"))
+            lines.append(f"# {title}" + ("" if on[sysk] else " (ausgeschaltet)"))
             lines += [("" if on[sysk] else SH_OFF) + f"{k}={new[k]}" for k in keys]
     return make_preview("smarthome", "\n".join(lines) + "\n", "Smart-Home-Zugang speichern",
                         "Gilt sofort für „Verbindung testen“ und beim nächsten Werkzeug-Aufruf.")
@@ -2254,10 +2254,10 @@ async def smarthome_toggle(request: Request):
     if enable:
         ok, out = await sh_probe()
         if not ok:
-            raise HTTPException(409, f"Verbindungstest fehlgeschlagen – Smart Home bleibt aus: {out[:300]}")
+            raise HTTPException(409, f"Verbindungstest fehlgeschlagen, Smart Home bleibt aus: {out[:300]}")
     if not present:
         if not enable:
-            raise HTTPException(409, "Keine Änderung – Smart Home ist nicht eingetragen.")
+            raise HTTPException(409, "Keine Änderung: Smart Home ist nicht eingetragen.")
         text = sh_insert(text, sh_block(sh_script(), True))
     else:
         for n in SH_SERVERS:
@@ -2324,7 +2324,7 @@ def mcp_insert(lines: list[str], block: str) -> str:
     if re.match(r"^mcp_servers:\s*\{\s*\}\s*$", head):
         lines[s] = "mcp_servers:\n"
     elif re.match(r"^mcp_servers:\s*\{", head):
-        raise HTTPException(409, "mcp_servers steht als Inline-Mapping – bitte im Expertenmodus umstellen.")
+        raise HTTPException(409, "mcp_servers steht als Inline-Mapping. Bitte im Expertenmodus umstellen.")
     return "".join(lines[:e]) + block + "".join(lines[e:])
 
 
@@ -2373,7 +2373,7 @@ async def mcp_save(request: Request):
         if name == "claude":
             raise HTTPException(409, "Projekt-Claude wird über ‚Modell & Fallback‘ bzw. das Skript der Sprachsteuerung verwaltet.")
         if (owner := mcp_marked_by(lines, s)):
-            raise HTTPException(409, f"{name} wird per Skript verwaltet ({owner}) – hier nur an/aus schalten.")
+            raise HTTPException(409, f"{name} wird per Skript verwaltet ({owner}). Hier nur an/aus schalten.")
         return make_preview("config", "".join(lines[:s] + lines[e:]), f"MCP-Server {name} entfernen",
                             "Hermes trennt die Verbindung innerhalb ~1 Minute.")
     if action == "toggle":
@@ -2672,7 +2672,7 @@ async def phone_action(action: str, request: Request):
     elif action in ("helligkeit", "lautstaerke"):
         v = int(d.get("value", -1))
         if not 0 <= v <= 100:
-            raise HTTPException(400, "Wert 0–100.")
+            raise HTTPException(400, "Wert 0-100.")
         args = [action, str(v)]
     elif action == "bildschirm":
         if d.get("value") not in ("an", "aus"):

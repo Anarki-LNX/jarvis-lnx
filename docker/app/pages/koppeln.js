@@ -22,10 +22,10 @@
   };
   const M = {
     de: { left: (s) => `noch ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")} min gültig`, expired: "abgelaufen", revoke: "Entkoppeln",
-          sure: "Gerät wirklich entkoppeln?", none: "Noch keine Geräte gekoppelt.", noFp: "eigenes Zertifikat – kein Fingerabdruck nötig",
+          sure: "Gerät wirklich entkoppeln?", none: "Noch keine Geräte gekoppelt.", noFp: "eigenes Zertifikat, kein Fingerabdruck nötig",
           cert: (h, n) => `Achtung: Das Zertifikat gilt nicht für „${h}“ (nur ${n}). Trage die Adresse in NUORB_HOSTS in der .env ein und starte den Container neu.` },
     en: { left: (s) => `valid for ${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")} min`, expired: "expired", revoke: "Unpair",
-          sure: "Really unpair this device?", none: "No devices paired yet.", noFp: "own certificate – no fingerprint needed",
+          sure: "Really unpair this device?", none: "No devices paired yet.", noFp: "own certificate, no fingerprint needed",
           cert: (h, n) => `Warning: the certificate does not cover “${h}” (only ${n}). Add the address to NUORB_HOSTS in .env and restart the container.` },
   };
   let m = M.en, timer = null;

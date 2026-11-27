@@ -107,6 +107,23 @@ def wait_brain(app, want: bool, tries: int = 30) -> dict:
     return s
 
 
+
+def dash_hits(name: str, text: str) -> list[str]:
+    """Gedankenstriche (– —) in ausgelieferten UI-Texten, ohne Code-Kommentare, Entwickler-Logs und Regex-Zeichenklassen."""
+    import re
+    if name.endswith((".js", ".css")) or name.endswith("/"):
+        text = re.sub(r"/\*.*?\*/", lambda m: "\n" * m.group(0).count("\n"), text, flags=re.S)
+    text = re.sub(r"<!--.*?-->", lambda m: "\n" * m.group(0).count("\n"), text, flags=re.S)
+    out = []
+    for i, line in enumerate(text.split("\n"), 1):
+        line = re.sub(r"(^|\s)//.*$", "", line)
+        if "console." in line or "clog(" in line:   # Entwickler-Logs sieht kein Nutzer
+            continue
+        line = re.sub(r"\[[^\]\n]*[\u2013\u2014][^\]\n]*\]", "", line)   # Regex-Zeichenklassen, die Striche in Eingaben erkennen
+        if re.search("[\u2013\u2014]", line):
+            out.append(f"{name}:{i}: {line.strip()[:70]}")
+    return out
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--ui", default="https://127.0.0.1:19443")
@@ -328,6 +345,25 @@ def main() -> int:
     st, orb = app.req("GET", "/orb.js")
     check("orb.js trägt den webgl-noise-Copyright-Hinweis", st == 200 and isinstance(orb, bytes) and b"Ashima Arts" in orb[:600]
           and b"MIT License" in orb[:800], str(st))
+
+    # ---------------------------------------------------------------- keine Gedankenstriche in der Oberfläche (v0.6.5)
+    hits = []
+    for cl, paths in ((app, ["/", "/app.js", "/i18n-en.js", "/i18n.js", "/orb.js"]),
+                      (adm, ["/", "/static/admin.js", "/static/i18n-en.js", "/static/i18n.js"]
+                            + [f"/static/docker/{n}" for n in ("einrichtung.html", "einrichtung.js", "koppeln.html", "koppeln.js",
+                                                                "pair.html", "pair.js", "ueber.html", "ueber.js", "admin-extra.js", "nuorb-lang.js")])):
+        for pth in paths:
+            st, body = cl.req("GET", pth)
+            if st != 200 or not isinstance(body, bytes):
+                hits.append(f"{pth}: HTTP {st}"); continue
+            hits += dash_hits(pth, body.decode("utf-8", "replace"))
+    check("Keine Gedankenstriche in den UI-Texten", not hits, f"{len(hits)}: " + " | ".join(hits[:4]))
+    inst = Path(__file__).resolve().parent.parent / "install.sh"
+    if inst.is_file():
+        import re
+        ih = [f"install.sh:{i}" for i, l in enumerate(inst.read_text().split("\n"), 1)
+              if not l.lstrip().startswith("#") and re.search("[\u2013\u2014]", re.sub(r"\s#\s.*$", "", l))]
+        check("Keine Gedankenstriche in den Ausgaben von install.sh", not ih, ", ".join(ih[:6]))
 
     # ---------------------------------------------------------------- Browser
     br = Client(a.ui, insecure)

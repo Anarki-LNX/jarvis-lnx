@@ -24,11 +24,11 @@ function toast(msg, kind = "ok", ms = 4200) {
 }
 function setHTML(el, html) { el.innerHTML = html; $$("[data-w]", el).forEach((b) => { b.style.width = Math.max(0, Math.min(100, +b.dataset.w)) + "%"; }); return el; }
 const dec = (s) => (I18N.lang === "de" ? s.replace(".", ",") : s);
-const fmtBytes = (n) => n == null ? "–" : n >= 1e9 ? dec((n / 1073741824).toFixed(1)) + " GiB" : n >= 1e6 ? (n / 1048576).toFixed(0) + " MiB" : (n / 1024).toFixed(0) + " KiB";
+const fmtBytes = (n) => n == null ? "-" : n >= 1e9 ? dec((n / 1073741824).toFixed(1)) + " GiB" : n >= 1e6 ? (n / 1048576).toFixed(0) + " MiB" : (n / 1024).toFixed(0) + " KiB";
 const fmtDur = (s) => { s = Math.floor(s); const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return d ? `${d} ${I18N.lang === "de" ? "T" : "d"} ${h} h` : h ? `${h} h ${m} min` : `${m} min`; };
-const fmtTime = (iso) => { if (!iso) return "–"; const d = new Date(iso); return isNaN(d) ? String(iso) : d.toLocaleString(I18N.locale, { dateStyle: "short", timeStyle: "short" }); };
+const fmtTime = (iso) => { if (!iso) return "-"; const d = new Date(iso); return isNaN(d) ? String(iso) : d.toLocaleString(I18N.locale, { dateStyle: "short", timeStyle: "short" }); };
 const fmtAgo = (iso) => {
-  const d = new Date(iso); if (!iso || isNaN(d)) return "–";
+  const d = new Date(iso); if (!iso || isNaN(d)) return "-";
   const m = Math.round((Date.now() - d) / 60000);
   return m < 1 ? T("gerade eben") : m < 60 ? T("vor {0} min", [m]) : m < 1440 ? T("vor {0} h", [Math.round(m / 60)]) : fmtTime(iso);
 };
@@ -100,7 +100,7 @@ async function change(req, onDone) {
         const r = await api(`/api/change/${pv.preview}/apply`, { method: "POST", body: {} });
         closeModal();
         if (r.check && !r.check.ok) {
-          openModal({ file: pv.file, title: "Gespeichert – Prüfung meldet Probleme", bodyHTML:
+          openModal({ file: pv.file, title: "Gespeichert, aber die Prüfung meldet Probleme", bodyHTML:
             `<div class="note warn">„hermes config check“ hat Hinweise. Falls etwas nicht stimmt: Sicherungen → Wiederherstellen.</div><pre class="out">${esc(r.check.output)}</pre>`,
             buttons: [{ label: "Rückgängig machen", cls: "ghost", onClick: () => { closeModal(); change(() => api(`/api/backups/${r.backup}/restore`, { method: "POST", body: {} }), onDone); } },
               { label: "OK", cls: "primary", onClick: closeModal }] });
@@ -122,8 +122,8 @@ function needRestart(unit) {
 async function restartUnit(id, skipConfirm = false) {
   if (!skipConfirm && !await confirmBox("Dienst neu starten?", `Der Dienst wird kurz unterbrochen. ${id === "hermes" ? "Laufende Gespräche mit NuOrb werden abgebrochen." : ""}`, "Neu starten")) return;
   const r = await api(`/api/services/${id}/restart`, { method: "POST", body: {} });
-  if (r.self) { toast("Verwaltung startet neu – Seite lädt gleich neu."); setTimeout(() => location.reload(), 5000); return; }
-  if (r.ok) toast("Neu gestartet."); else toast(r.pending ? "Neustart läuft noch – Status unter Dienste." : "Neustart fehlgeschlagen.", r.pending ? "ok" : "err");
+  if (r.self) { toast("Verwaltung startet neu. Die Seite lädt gleich neu."); setTimeout(() => location.reload(), 5000); return; }
+  if (r.ok) toast("Neu gestartet."); else toast(r.pending ? "Neustart läuft noch. Status unter Dienste." : "Neustart fehlgeschlagen.", r.pending ? "ok" : "err");
 }
 
 /* ------------------------------------------------------------ Bereiche */
@@ -131,13 +131,13 @@ const VIEWS = [
   { id: "uebersicht", group: "System", label: "Übersicht", icon: "home", title: "Übersicht", lead: "Zustand von Gehirn, Diensten und Smartphones auf einen Blick.", render: viewOverview },
   { id: "modell", group: "Gehirn", label: "Modell & Fallback", icon: "brain", title: "Modell & Fallback", lead: "Welches Sprachmodell NuOrb nutzt und worauf es ausweicht, wenn der PC aus ist.", render: viewModel },
   { id: "persona", group: "Gehirn", label: "Persönlichkeit", icon: "soul", title: "Persönlichkeit", lead: "Wer NuOrb ist und wie er spricht.", render: viewPersona },
-  { id: "gedaechtnis", group: "Gehirn", label: "Gedächtnis", icon: "mem", title: "Gedächtnis", lead: "Was NuOrb sich dauerhaft merkt – über sich, die Umgebung und dich.", render: viewMemory },
+  { id: "gedaechtnis", group: "Gehirn", label: "Gedächtnis", icon: "mem", title: "Gedächtnis", lead: "Was NuOrb sich dauerhaft merkt: über sich, die Umgebung und dich.", render: viewMemory },
   { id: "skills", group: "Fähigkeiten", label: "Skills", icon: "skill", title: "Skills", lead: "Anleitungen, die NuOrb bei Bedarf lädt. Aktivieren, deaktivieren, neue eintragen.", render: viewSkills },
   { id: "zeitplaene", group: "Fähigkeiten", label: "Zeitpläne", icon: "clock", title: "Zeitpläne", lead: "Aufgaben, die NuOrb regelmäßig selbst erledigt.", render: viewJobs },
   { id: "mcp", group: "Fähigkeiten", label: "MCP-Server", icon: "plug", title: "MCP-Server", lead: "Externe Werkzeuge, mit denen sich NuOrb verbindet.", render: viewMcp },
   { id: "smarthome", group: "Fähigkeiten", label: "Smart Home", icon: "bulb", title: "Smart Home", lead: "Home Assistant und ioBroker anbinden: Zugang, Test, an/aus.", render: viewSmartHome },
   { id: "regeln", group: "Sicherheit", label: "Bestätigungen", icon: "shield", title: "Bestätigungsregeln", lead: "Wann NuOrb vor gefährlichen Aktionen fragen muss.", render: viewApprovals },
-  { id: "schluessel", group: "Sicherheit", label: "Schlüssel", icon: "key", title: "Schlüssel & Variablen", lead: "API-Schlüssel werden nie angezeigt – nur, ob sie gesetzt sind. Überschreiben ist jederzeit möglich.", render: viewEnv },
+  { id: "schluessel", group: "Sicherheit", label: "Schlüssel", icon: "key", title: "Schlüssel & Variablen", lead: "API-Schlüssel werden nie angezeigt, nur ob sie gesetzt sind. Überschreiben ist jederzeit möglich.", render: viewEnv },
   { id: "sprache", group: "Geräte", label: "Sprache", icon: "wave", title: "Sprache", lead: "Stimme, Sprechtempo und Spracherkennung.", render: viewVoice },
   { id: "koppeln", group: "Geräte", label: "Smartphones koppeln", icon: "phone", title: "Smartphones koppeln", lead: "NuOrb-App auf einem oder mehreren Smartphones per QR-Code verbinden.", render: viewPair },
   { id: "handy", group: "Geräte", label: "Kiosk-Gerät", icon: "phone", title: "Kiosk-Gerät", lead: "Kiosk-Gerät (Xiaomi) mit NixOS: Zustand, Neustart, Kiosk.", render: viewPhone },
@@ -199,7 +199,7 @@ async function viewOverview(view) {
   const wantCtx = Math.max(+(s.model.num_ctx || 0), +(s.model.context || 0), 65536);
   const loaded = s.brain.loaded.map((m) => `<div class="row"><div class="grow"><div class="title mono">${esc(m.name)}</div>
       <div class="meta">VRAM ${fmtBytes(m.vram)} von ${fmtBytes(m.size)}${m.ctx ? ` · ${esc(T("Kontext {0}", [m.ctx]))}` : ""} · bleibt bis ${esc(fmtTime(m.until))}</div>
-      ${m.ctx && m.ctx < wantCtx ? `<div class="note warn small mt">${esc(T("Modell {0} läuft nur mit {1} Token Kontext – lange Gespräche können abgeschnitten werden. Ollama begrenzt auf das Trainingsfenster des Modells; ein größeres Modell wählen.", [m.name, m.ctx]))}</div>` : ""}</div>
+      ${m.ctx && m.ctx < wantCtx ? `<div class="note warn small mt">${esc(T("Modell {0} läuft nur mit {1} Token Kontext. Lange Gespräche können abgeschnitten werden. Ollama begrenzt auf das Trainingsfenster des Modells; ein größeres Modell wählen.", [m.name, m.ctx]))}</div>` : ""}</div>
       <button class="btn small ghost" data-unload="${esc(m.name)}">Entladen</button></div>`).join("");
   const p = s.phone || {}, ps = p.status || {}, kw = "span-3", ph = s.phones || { paired: 0, online: 0 };
   const phoneLine = !p.reachable ? "nicht erreichbar" : !p.configured ? "erreichbar · Steuerung nicht eingerichtet" : p.error ? esc(p.error) : `Akku ${esc(ps.akku_prozent ?? "?")} %${ps.laedt ? " · lädt" : ""}`;
@@ -207,10 +207,10 @@ async function viewOverview(view) {
       <div class="grow"><div class="title">${esc(u.label)}</div><div class="meta mono">${esc(u.unit)} · ${esc(u.active)}/${esc(u.sub)}${u.memory ? " · " + fmtBytes(u.memory) : ""}</div></div>
       <button class="btn small ghost" data-restart="${esc(u.id)}">Neu starten</button></div>`).join("");
   setHTML(view, `
-    <div class="panel ${kw} kpi"><span class="label">Gehirn · Modus <b>${esc({ local: "Lokal", auto: "Automatisch", remote: "Remote" }[s.mode] || "–")}</b></span><span class="value">${dot(s.mode === "remote" ? true : s.brain.online)}${s.mode === "remote" ? "Claude" : s.brain.online ? "PC online" : "PC offline"}</span>
-      <span class="sub mono">${esc(s.model.default || "–")}</span><span class="sub">${s.brain.type === "openai" ? `<span data-noi18n>${esc(s.brain.server || "")}</span>` : s.brain.version ? "Ollama " + esc(s.brain.version) : esc(s.brain.url)}</span></div>
+    <div class="panel ${kw} kpi"><span class="label">Gehirn · Modus <b>${esc({ local: "Lokal", auto: "Automatisch", remote: "Remote" }[s.mode] || "-")}</b></span><span class="value">${dot(s.mode === "remote" ? true : s.brain.online)}${s.mode === "remote" ? "Claude" : s.brain.online ? "PC online" : "PC offline"}</span>
+      <span class="sub mono">${esc(s.model.default || "-")}</span><span class="sub">${s.brain.type === "openai" ? `<span data-noi18n>${esc(s.brain.server || "")}</span>` : s.brain.version ? "Ollama " + esc(s.brain.version) : esc(s.brain.url)}</span></div>
     <div class="panel ${kw} kpi"><span class="label">Hermes-Agent</span><span class="value">${dot(s.hermes.online)}${s.hermes.online ? "Bereit" : "Aus"}</span>
-      <span class="sub">Bestätigungen: <b>${esc({ manual: "immer fragen", smart: "smart", off: "AUS" }[s.approvals] || s.approvals || "–")}</b></span>
+      <span class="sub">Bestätigungen: <b>${esc({ manual: "immer fragen", smart: "smart", off: "AUS" }[s.approvals] || s.approvals || "-")}</b></span>
       <span class="sub">Fallback: ${s.fallback.length ? s.fallback.map((f) => esc(f.model)).join(", ") : "keiner"}</span></div>
     <div class="panel ${kw} kpi"><span class="label">Sprache</span><span class="value">${dot(s.stt.online && s.ui.online)}${s.stt.online && s.ui.online ? "Bereit" : "Gestört"}</span>
       <span class="sub">Erkennung ${s.stt.online ? "ok" : "aus"} · Oberfläche ${s.ui.online ? "ok" : "aus"}</span></div>
@@ -220,9 +220,9 @@ async function viewOverview(view) {
       <span class="sub">${ph.paired} gekoppelt · ${ph.online} online</span>${ph.last ? `<span class="sub">${esc(ph.last.name)} · zuletzt ${esc(fmtAgo(ph.last.last_seen))}</span>` : ""}`}</div>
 
     ${s.brain.type === "openai" ? `<div class="panel ${s.phone ? "span-5" : "span-7"}"><h3>Lokales Gehirn</h3>
-      <div class="rows"><div class="row"><div class="grow"><div class="title" data-noi18n>${esc(s.brain.server || "")}</div><div class="meta mono">${esc(s.brain.url || "–")}</div></div>${dot(s.brain.online)}</div></div>
+      <div class="rows"><div class="row"><div class="grow"><div class="title" data-noi18n>${esc(s.brain.server || "")}</div><div class="meta mono">${esc(s.brain.url || "-")}</div></div>${dot(s.brain.online)}</div></div>
       <p class="hint small">Geladene Modelle und Grafikspeicher zeigt nur Ollama an.</p></div>` : `<div class="panel ${s.phone ? "span-5" : "span-7"}"><div class="panel-head"><h3>Geladene Modelle (VRAM auf dem PC)</h3>${s.gpu_label ? `<span class="tag">${esc(s.gpu_label)}</span>` : ""}</div>
-      <div class="rows">${loaded || `<div class="empty">${s.brain.online ? "Kein Modell geladen – die erste Frage lädt es (~4 s)." : "PC/Ollama nicht erreichbar."}</div>`}</div>
+      <div class="rows">${loaded || `<div class="empty">${s.brain.online ? "Kein Modell geladen. Die erste Frage lädt es (~4 s)." : "PC/Ollama nicht erreichbar."}</div>`}</div>
       <p class="hint small">Tipp: Für Spiele am PC das Modell entladen; NuOrb lädt es bei der nächsten Frage selbst wieder.</p></div>`}
     <div class="panel ${s.phone ? "span-4" : "span-5"}"><h3>Server</h3>
       <div class="kpi"><span class="label">Arbeitsspeicher ${fmtBytes(memUsed)} / ${fmtBytes(sys.mem_total)}</span><div class="bar"><i data-w="${memUsed / sys.mem_total * 100}"></i></div></div><br>
@@ -272,7 +272,7 @@ async function viewModel(view) {
         <option value="openai" ${m.llm_type === "openai" ? "selected" : ""}>${esc(T("OpenAI-kompatibel (llama.cpp, vLLM, LM Studio …)"))}</option></select></label>
       <label class="field"><span>Adresse</span><span class="inline"><input id="oUrl" class="mono grow" value="${esc(m.ollama_url || "")}" spellcheck="false"><button class="btn ghost" id="oTest" type="button">Verbindung testen</button></span>
         <small id="oHint"></small></label>
-      <label class="field" id="lKeyF"><span>API-Key (optional)</span><input id="lKey" type="password" autocomplete="off" placeholder="${esc(m.api_key_set ? T("hinterlegt – leer lassen = unverändert") : T("nur wenn der Server einen verlangt"))}">
+      <label class="field" id="lKeyF"><span>API-Key (optional)</span><input id="lKey" type="password" autocomplete="off" placeholder="${esc(m.api_key_set ? T("hinterlegt, leer lassen = unverändert") : T("nur wenn der Server einen verlangt"))}">
         ${m.api_key_set ? `<label class="small muted"><input type="checkbox" id="lKeyClr"> ${esc(T("Gespeicherten Key entfernen"))}</label>` : ""}</label>
       <div id="oRes" class="small"></div>
       <label class="field"><span>Modell auf dem Server (<span data-noi18n id="oSrv">${esc(m.llm_server || "Ollama")}</span> <span id="oState">${m.online ? "erreichbar" : "nicht erreichbar"}</span>)</span><select id="mDefault" ${br.mode === "remote" ? "disabled" : ""}>${opts}</select></label>
@@ -281,7 +281,7 @@ async function viewModel(view) {
       <div class="grid2">
         <label class="field"><span>Kontextlänge (Token)</span><input id="mCtx" type="number" min="2048" step="1024" value="${esc(m.model.context_length || "")}"><small>64k = 65536. Mehr Kontext braucht mehr VRAM. NuOrb braucht mindestens 64k.</small></label>
         <label class="field"><span>Denktiefe (global)</span><select id="mReason">${["none", "low", "medium", "high"].map((r) => `<option ${r === m.reasoning ? "selected" : ""} value="${r}">${{ none: "aus", low: "niedrig", medium: "mittel", high: "hoch" }[r]}</option>`).join("")}</select>
-          <small>Sprachfragen vom Smartphone denken immer ohne – das hält die Antwort schnell.</small></label></div>
+          <small>Sprachfragen vom Smartphone denken immer ohne, das hält die Antwort schnell.</small></label></div>
       <div class="note warn">Modelle, die nicht in den Grafikspeicher passen, machen den PC träge.</div><br>
       <button class="btn primary" id="saveModel">Speichern …</button></div>
     <div class="panel span-5"><h3>Projekt-Claude</h3>
@@ -334,7 +334,7 @@ async function viewModel(view) {
 async function viewPersona(view) {
   const p = await api("/api/persona");
   setHTML(view, `
-    <div class="panel span-7"><div class="panel-head"><h3>SOUL.md – Identität von Hermes/NuOrb</h3><span class="counter" id="soulCount"></span></div>
+    <div class="panel span-7"><div class="panel-head"><h3>SOUL.md: Identität von Hermes/NuOrb</h3><span class="counter" id="soulCount"></span></div>
       <p class="hint">Steht an erster Stelle im System-Prompt und gilt überall (Smartphone, Zeitpläne, Chat).</p>
       <textarea id="soul" class="mono" rows="18" spellcheck="true">${esc(p.soul)}</textarea><br><br>
       <button class="btn primary" id="saveSoul">Speichern …</button></div>
@@ -347,7 +347,7 @@ async function viewPersona(view) {
     <div class="panel span-7"><h3>Name des Assistenten</h3>
       <p class="hint">So sprichst du ihn an. Das Weckwort bleibt „${esc(p.wake_phrase)}“.</p>
       <div class="inline"><input id="asName" maxlength="24" value="${esc(p.assistant_name)}" pattern="[A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß0-9 .\-]{0,23}"><button class="btn primary" id="saveName">Speichern …</button></div>
-      <p class="hint small">1–24 Zeichen: mit einem Buchstaben beginnen, danach Buchstaben, Ziffern, Leerzeichen, Punkt oder Bindestrich. Standard: ${esc(p.brand_name)}.</p></div>
+      <p class="hint small">1-24 Zeichen: mit einem Buchstaben beginnen, danach Buchstaben, Ziffern, Leerzeichen, Punkt oder Bindestrich. Standard: ${esc(p.brand_name)}.</p></div>
     <div class="panel span-5"><h3>Begrüßung</h3>
       <p class="hint">${p.onboarded ? "Die Begrüßung ist erledigt." : "Beim nächsten Öffnen der Oberfläche stellt sich der Assistent vor."}</p>
       <button class="btn ghost" id="redoOnboard" ${p.onboarded ? "" : "disabled"}>Begrüßung beim nächsten Öffnen wiederholen …</button>
@@ -397,16 +397,16 @@ async function viewSkills(view) {
     const items = d.items.filter((s) => (!skillFilter.cat || s.category === skillFilter.cat) && (!q || (s.name + s.description + s.tags.join(" ")).toLowerCase().includes(q))
       && (!skillFilter.only || (skillFilter.only === "on" ? s.enabled : skillFilter.only === "off" ? !s.enabled : s.own)));
     setHTML($("#sgrid"), items.map((s) => `<div class="skill" ${s.enabled ? "" : "data-off"}>
-        <div class="top"><div class="grow"><div class="name">${esc(s.name)}</div><div class="meta muted small">${esc(s.category || "–")}${s.version ? " · v" + esc(s.version) : ""}</div></div>${sw("skill:" + s.name, s.enabled, `data-name="${esc(s.name)}"`)}</div>
+        <div class="top"><div class="grow"><div class="name">${esc(s.name)}</div><div class="meta muted small">${esc(s.category || "-")}${s.version ? " · v" + esc(s.version) : ""}</div></div>${sw("skill:" + s.name, s.enabled, `data-name="${esc(s.name)}"`)}</div>
         <div class="d">${esc(s.description)}</div>
-        ${s.mcp ? `<div class="meta small">${s.mcp_enabled == null ? `<span class="tag">Werkzeuge nicht eingerichtet</span>` : s.mcp_enabled === s.enabled ? `<span class="tag cyan">mit Werkzeug ${esc(s.mcp_present.join(" + "))}</span>` : `<span class="tag amber">Werkzeuge ${s.mcp_enabled === "gemischt" ? "teils an" : s.mcp_enabled ? "an" : "aus"} – Schalter gleicht an</span>`}${s.access == null ? "" : s.access ? ' <span class="tag cyan">Zugang hinterlegt</span>' : ' <span class="tag amber">Kein Zugang hinterlegt – nur Lesen</span>'}</div>` : ""}
+        ${s.mcp ? `<div class="meta small">${s.mcp_enabled == null ? `<span class="tag">Werkzeuge nicht eingerichtet</span>` : s.mcp_enabled === s.enabled ? `<span class="tag cyan">mit Werkzeug ${esc(s.mcp_present.join(" + "))}</span>` : `<span class="tag amber">Werkzeuge ${s.mcp_enabled === "gemischt" ? "teils an" : s.mcp_enabled ? "an" : "aus"} · Schalter gleicht an</span>`}${s.access == null ? "" : s.access ? ' <span class="tag cyan">Zugang hinterlegt</span>' : ' <span class="tag amber">Kein Zugang hinterlegt, nur Lesen</span>'}</div>` : ""}
         <div class="foot">${s.own ? '<span class="tag cyan">eigener</span>' : ""}${s.tags.slice(0, 3).map((t) => `<span class="tag">${esc(t)}</span>`).join("")}<span class="grow"></span>
           ${s.probe ? `<button class="btn small ghost" data-probe="${esc(s.name)}">Testen</button>` : ""}${s.editable ? `<button class="btn small ghost" data-edit="${esc(s.dir)}">Bearbeiten</button>` : ""}${s.own ? `<button class="btn small danger" data-del="${esc(s.dir)}">Löschen</button>` : ""}</div></div>`).join("") || `<div class="empty">Keine Skills gefunden.</div>`);
     $$("[data-sw]", $("#sgrid")).forEach((c) => c.onchange = () => { const want = c.checked; c.checked = !want; change(() => api("/api/skills/toggle", { method: "POST", body: { name: c.dataset.name, enabled: want } }), () => show("skills")); });
     $$("[data-probe]", $("#sgrid")).forEach((b) => b.onclick = () => {
       const sk = d.items.find((x) => x.name === b.dataset.probe), LBL = { wetter: "Wetter", heizung: "Heizung", raeume: "Räume", klima: "Klima", energie: "Strom" };
       openModal({ title: `Test: ${sk.name}`, buttons: [{ label: "Schließen", onClick: closeModal }],
-        bodyHTML: `<p class="muted small">Nur lesend – fragt die aktuellen Werte ab und zeigt den Satz, den NuOrb sprechen würde.</p>
+        bodyHTML: `<p class="muted small">Nur lesend: fragt die aktuellen Werte ab und zeigt den Satz, den NuOrb sprechen würde.</p>
           <div class="inline">${sk.probe.map((t) => `<button class="btn small ghost" data-topic="${esc(t)}">${esc(LBL[t] || t)}</button>`).join("")}</div><div id="probeOut"><br><div class="empty">Thema wählen.</div></div>` });
       $$("[data-topic]", $("#modalBody")).forEach((t) => t.onclick = () => busy(t, async () => {
         const r = await api("/api/skills/probe", { method: "POST", body: { name: sk.name, topic: t.dataset.topic } });
@@ -431,7 +431,7 @@ async function skillEditor(dir, cats) {
   openModal({ file: "Neuer Skill", title: "Skill eintragen", bodyHTML: `
       <div class="grid2"><label class="field"><span>Name (Kurzname)</span><input id="skName" class="mono" placeholder="z. B. einkaufsliste"></label>
       <label class="field"><span>Kategorie</span><input id="skCat" class="mono" list="skCats" value="nuorb"><datalist id="skCats">${cats.map((c) => `<option value="${esc(c)}">`).join("")}</datalist></label></div>
-      <label class="field"><span>Beschreibung – wann soll NuOrb den Skill nutzen?</span><input id="skDesc" placeholder="z. B. Einkaufsliste führen: hinzufügen, vorlesen, leeren."><small>Daran erkennt NuOrb, wann der Skill passt. Max. 300 Zeichen.</small></label>
+      <label class="field"><span>Beschreibung: Wann soll NuOrb den Skill nutzen?</span><input id="skDesc" placeholder="z. B. Einkaufsliste führen: hinzufügen, vorlesen, leeren."><small>Daran erkennt NuOrb, wann der Skill passt. Max. 300 Zeichen.</small></label>
       <label class="field"><span>Anleitung (Markdown)</span><textarea id="skBody" rows="12" placeholder="## Wann nutzen&#10;…&#10;&#10;## Ablauf&#10;1. …"></textarea></label>`,
     buttons: [{ label: "Abbrechen", cls: "ghost", onClick: closeModal }, { label: "Weiter zur Vorschau", cls: "primary", onClick: () => {
       const b = { name: $("#skName").value, category: $("#skCat").value, description: $("#skDesc").value, body: $("#skBody").value };
@@ -492,7 +492,7 @@ async function viewMcp(view) {
 
 /* ------------------------------------------------------------ Smart Home (Home Assistant + ioBroker) */
 async function viewSmartHome(view) {
-  const sh = await api("/api/smarthome"), a = sh.access, kept = (b) => (b ? T("hinterlegt – leer lassen = unverändert") : "");
+  const sh = await api("/api/smarthome"), a = sh.access, kept = (b) => (b ? T("hinterlegt, leer lassen = unverändert") : "");
   const st = sh.enabled === true ? `<span class="tag cyan">an</span>` : sh.enabled === "gemischt" ? `<span class="tag amber">teils an</span>` : `<span class="tag">aus</span>`;
   const local = sh.brain_mode !== "remote", tsOff = String(sh.tool_search).toLowerCase() === "off";
   if (!sh.installed) { setHTML(view, `<div class="panel span-12"><div class="note">Das Smart-Home-Modul fehlt auf diesem Server.</div></div>`); return; }
@@ -511,7 +511,7 @@ async function viewSmartHome(view) {
       <label class="field"><span>Adresse (Adapter rest-api, Port 8093)</span><input id="shIobUrl" class="mono" value="${esc(a.iob_url)}" placeholder="http://iobroker.local:8093" spellcheck="false"></label>
       <div class="grid2"><label class="field"><span>Benutzer</span><input id="shIobUser" autocomplete="off" placeholder="${esc(kept(a.iob_user))}"></label>
         <label class="field"><span>Passwort</span><input id="shIobPass" type="password" autocomplete="off" placeholder="${esc(kept(a.iob_pass))}"></label></div>
-      <details><summary class="muted small">Stattdessen ein Token verwenden</summary><label class="field"><span>Token</span><input id="shIobTok" type="password" autocomplete="off" placeholder="${esc(kept(a.iob_token))}"><small>OAuth2-Tokens laufen ab – Benutzer und Passwort sind dauerhafter.</small></label></details></div>
+      <details><summary class="muted small">Stattdessen ein Token verwenden</summary><label class="field"><span>Token</span><input id="shIobTok" type="password" autocomplete="off" placeholder="${esc(kept(a.iob_token))}"><small>OAuth2-Tokens laufen ab. Benutzer und Passwort sind dauerhafter.</small></label></details></div>
     <div class="panel span-12"><div class="inline"><span class="small muted">Zugangsdaten werden wie Schlüssel geschützt gespeichert und nie angezeigt.</span><span class="grow"></span><button class="btn primary" id="shSave">Zugang speichern …</button></div></div>`);
   $("#shSave").onclick = () => change(() => api("/api/smarthome/access", { method: "POST", body: {
     ha_on: $("#shHaOn").checked, ha_url: $("#shHaUrl").value, ha_token: $("#shHaTok").value,
@@ -539,7 +539,7 @@ async function viewApprovals(view) {
         <label class="field"><span>Zeitpläne</span><select id="apCron"><option value="deny">ablehnen</option><option value="approve">erlauben</option></select></label>
         <label class="field"><span>API/Webhooks</span><select id="apUn"><option value="deny">ablehnen</option><option value="approve">erlauben</option></select></label></div>
       <button class="btn primary" id="apSave">Speichern …</button></div>
-    <div class="panel span-5"><h3>Immer verbieten</h3><p class="hint">Muster (eins pro Zeile, * als Platzhalter). Diese Befehle blockt Hermes immer – auch mit Bestätigung.</p>
+    <div class="panel span-5"><h3>Immer verbieten</h3><p class="hint">Muster (eins pro Zeile, * als Platzhalter). Diese Befehle blockt Hermes immer, auch mit Bestätigung.</p>
       <textarea id="apDeny" class="mono" rows="10" placeholder="git push --force*&#10;dd if=* of=/dev/*">${esc(a.deny.join("\n"))}</textarea><br><br>
       <button class="btn primary" id="apDenySave">Speichern …</button></div>`);
   $("#apCron").value = a.cron_mode; $("#apUn").value = a.unattended_mode;
@@ -573,7 +573,7 @@ async function viewVoice(view) {
   const stops = (cfg.voice?.stop_phrases || []).join(", ");
   setHTML(view, `
     <div class="panel span-6"><h3>Stimme am Smartphone</h3>
-      ${u.exists ? "" : `<div class="note warn">Noch keine ui.json – Standardwerte der Oberfläche aktiv. Speichern legt sie an.</div><br>`}
+      ${u.exists ? "" : `<div class="note warn">Noch keine ui.json: Standardwerte der Oberfläche aktiv. Speichern legt sie an.</div><br>`}
       <label class="field"><span>Piper-Stimme</span><select id="vVoice">${u.voices.map((v) => `<option ${v === (s.piper_voice || "de_DE-thorsten-medium") ? "selected" : ""}>${esc(v)}</option>`).join("")}</select><small>„high“ klingt natürlicher, braucht aber mehr Rechenzeit.</small></label>
       <label class="field"><span>Sprechtempo <b id="vLsOut"></b></span><input id="vLs" type="range" min="0.7" max="1.3" step="0.05" value="${esc(ls)}"><small>Kleiner = schneller (length_scale).</small></label>
       <div class="row"><div class="grow"><div class="title">Bei Sprachfragen nachdenken</div><div class="desc">Aus = schnelle Antworten (~2 s). An = gründlicher, aber deutlich langsamer.</div></div>${sw("reason", !!s.reasoning_voice, 'id="vReason"')}</div>
@@ -612,7 +612,7 @@ async function viewPair(view) {
       ${l.pairing_supported
         ? `<p class="hint">Für jedes Smartphone einen eigenen QR-Code erzeugen und in der NuOrb-App unter „Koppeln“ scannen. Der Code gilt 10 Minuten und nur einmal.</p>
            <button class="btn primary" id="pairNew">QR-Code erzeugen</button><div id="pairOut"></div>`
-        : `<p class="hint">In der NuOrb-App „Koppeln“ wählen und diesen Code scannen. Er funktioniert für beliebig viele Smartphones – einfach nacheinander scannen.</p>
+        : `<p class="hint">In der NuOrb-App „Koppeln“ wählen und diesen Code scannen. Er funktioniert für beliebig viele Smartphones: einfach nacheinander scannen.</p>
            <img class="qr" src="${esc(l.qr)}" alt="QR-Code zum Koppeln">`}</div>
     <div class="panel span-7"><h3>Oder von Hand eingeben</h3>
       <div class="rows">
@@ -651,7 +651,7 @@ async function viewPair(view) {
 async function viewPhone(view) {
   const p = await api("/api/phone"), s = p.status || {};
   actions(`<button class="btn ghost" id="phRefresh">Aktualisieren</button>`).querySelector("#phRefresh").onclick = () => show("handy");
-  const kv = (k, v) => `<div class="row"><div class="grow desc">${k}</div><div class="mono">${v ?? "–"}</div></div>`;
+  const kv = (k, v) => `<div class="row"><div class="grow desc">${k}</div><div class="mono">${v ?? "-"}</div></div>`;
   if (p.paused) {
     setHTML(view, `<div class="panel span-12"><div class="panel-head"><h3>Zustand</h3><span class="dot"></span></div>
       <p class="hint">Das Kiosk-Gerät ist pausiert. Es wird nicht geprüft und erscheint nicht in der Übersicht.</p>
@@ -667,8 +667,8 @@ async function viewPhone(view) {
     <div class="panel span-7"><h3>Steuerung</h3>
       <div class="inline"><button class="btn" data-ph="kiosk-reload">Kiosk neu laden</button><button class="btn ghost" data-ph="bildschirm" data-v="an">Bildschirm an</button>
         <button class="btn ghost" data-ph="bildschirm" data-v="aus">Bildschirm aus</button><span class="grow"></span><button class="btn danger" id="phReboot">Kiosk-Gerät neu starten</button></div><br>
-      <div class="grid2"><label class="field"><span>Helligkeit <b id="brOut">${esc(s.helligkeit_prozent ?? "–")}</b> %</span><input type="range" id="phBr" min="5" max="100" step="5" value="${esc(s.helligkeit_prozent ?? 60)}"></label>
-        <label class="field"><span>Lautstärke <b id="voOut">${esc(s.lautstaerke_prozent ?? "–")}</b> %</span><input type="range" id="phVo" min="0" max="100" step="5" value="${esc(s.lautstaerke_prozent ?? 70)}"></label></div>
+      <div class="grid2"><label class="field"><span>Helligkeit <b id="brOut">${esc(s.helligkeit_prozent ?? "-")}</b> %</span><input type="range" id="phBr" min="5" max="100" step="5" value="${esc(s.helligkeit_prozent ?? 60)}"></label>
+        <label class="field"><span>Lautstärke <b id="voOut">${esc(s.lautstaerke_prozent ?? "-")}</b> %</span><input type="range" id="phVo" min="0" max="100" step="5" value="${esc(s.lautstaerke_prozent ?? 70)}"></label></div>
       <p class="hint small">Neustart dauert bis zur fertigen NuOrb-Oberfläche etwa 100 Sekunden.</p>
       ${p.pubkey ? `<details><summary class="small muted">Technik: eingeschränkter SSH-Schlüssel der Verwaltung</summary><pre class="code mono">${esc(p.pubkey)}</pre>
         <p class="hint small">Auf dem Kiosk-Gerät nur mit command=-Restriktion (status, reboot, kiosk-reload, helligkeit, lautstaerke, bildschirm) hinterlegt.</p></details>` : ""}</div>`);
@@ -686,9 +686,9 @@ async function viewServices(view) {
   setHTML(view, `
     <div class="panel span-6"><h3>Dienste</h3>${d.ctl ? "" : `<div class="note warn">Neustart-Helfer nicht eingerichtet.</div>`}
       <div class="rows">${d.units.map((u) => `<div class="row">${dot(u.active === "active" ? true : u.active === "activating" ? null : false)}
-        <div class="grow"><div class="title">${esc(u.label)}</div><div class="meta mono">${esc(u.unit)} · seit ${esc(/^\d{4}-\d\d-\d\dT/.test(u.since || "") ? fmtTime(u.since) : u.since || "–")}${u.restarts && u.restarts !== "0" ? ` · ${esc(u.restarts)} Abstürze` : ""}</div></div>
+        <div class="grow"><div class="title">${esc(u.label)}</div><div class="meta mono">${esc(u.unit)} · seit ${esc(/^\d{4}-\d\d-\d\dT/.test(u.since || "") ? fmtTime(u.since) : u.since || "-")}${u.restarts && u.restarts !== "0" ? ` · ${esc(u.restarts)} Abstürze` : ""}</div></div>
         <button class="btn small" data-restart="${esc(u.id)}" ${d.ctl ? "" : "disabled"}>Neu starten</button></div>`).join("")}</div>
-      ${d.last ? `<p class="hint small">Letzter Neustart: ${esc(d.last.unit)} – ${esc(d.last.message)} (${esc(fmtTime(d.last.time))})</p>` : ""}</div>
+      ${d.last ? `<p class="hint small">Letzter Neustart: ${esc(d.last.unit)} · ${esc(d.last.message)} (${esc(fmtTime(d.last.time))})</p>` : ""}</div>
     <div class="panel span-6"><h3>Prüfungen</h3><div class="inline">${checks.map(([k, l, c]) => `<button class="btn small ghost" data-check="${k}" title="${esc(c)}">${esc(l)}</button>`).join("")}</div><br>
       <pre class="out" id="chkOut">${esc(T("Eine Prüfung wählen …"))}</pre></div>`);
   $$("[data-restart]", view).forEach((b) => b.onclick = () => busy(b, () => restartUnit(b.dataset.restart).then(() => show("dienste"))));
@@ -743,7 +743,7 @@ async function viewBackups(view) {
   $("#exSet").onclick = () => change(() => api("/api/config/set", { method: "POST", body: { path: $("#exPath").value, value: $("#exVal").value } }), () => show("sicherungen"));
   $("#exRm").onclick = () => change(() => api("/api/config/set", { method: "POST", body: { path: $("#exPath").value, remove: true } }), () => show("sicherungen"));
   $("#pwSave").onclick = (e) => busy(e.target, async () => { await api("/api/auth/password", { method: "POST", body: { old: $("#pwOld").value, new: $("#pwNew").value } }); $("#pwOld").value = $("#pwNew").value = ""; toast("Passwort geändert. Andere Geräte sind abgemeldet."); });
-  $("#pwAll").onclick = async () => { if (await confirmBox("Überall abmelden?", "Alle angemeldeten Browser – auch dieser – werden abgemeldet.", "Abmelden")) { await api("/api/auth/logout-all", { method: "POST", body: {} }); showLogin(); } };
+  $("#pwAll").onclick = async () => { if (await confirmBox("Überall abmelden?", "Alle angemeldeten Browser werden abgemeldet, auch dieser.", "Abmelden")) { await api("/api/auth/logout-all", { method: "POST", body: {} }); showLogin(); } };
 }
 
 /* ------------------------------------------------------------ Login */
