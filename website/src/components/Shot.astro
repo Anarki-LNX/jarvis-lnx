@@ -1,0 +1,19 @@
+---
+// Screenshot aus src/data/media.json (AVIF → WebP → JPG). Ohne Eintrag wird nichts ausgegeben.
+import media from "../data/media.json";
+import type { Lang } from "../i18n";
+interface Props { id: string; lang: Lang; alt: string; class?: string; sizes?: string }
+const { id, lang, alt, class: cls, sizes = "(max-width: 640px) 50vw, 300px" } = Astro.props;
+type S = { w: number; h: number; avif?: string; webp?: string; jpg?: string };
+const all = ((media as unknown as { shots?: Record<string, Record<string, S>> }).shots) ?? {};
+const s = all[id]?.[lang] ?? all[id]?.[lang === "en" ? "de" : "en"];
+---
+{s && (
+  <figure class={cls}>
+    <picture>
+      {s.avif && <source srcset={s.avif} type="image/avif" />}
+      {s.webp && <source srcset={s.webp} type="image/webp" />}
+      <img src={s.jpg ?? s.webp} alt={alt} width={s.w} height={s.h} loading="lazy" decoding="async" sizes={sizes} />
+    </picture>
+  </figure>
+)}

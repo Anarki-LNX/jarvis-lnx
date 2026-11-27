@@ -1,0 +1,46 @@
+# Caddy im Container "nuorb-site": liefert nur die fertig gebaute Website aus /srv. TLS, HTTP/3 und HSTS macht der
+# äußere Caddy davor (Block nuorb.loopout.tech, siehe outer-caddy-block.caddy). Keine Zugriffsprotokolle.
+# Die Sicherheits-Header stammen aus deploy/headers.json (scripts/check.mjs prüft, dass beide übereinstimmen).
+{
+	admin off
+	auto_https off
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+:{$PORT:8080} {
+	root * /srv
+	encode zstd gzip
+
+	header {
+		Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; media-src 'self'; font-src 'self'; connect-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), browsing-topics=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-origin"
+		X-Frame-Options "DENY"
+		-Server
+	}
+	# Dateien mit Prüfsumme im Namen und Schriften ändern sich nie
+	@fest path /_assets/* /fonts/*
+	header @fest Cache-Control "public, max-age=31536000, immutable"
+	# Videos, Poster, Screenshots, Bilder, Orb: einen Tag (Namen ohne Prüfsumme)
+	@medien path /media/* /img/* /orb/* /favicon.svg /icon-*.png /apple-touch-icon.png
+	header @medien Cache-Control "public, max-age=86400"
+	# Seiten und alles Übrige immer frisch prüfen, damit ein Update sofort sichtbar ist
+	@seiten not path /_assets/* /fonts/* /media/* /img/* /orb/* /favicon.svg /icon-*.png /apple-touch-icon.png
+	header @seiten Cache-Control "no-cache"
+
+	# Keine erzwungene Sprachumleitung: "/" ist die neutrale Sprachwahl.
+	redir /index.html / 308
+	file_server
+
+	handle_errors {
+		rewrite * /404.html
+		file_server {
+			status 404
+		}
+	}
+}

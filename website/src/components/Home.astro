@@ -1,0 +1,45 @@
+---
+// Startseite je Sprache: alle Abschnitte in der Reihenfolge des Inhaltsplans.
+import Base from "../layouts/Base.astro";
+import Nav from "./Nav.astro";
+import Hero from "./Hero.astro";
+import What from "./What.astro";
+import Demo from "./Demo.astro";
+import Features from "./Features.astro";
+import Privacy from "./Privacy.astro";
+import How from "./How.astro";
+import Install from "./Install.astro";
+import Xiaomi from "./Xiaomi.astro";
+import OpenSource from "./OpenSource.astro";
+import Support from "./Support.astro";
+import Faq from "./Faq.astro";
+import Footer from "./Footer.astro";
+import { t, other, type Lang } from "../i18n";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const d = t(lang);
+const faqLd = { "@context": "https://schema.org", "@type": "FAQPage", inLanguage: lang,
+  mainEntity: d.faq.items.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) };
+---
+<Base lang={lang} title={d.meta.title} description={d.meta.description} path={`/${lang}/`} alternates={{ en: "/en/", de: "/de/" }} jsonLd>
+  <Fragment slot="head">
+    <link rel="stylesheet" href="/orb/orb.css" />
+    <script type="application/ld+json" set:html={JSON.stringify(faqLd)} />
+  </Fragment>
+  <Nav lang={lang} altPath={`/${other(lang)}/`} />
+  <main id="main">
+    <Hero lang={lang} />
+    <What lang={lang} />
+    <Demo lang={lang} />
+    <Features lang={lang} />
+    <Privacy lang={lang} />
+    <How lang={lang} />
+    <Install lang={lang} />
+    <Xiaomi lang={lang} />
+    <OpenSource lang={lang} />
+    <Support lang={lang} />
+    <Faq lang={lang} />
+  </main>
+  <Footer lang={lang} />
+  <script>import "../scripts/site.ts";</script>
+</Base>

@@ -1,0 +1,87 @@
+---
+import { t, type Lang } from "../i18n";
+import Icon from "./Icon.astro";
+import Shot from "./Shot.astro";
+import media from "../data/media.json";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const d = t(lang).features;
+const f = d.items;
+const shots = ((media as unknown as { shots?: Record<string, unknown> }).shots) ?? {};
+const has = (id: string) => id in shots;
+const icons: Record<string, string> = { assistant: "user", talk: "chat", local: "chip", claude: "cloud", privacy: "lock", smarthome: "home", secure: "shield", admin: "sliders", languages: "globe" };
+---
+<section class="section" id="features" aria-labelledby="features-title">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="kicker">{d.kicker}</p>
+      <h2 id="features-title">{d.title}</h2>
+    </div>
+    <div class="bento">
+      <article class={`card b-talk reveal ${has("app-conversation") ? "has-img" : ""}`}>
+        <div class="txt"><Icon name={icons.talk} class="fi" /><h3>{f.talk.title}</h3><p>{f.talk.text}</p></div>
+        <Shot id="app-conversation" lang={lang} alt={d.shots.conversation} class="phone" />
+      </article>
+      <article class={`card b-assistant reveal ${has("app-orb-listening") ? "has-img" : ""}`}>
+        <div class="txt"><Icon name={icons.assistant} class="fi" /><h3>{f.assistant.title}</h3><p>{f.assistant.text}</p></div>
+        <Shot id="app-orb-listening" lang={lang} alt={d.shots.orb} class="phone" />
+      </article>
+      <article class="card b-local reveal"><Icon name={icons.local} class="fi" /><h3>{f.local.title}</h3><p>{f.local.text}</p><span class="badge badge--local">Ollama · llama.cpp · vLLM · LM Studio</span></article>
+      <article class="card b-claude reveal"><Icon name={icons.claude} class="fi" /><h3>{f.claude.title}</h3><p>{f.claude.text}</p><span class="badge badge--optional">Anthropic API</span></article>
+      <article class="card b-privacy reveal"><Icon name={icons.privacy} class="fi" /><h3>{f.privacy.title}</h3><p>{f.privacy.text}</p></article>
+      <article class={`card b-secure reveal ${has("app-confirmation-card") ? "has-img" : ""}`}>
+        <div class="txt">
+          <Icon name={icons.secure} class="fi" /><h3>{f.secure.title}</h3><p>{f.secure.text}</p>
+          <ol class="steps">{f.secure.steps.map((s, i) => <li><span aria-hidden="true">{i + 1}</span> {s}</li>)}</ol>
+        </div>
+        <Shot id="app-confirmation-card" lang={lang} alt={d.shots.card} class="phone" />
+      </article>
+      <article class="card b-smarthome reveal"><Icon name={icons.smarthome} class="fi" /><h3>{f.smarthome.title}</h3><p>{f.smarthome.text}</p><span class="badge badge--optional">Home Assistant · ioBroker · MCP</span></article>
+      <article class="card b-languages reveal"><Icon name={icons.languages} class="fi" /><h3>{f.languages.title}</h3><p>{f.languages.text}</p></article>
+      <article class={`card b-admin reveal ${has("admin-model-fallback") ? "has-img" : ""}`}>
+        <div class="txt"><Icon name={icons.admin} class="fi" /><h3>{f.admin.title}</h3><p>{f.admin.text}</p></div>
+        <Shot id="admin-model-fallback" lang={lang} alt={d.shots.admin} class="shot" sizes="(max-width: 1000px) 100vw, 700px" />
+      </article>
+    </div>
+  </div>
+</section>
+
+<style>
+  .bento { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1rem; }
+  .card { display: grid; gap: .8rem; align-content: start; }
+  .card h3 { margin-top: .2rem; }
+  .card p { color: var(--text-2); font-size: .98rem; }
+  .card .badge { justify-self: start; text-transform: none; letter-spacing: 0; font-family: var(--f-text); font-size: .78rem; margin-top: .3rem; }
+  :global(.fi) { width: 28px; height: 28px; color: var(--cyan); }
+  .b-talk, .b-assistant { grid-column: span 3; }
+  .has-img.b-talk, .has-img.b-assistant, .has-img.b-secure { grid-template-columns: minmax(0, 1fr) minmax(0, 150px); align-items: end; gap: 1.4rem; }
+  .b-local, .b-claude, .b-privacy { grid-column: span 2; }
+  .b-smarthome, .b-languages { grid-column: span 3; }
+  .b-admin { grid-column: span 6; }
+  .has-img.b-admin { grid-template-columns: minmax(0, .8fr) minmax(0, 1.4fr); align-items: center; gap: 2rem; }
+  .b-secure { grid-column: span 6; }
+  .has-img.b-secure { grid-template-columns: minmax(0, 1fr) minmax(0, 180px); }
+  .txt { display: grid; gap: .8rem; align-content: start; align-self: start; }
+  .card :global(.phone) { margin: 0 0 -2.2rem; border-radius: 22px 22px 0 0; overflow: hidden; border: 1px solid var(--line-2); border-bottom: 0; box-shadow: 0 -10px 60px rgba(56, 217, 255, .08); align-self: end; }
+  .card :global(.phone img) { width: 100%; height: auto; }
+  .card :global(.shot) { margin: 0; border-radius: var(--r-sm); overflow: hidden; border: 1px solid var(--line-2); box-shadow: 0 30px 80px -30px rgba(0,0,0,.8); }
+  .card :global(.shot img) { width: 100%; height: auto; }
+  .steps { list-style: none; padding: 0; margin: .4rem 0 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+  .steps li { display: inline-flex; align-items: center; gap: .5rem; padding: .45rem .8rem .45rem .45rem; border: 1px solid var(--line-2); border-radius: 999px; font-size: .88rem; color: var(--text); }
+  .steps span { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: rgba(56, 217, 255, .15); color: var(--cyan); font: 600 .75rem/1 var(--f-mono); }
+  .steps li:last-child span { background: rgba(78, 230, 168, .18); color: var(--mint); }
+  @media (max-width: 1000px) {
+    .b-talk, .b-assistant { grid-column: span 6; }
+    .b-local, .b-claude, .b-privacy { grid-column: span 3; }
+    .b-privacy { grid-column: span 6; }
+    .has-img.b-admin { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .bento > * { grid-column: span 6 !important; }
+    .has-img.b-talk, .has-img.b-assistant, .has-img.b-secure { grid-template-columns: minmax(0, 1fr) minmax(0, 110px); }
+  }
+  @media (max-width: 420px) {
+    .has-img.b-talk, .has-img.b-assistant, .has-img.b-secure { grid-template-columns: 1fr; }
+    .card :global(.phone) { max-width: 200px; justify-self: center; }
+  }
+</style>

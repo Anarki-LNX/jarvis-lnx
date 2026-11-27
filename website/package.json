@@ -1,0 +1,22 @@
+{
+  "name": "nuorb-website",
+  "private": true,
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Public product website for NuOrb (nuorb.loopout.tech) – static, no tracking, no live AI connection.",
+  "scripts": {
+    "prepare-assets": "node scripts/prepare-assets.mjs",
+    "dev": "node scripts/prepare-assets.mjs && astro dev",
+    "build": "node scripts/prepare-assets.mjs && astro build && node scripts/check.mjs",
+    "preview": "astro preview",
+    "check": "node scripts/check.mjs",
+    "og": "bash og/render.sh",
+    "typecheck": "astro check"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.12",
+    "@astrojs/sitemap": "3.7.6",
+    "astro": "7.4.13",
+    "typescript": "^5.9.3"
+  }
+}
