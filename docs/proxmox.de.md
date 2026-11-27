@@ -194,9 +194,9 @@ Beide Wege behalten Einstellungen, Passwort, gekoppelte Geräte und Gedächtnis:
 
 - **Im CT:** Konsole des CT öffnen (Weboberfläche → CT → *Konsole*) oder auf dem Host ausführen:
   ```bash
-  pct exec 120 -- update
+  pct exec 120 -- /usr/local/bin/update
   ```
-  Das aktualisiert Debian und Docker, lädt das neue NuOrb-Image und startet NuOrb neu.
+  (im CT nach `pct enter 120` einfach `update`). Das aktualisiert Debian und Docker, lädt das neue NuOrb-Image und startet NuOrb neu.
 - **Vom Host:** den Einzeiler aus Abschnitt 2 noch einmal ausführen. Er findet CTs mit dem Tag `nuorb` und bietet
   *Aktualisieren* oder *Neuen anlegen* an. Direkt, ohne Dialog:
   `bash -c "$(curl -fsSL …/proxmox/nuorb-lxc.sh)" _ update 120`.
@@ -254,7 +254,7 @@ du es nicht mehr brauchst.
 | `sha256sum` meldet `FAILED` | Download kaputt oder Datei verändert. Beide Dateien löschen und neu herunterladen. |
 | Einrichtung: Sprachmodelle hängen, *keine Internetverbindung* | Der CT hat kein Internet: Gateway und DNS des CT (Reiter *Netzwerk*, *DNS*), Regeln der Proxmox-Firewall für den CT. |
 | Einrichtungscode wird nicht angezeigt | NuOrb startet noch (1 bis 2 Minuten). `pct exec 120 -- nuorb-setup-code` erneut versuchen. Sobald ein Passwort gesetzt ist, gibt es keinen Code mehr. |
-| Passwort der Verwaltung vergessen | `pct exec 120 -- nuorb-reset-password` (fragt j/N, `--yes` ohne Frage) zeigt einen neuen Einrichtungscode. Einstellungen, Gedächtnis und gekoppelte Smartphones bleiben. |
+| Passwort der Verwaltung vergessen | `pct exec 120 -- nuorb-reset-password` (fragt j/N, `--yes` ohne Frage) zeigt einen neuen Einrichtungscode; das alte Passwort gilt dann nicht mehr (die alten Anmeldedaten bleiben als `auth.json.bak-<Zeit>` erhalten). Einstellungen, Gedächtnis und gekoppelte Smartphones bleiben. |
 | Ollama *nicht erreichbar* | Ollama muss im Netz lauschen und die IP des CT in seiner Firewall erlauben. Die Einrichtung zeigt die genauen Befehle. Details: [INSTALL.de.md, Fehlersuche](../INSTALL.de.md#8-fehlersuche). |
 | CT wird beendet oder ist sehr langsam, *out of memory* im Host-Protokoll | Zu wenig RAM. Dem CT mindestens 6 GB geben: `pct set 120 -memory 6144`. |
 | *IP geändert*: App meldet Zertifikatsfehler | Am besten: dem CT die alte Adresse zurückgeben (DHCP-Reservierung). Sonst im CT die neue IP in `NUORB_HOSTS` in `/root/nuorb/.env` eintragen, dort `cd /root/nuorb && docker compose up -d` ausführen und die Smartphones neu koppeln. |

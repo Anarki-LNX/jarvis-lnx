@@ -189,9 +189,9 @@ Either way keeps your settings, password, paired devices and memory:
 
 - **Inside the CT:** open the CT console (web UI → CT → *Console*) or run on the host
   ```bash
-  pct exec 120 -- update
+  pct exec 120 -- /usr/local/bin/update
   ```
-  It updates Debian and Docker, downloads the new NuOrb image and restarts NuOrb.
+  (inside the CT after `pct enter 120` just `update`). It updates Debian and Docker, downloads the new NuOrb image and restarts NuOrb.
 - **From the host:** run the one-liner from section 2 again. It finds CTs with the tag `nuorb` and offers *Update*
   or *Create new*. Directly, without the dialog: `bash -c "$(curl -fsSL …/proxmox/nuorb-lxc.sh)" _ update 120`.
 
@@ -247,7 +247,7 @@ need it.
 | `sha256sum` says `FAILED` | Download broken or file changed. Delete both files and download again. |
 | Setup: speech models stuck, *no internet connection* | The CT has no internet: gateway and DNS of the CT (*Network*, *DNS* tab), Proxmox firewall rules for the CT. |
 | Setup code not shown | NuOrb is still starting (1 to 2 minutes). Try `pct exec 120 -- nuorb-setup-code` again. Once a password is set there is no code any more. |
-| Forgot the admin password | `pct exec 120 -- nuorb-reset-password` (asks y/N, `--yes` without asking) shows a new setup code. Settings, memory and paired phones stay. |
+| Forgot the admin password | `pct exec 120 -- nuorb-reset-password` (asks y/N, `--yes` without asking) shows a new setup code; the old password stops working (a copy of the old login data is kept as `auth.json.bak-<time>`). Settings, memory and paired phones stay. |
 | Ollama *not reachable* | Ollama must listen on the network and allow the CT's IP in its firewall. The setup shows the exact commands. Details: [INSTALL.md, troubleshooting](../INSTALL.md#8-troubleshooting). |
 | CT killed or very slow, *out of memory* in the host log | Too little RAM. Give the CT at least 6 GB: `pct set 120 -memory 6144`. |
 | *IP changed*: app shows a certificate error | Best: give the CT its old address back (DHCP reservation). Otherwise add the new IP to `NUORB_HOSTS` in `/root/nuorb/.env` inside the CT, run `cd /root/nuorb && docker compose up -d` there and pair the phones again. |
