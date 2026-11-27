@@ -85,12 +85,48 @@ docker image prune -f >/dev/null 2>&1 || true
 EOF
 chmod 0755 /usr/local/bin/update
 
+# ------------------------------------------------------------------ setup code and password reset
+cat > /usr/local/bin/nuorb-setup-code <<'EOF'
+#!/usr/bin/env bash
+# Prints the NuOrb setup code (exists only while no admin password is set).
+code=$(docker exec nuorb cat /opt/data/nuorb/admin/setup-code.txt 2>/dev/null | tr -d '[:space:]')
+if [ -n "$code" ]; then echo "$code"; exit 0; fi
+if ! docker inspect nuorb >/dev/null 2>&1; then echo "NuOrb is not installed or not running (docker ps)." >&2; exit 1; fi
+echo "No setup code: the admin password is already set. Forgot it? Run: nuorb-reset-password" >&2
+exit 1
+EOF
+cat > /usr/local/bin/nuorb-reset-password <<'EOF'
+#!/usr/bin/env bash
+# Removes the NuOrb admin password and creates a new setup code. Settings,
+# memory and paired phones stay. The old password file is kept as a backup.
+set -Eeuo pipefail
+[ "$(id -u)" -eq 0 ] || { echo "nuorb-reset-password: run as root" >&2; exit 1; }
+if [ "${1:-}" != --yes ]; then
+  read -r -p "Remove the NuOrb admin password and create a new setup code? [y/N] " a
+  case "$a" in y|Y|yes|j|J|ja) ;; *) echo "Nothing changed."; exit 0 ;; esac
+fi
+docker exec -u 0 nuorb sh -c 'cd /opt/data/nuorb/admin && if [ -f auth.json ]; then mv auth.json "auth.json.bak-$(date +%Y%m%d%H%M%S)"; fi; rm -f sessions.json'
+docker restart nuorb >/dev/null
+for _ in $(seq 1 60); do
+  code=$(docker exec nuorb cat /opt/data/nuorb/admin/setup-code.txt 2>/dev/null | tr -d '[:space:]' || true)
+  [ -n "$code" ] && break
+  sleep 2
+done
+[ -n "${code:-}" ] || { echo "NuOrb did not create a setup code yet. Try again in a minute: nuorb-setup-code" >&2; exit 1; }
+echo "New setup code: $code"
+echo "Open the admin panel, enter the code and choose a new password."
+EOF
+chmod 0755 /usr/local/bin/nuorb-setup-code /usr/local/bin/nuorb-reset-password
+# pct exec on the host does not search /usr/local/bin: links so that "pct exec <ID> -- nuorb-setup-code" works
+ln -sf /usr/local/bin/nuorb-setup-code /usr/bin/nuorb-setup-code
+ln -sf /usr/local/bin/nuorb-reset-password /usr/bin/nuorb-reset-password
+
 # ------------------------------------------------------------------ login notice
 cat > /etc/profile.d/nuorb.sh <<'EOF'
 # NuOrb: addresses and setup code at login (written by proxmox/ct-setup.sh)
 nuorb_notice() {
   local ip env=/root/nuorb/.env ui=8443 admin=8444 code=""
-  ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+  ip=$(ip -4 -o addr show dev eth0 scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | head -n 1)
   if [ -r "$env" ]; then
     ui=$(sed -n 's/^NUORB_UI_PORT_PUBLIC=//p' "$env" | tail -1); ui=${ui:-8443}
     admin=$(sed -n 's/^NUORB_ADMIN_PORT_PUBLIC=//p' "$env" | tail -1); admin=${admin:-8444}
@@ -105,7 +141,7 @@ nuorb_notice() {
   echo "  NuOrb app          https://${ip:-<IP>}:${ui}"
   code=$(docker exec nuorb cat /opt/data/nuorb/admin/setup-code.txt 2>/dev/null || true)
   [ -n "$code" ] && echo "  Setup code         ${code}"
-  echo "  Update             update"
+  echo "  Commands           update · nuorb-setup-code · nuorb-reset-password"
   echo
 }
 [ "$(id -u)" -eq 0 ] && case "$-" in *i*) nuorb_notice ;; esac

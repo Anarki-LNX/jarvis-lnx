@@ -74,7 +74,7 @@ case "$*" in *--yesno*) [ "$a" = yes ]; exit ;; esac
 [ "$a" = "!cancel" ] && exit 1
 [ "$a" = "=" ] && a=""
 printf "%s" "$a" >&2'
-mk ip 'if [ "$*" = "-o link show type bridge" ]; then printf "4: vmbr0: <BROADCAST> mtu 1500\n7: vmbr1: <BROADCAST> mtu 1500\n"; else exec /usr/bin/ip "$@"; fi'
+mk ip 'if [ "$*" = "-o link show type bridge" ]; then printf "4: vmbr0: <BROADCAST> mtu 1500\n7: vmbr1: <BROADCAST> mtu 1500\n9: fwbr110i0: <BROADCAST> mtu 1500\n"; else exec /usr/bin/ip "$@"; fi'
 
 # ------------------------------------------------------------------ helpers
 PASS=0; FAIL=0
@@ -199,6 +199,7 @@ if command -v script >/dev/null; then
   runtty "$A" --
   check "dialog advanced: ends with 0" rc_is 0
   check "dialog advanced: values reach pct create" called 'pct create 140 .* --hostname orb2 .* --cores 6 --memory 8192 .* --rootfs tank:32 --net0 name=eth0,bridge=vmbr0,ip=192\.168\.1\.70/24,gw=192\.168\.1\.1 '
+  check "dialog advanced: bridge menu without firewall bridges" bash -c "grep -q 'Network bridge.* vmbr1 ' '$MOCK_LOG' && ! grep -q 'fwbr' '$MOCK_LOG'"
   check "dialog advanced: brain URL reaches install.sh" called 'install\.sh en 192\.168\.1\.70 http://192\.168\.1\.50:8080 8443,8444'
 
   A=$(answers cancel en '!cancel')
