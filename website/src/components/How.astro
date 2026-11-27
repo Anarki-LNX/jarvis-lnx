@@ -1,0 +1,37 @@
+---
+import { t, type Lang } from "../i18n";
+import Icon from "./Icon.astro";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const d = t(lang).how;
+const icons = ["server", "chip", "phone", "chat"];
+---
+<section class="section" id="how" aria-labelledby="how-title">
+  <div class="wrap">
+    <div class="head reveal">
+      <p class="kicker">{d.kicker}</p>
+      <h2 id="how-title">{d.title}</h2>
+    </div>
+    <ol class="steps">
+      {d.steps.map((s, i) => (
+        <li class="step reveal">
+          <span class="num" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
+          <Icon name={icons[i]} class="ic" />
+          <h3>{s.title}</h3>
+          <p>{s.text}</p>
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>
+
+<style>
+  .steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; counter-reset: s; position: relative; }
+  .steps::before { content: ""; position: absolute; left: 2rem; right: 2rem; top: 2.45rem; height: 1px; background: linear-gradient(90deg, transparent, var(--line-2) 10%, var(--line-2) 90%, transparent); }
+  .step { position: relative; display: grid; gap: .8rem; align-content: start; padding: 1.4rem; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--ink-1); }
+  .num { font: 500 .8rem/1 var(--f-mono); color: var(--cyan); }
+  .step :global(.ic) { width: 30px; height: 30px; color: var(--text); }
+  .step p { color: var(--text-2); font-size: .96rem; }
+  @media (max-width: 960px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } .steps::before { display: none; } }
+  @media (max-width: 560px) { .steps { grid-template-columns: 1fr; } }
+</style>

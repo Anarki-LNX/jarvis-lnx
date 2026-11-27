@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.astro/
+public/media/
+public/orb/orb.js
+public/orb/orb.css
+public/fonts/*.woff2
+public/fonts/LICENSE-*
+.tmp/
+src/data/media.json

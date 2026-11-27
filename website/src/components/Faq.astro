@@ -1,0 +1,39 @@
+---
+import { t, type Lang } from "../i18n";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const d = t(lang).faq;
+---
+<section class="section" id="faq" aria-labelledby="faq-title">
+  <div class="wrap grid">
+    <div class="head reveal">
+      <p class="kicker">{d.kicker}</p>
+      <h2 id="faq-title">{d.title}</h2>
+    </div>
+    <div class="list">
+      {d.items.map(([q, a]) => (
+        <details class="qa">
+          <summary><span>{q}</span><i aria-hidden="true"></i></summary>
+          <p>{a}</p>
+        </details>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .grid { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.4fr); gap: clamp(2rem, 5vw, 4rem); align-items: start; }
+  .head { position: sticky; top: 100px; }
+  .list { border-top: 1px solid var(--line); }
+  .qa { border-bottom: 1px solid var(--line); }
+  summary { display: flex; justify-content: space-between; align-items: center; gap: 1rem; min-height: 56px; padding: 1.05rem 0; cursor: pointer; list-style: none; font: 600 1.06rem/1.35 var(--f-display); }
+  summary::-webkit-details-marker { display: none; }
+  summary:hover { color: #fff; }
+  summary i { position: relative; flex: none; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line-2); }
+  summary i::before, summary i::after { content: ""; position: absolute; left: 8px; right: 8px; top: 13px; height: 1.5px; background: var(--text-2); transition: transform .25s var(--ease); }
+  summary i::after { transform: rotate(90deg); }
+  .qa[open] summary i::after { transform: rotate(0); }
+  .qa[open] summary i { border-color: rgba(56, 217, 255, .5); }
+  .qa p { padding: 0 2.5rem 1.3rem 0; color: var(--text-2); }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .head { position: static; } }
+</style>

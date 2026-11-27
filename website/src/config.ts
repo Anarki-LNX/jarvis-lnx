@@ -1,0 +1,45 @@
+// Zentrale Werte der Website. Nichts Geheimes hier – diese Datei ist öffentlich.
+
+export const SITE_URL = "https://nuorb.loopout.tech";
+
+export const GITHUB = {
+  repo: "https://github.com/Anarki-LNX/nuorb",
+  issues: "https://github.com/Anarki-LNX/nuorb/issues",
+  pulls: "https://github.com/Anarki-LNX/nuorb/pulls",
+  releases: "https://github.com/Anarki-LNX/nuorb/releases",
+  install: "https://github.com/Anarki-LNX/nuorb/blob/main/INSTALL.md",
+  installDe: "https://github.com/Anarki-LNX/nuorb/blob/main/INSTALL.de.md",
+  docker: "https://github.com/Anarki-LNX/nuorb/blob/main/docker/README.md",
+  contributing: "https://github.com/Anarki-LNX/nuorb/blob/main/CONTRIBUTING.md",
+  aiDeclaration: "https://github.com/Anarki-LNX/nuorb/blob/main/AI_DECLARATION.md",
+  license: "https://github.com/Anarki-LNX/nuorb/blob/main/LICENSE",
+  nixos: "https://github.com/Anarki-LNX/nuorb/blob/main/nixos/README.md",
+  api: "https://api.github.com/repos/Anarki-LNX/nuorb",
+};
+
+export const INSTALL_CMD = "curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/install.sh | bash";
+export const INSTALL_CMD_DE = INSTALL_CMD + " -s -- --lang de";
+
+// Öffentliche YouTube-Videos – nur verlinkt, nie eingebettet (keine Dritt-Embeds, kein Tracking).
+export const YOUTUBE = {
+  trailer: "https://www.youtube.com/watch?v=YxfGbj-deVI",
+  tutorialEn: "https://youtu.be/NO66dwKtCvg",
+  tutorialDe: "https://youtu.be/xUsvfRHpvc8",
+};
+
+/**
+ * PayPal-Spendenlink – vom Nutzer bereitgestellt am 26.11.2026 (über die Koordination). Genau so übernehmen, ohne
+ * Tracking-Parameter. Erlaubt sind nur https://www.paypal.com/…, https://paypal.me/… und https://www.paypal.me/… (Prüfung im Build).
+ */
+export const PAYPAL_URL: string | null = "https://www.paypal.me/HenryMeinekat";
+export const validPaypal = (u: string | null): u is string => !!u && /^https:\/\/(www\.paypal\.com|(www\.)?paypal\.me)\/[\w\-./]+$/.test(u);
+
+// Rechtliches: gleicher Betreiber wie loopout.tech. Das dortige Impressum (§ 5 DDG, § 18 Abs. 2 MStV) deckt diese
+// Subdomain ab (geprüft von der Koordination am 26.11.2026) – nur verlinken, keine Personendaten kopieren.
+export const LEGAL = {
+  imprintDe: "https://loopout.tech/impressum",
+  imprintEn: "https://loopout.tech/en/imprint",
+};
+
+// Lizenzen der Drittkomponenten (Repo, gepflegt von der Docker-Sitzung)
+export const THIRD_PARTY = "https://github.com/Anarki-LNX/nuorb/blob/main/THIRD_PARTY_LICENSES.md";

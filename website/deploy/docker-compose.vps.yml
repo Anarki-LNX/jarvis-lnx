@@ -1,0 +1,19 @@
+# NuOrb-Website auf dem VPS unter /opt/nuorb-site. Ohne veröffentlichte Ports: nur der äußere Caddy spricht über das
+# Docker-Netz "web" mit dem Dienst "nuorb-site" (Port 8080). Das Image kommt per docker save | ssh vps docker load.
+services:
+  nuorb-site:
+    image: nuorb-site:${NUORB_SITE_TAG:-latest}
+    container_name: nuorb-site
+    restart: unless-stopped
+    mem_limit: 64m
+    read_only: true
+    tmpfs: [/tmp]
+    # Das Caddy-Programm trägt die Fähigkeit zum Binden niedriger Ports; ohne sie in der Menge startet es nicht
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: [no-new-privileges:true]
+    networks: [web]
+
+networks:
+  web:
+    external: true

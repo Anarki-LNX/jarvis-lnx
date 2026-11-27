@@ -1,0 +1,75 @@
+---
+import { t, policyPath, type Lang } from "../i18n";
+import { GITHUB, LEGAL, YOUTUBE, PAYPAL_URL, THIRD_PARTY, validPaypal } from "../config";
+interface Props { lang: Lang; home?: boolean }
+const { lang, home = true } = Astro.props;
+const d = t(lang);
+const f = d.footer;
+const base = home ? "" : `/${lang}/`;
+const pp = validPaypal(PAYPAL_URL) ? PAYPAL_URL : null;
+---
+<footer class="foot">
+  <div class="wrap wrap--wide">
+    <div class="top">
+      <div class="brand">
+        <a class="logo" href={`/${lang}/`}><span class="logo__orb" aria-hidden="true"></span>NuOrb</a>
+        <p class="tag">{f.tagline}</p>
+        <p class="about">{f.about}</p>
+      </div>
+      <nav class="cols" aria-label="Footer">
+        <div><h2>{f.product}</h2><ul>
+          <li><a href={`${base}#features`}>{d.nav.features}</a></li>
+          <li><a href={`${base}#how`}>{d.nav.how}</a></li>
+          <li><a href={`${base}#demo`}>{d.nav.demo}</a></li>
+          <li><a href={`${base}#privacy`}>{d.nav.privacy}</a></li>
+          <li><a href={`${base}#faq`}>{d.nav.faq}</a></li>
+        </ul></div>
+        <div><h2>{f.resources}</h2><ul>
+          <li><a href={lang === "de" ? GITHUB.installDe : GITHUB.install} rel="noopener">{f.documentation}</a></li>
+          <li><a href={GITHUB.docker} rel="noopener">Docker</a></li>
+          <li><a href={YOUTUBE.trailer} rel="noopener">YouTube: Trailer</a></li>
+          <li><a href={lang === "de" ? YOUTUBE.tutorialDe : YOUTUBE.tutorialEn} rel="noopener">YouTube: Tutorial</a></li>
+        </ul></div>
+        <div><h2>{f.project}</h2><ul>
+          <li><a href={GITHUB.repo} rel="noopener">GitHub</a></li>
+          <li><a href={GITHUB.releases} rel="noopener">{d.oss.links.releases}</a></li>
+          <li><a href={GITHUB.contributing} rel="noopener">{d.oss.links.contributing}</a></li>
+          <li>{pp ? <a href={pp} rel="noopener noreferrer" target="_blank">{f.paypal}</a> : <span class="off">{f.paypalSoon}</span>}</li>
+        </ul></div>
+        <div><h2>{f.legal}</h2><ul>
+          <li><a href={policyPath(lang)}>{f.privacyPolicy}</a></li>
+          <li><a href={lang === "de" ? LEGAL.imprintDe : LEGAL.imprintEn} rel="noopener">{f.imprint}</a></li>
+          <li><a href={GITHUB.license} rel="noopener">{d.oss.links.license}</a></li>
+          <li><a href={THIRD_PARTY} rel="noopener">{f.licenses}</a></li>
+        </ul></div>
+      </nav>
+    </div>
+    <div class="bottom">
+      <p>{f.copyright}</p>
+      <p class="disc">{f.disclaimer}</p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .foot { border-top: 1px solid var(--line); padding: clamp(3rem, 6vw, 5rem) 0 2rem; background: linear-gradient(180deg, transparent, rgba(56, 217, 255, .025)); }
+  .top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 3rem; }
+  .brand { display: grid; gap: 1rem; align-content: start; }
+  .logo { display: inline-flex; align-items: center; gap: .6rem; min-height: 44px; color: var(--text); text-decoration: none; font: 700 1.3rem/1 var(--f-display); }
+  .logo__orb { width: 24px; height: 24px; border-radius: 50%; background: radial-gradient(circle at 50% 38%, rgba(56,217,255,.5), #02101a 62%, rgba(56,217,255,.7) 92%); box-shadow: 0 0 0 1.5px rgba(56,217,255,.9), 0 0 16px rgba(56,217,255,.5); }
+  .tag { font: 600 1.15rem/1.35 var(--f-display); color: var(--text); max-width: 26ch; }
+  .about { color: var(--text-3); font-size: .92rem; max-width: 40ch; }
+  .cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.5rem; }
+  .cols h2 { font: 500 .74rem/1 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); margin-bottom: 1rem; }
+  .cols ul { list-style: none; padding: 0; margin: 0; display: grid; gap: .25rem; }
+  .cols a, .off { display: inline-block; padding: .4rem 0; color: var(--text-2); text-decoration: none; font-size: .95rem; }
+  .cols a:hover { color: var(--text); }
+  .off { color: var(--text-3); }
+  .bottom { display: grid; grid-template-columns: auto 1fr; gap: 1.5rem; align-items: center; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--line); font-size: .84rem; color: var(--text-3); }
+  .disc { max-width: 90ch; }
+  .gh { display: grid; place-items: center; width: 44px; height: 44px; color: var(--text-2); border-radius: 10px; }
+  .gh:hover { color: var(--text); background: var(--glass); }
+  .gh :global(svg) { width: 22px; height: 22px; }
+  @media (max-width: 960px) { .top { grid-template-columns: 1fr; } }
+  @media (max-width: 640px) { .cols { grid-template-columns: repeat(2, minmax(0, 1fr)); } .bottom { grid-template-columns: 1fr; } }
+</style>
