@@ -30,14 +30,15 @@ const tutSources = tut ? ["video/webm", "video/mp4"].map((ty) => tut.video.filte
         <p class="bn">{d.browserNote}</p>
         <h3 class="sub">{d.stepsTitle}</h3>
         <ol class="ol">{d.steps.map((s) => <li>{s}</li>)}</ol>
-        <div class="notice notice--warn" role="note"><Icon name="warn" /><div><strong>{d.warnTitle}</strong>{d.warnText}</div></div>
+        <p class="after">{d.after}</p>
+        <div class="notice notice--warn" role="note"><Icon name="warn" /><div><strong>{d.warnTitle}</strong> <span>{d.warnText}</span></div></div>
         {tut && tutSources.length > 0 && (
           <figure class="tut">
             <video controls preload="none" playsinline data-lazy-poster={tut.poster.webp || tut.poster.jpg} aria-label={tut.alt[lang] || tut.alt.en}>
               {tutSources.map((v) => v && <source src={v.src} type={v.type} />)}
               {tut.tracks.map((tr) => <track kind="subtitles" src={tr.src} srclang={tr.srclang} label={tr.label} />)}
             </video>
-            <figcaption>{t(lang).demo.label}</figcaption>
+            <figcaption>{d.videoCaption}</figcaption>
           </figure>
         )}
       </div>
@@ -69,8 +70,10 @@ const tutSources = tut ? ["video/webm", "video/mp4"].map((ty) => tut.video.filte
   .p { color: var(--cyan); user-select: none; }
   .bn { font-size: .9rem; color: var(--text-3); }
   .sub { font-size: 1.15rem; margin-top: .6rem; }
-  .ol { margin: 0; padding-left: 1.3rem; display: grid; gap: .45rem; color: var(--text-2); }
+  .ol { margin: 0; padding-left: 1.5rem; display: grid; gap: .6rem; color: var(--text-2); }
   .ol li::marker { color: var(--cyan); font-family: var(--f-mono); }
+  .ol li { padding-left: .25rem; line-height: 1.55; }
+  .after { color: var(--text-2); margin-top: -.2rem; }
   .tut { margin: .6rem 0 0; display: grid; gap: .6rem; }
   .tut video { width: 100%; aspect-ratio: 16 / 9; border-radius: var(--r-md); border: 1px solid var(--line-2); background: #000; }
   .tut figcaption { font-size: .82rem; color: var(--text-3); }

@@ -15,7 +15,7 @@ const icons = ["server", "chip", "phone", "chat"];
     <ol class="steps">
       {d.steps.map((s, i) => (
         <li class="step reveal">
-          <span class="num">{String(i + 1).padStart(2, "0")}</span>
+          <span class="num" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
           <Icon name={icons[i]} class="ic" />
           <h3>{s.title}</h3>
           <p>{s.text}</p>
