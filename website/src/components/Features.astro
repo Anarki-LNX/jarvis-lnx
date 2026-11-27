@@ -32,7 +32,7 @@ const icons: Record<string, string> = { assistant: "user", talk: "chat", local: 
       <article class={`card b-secure reveal ${has("app-confirmation-card") ? "has-img" : ""}`}>
         <div class="txt">
           <Icon name={icons.secure} class="fi" /><h3>{f.secure.title}</h3><p>{f.secure.text}</p>
-          <ol class="steps">{f.secure.steps.map((s, i) => <li><span>{i + 1}</span>{s}</li>)}</ol>
+          <ol class="steps">{f.secure.steps.map((s, i) => <li><span aria-hidden="true">{i + 1}</span> {s}</li>)}</ol>
         </div>
         <Shot id="app-confirmation-card" lang={lang} alt={d.shots.card} class="phone" />
       </article>

@@ -17,9 +17,9 @@ const reducedRun = process.argv.includes("--reduced");
 const PORT = 4499, CDP = 9400 + Math.floor(Math.random() * 300), ORIGIN = `http://127.0.0.1:${PORT}`;
 const pages = ["/", "/en/", "/en/?orb=webgl", "/de/", "/en/privacy/", "/de/datenschutz/", "/does-not-exist"];
 const viewports = [
-  ["desktop", 1440, 900, 1, false], ["laptop", 1280, 720, 1, false],
-  ["tablet-p", 820, 1180, 2, true], ["tablet-l", 1180, 820, 2, true],
-  ["phone-p", 390, 844, 3, true], ["phone-l", 844, 390, 3, true], ["phone-s", 320, 640, 2, true],
+  ["w1920", 1920, 1080, 1, false], ["w1440", 1440, 900, 1, false], ["w1024", 1024, 768, 2, true],
+  ["w768", 768, 1024, 2, true], ["w430", 430, 932, 3, true], ["w390", 390, 844, 3, true], ["w360", 360, 740, 3, true],
+  ["phone-l", 844, 390, 3, true],
 ];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const killTimer = setTimeout(() => { console.error("Zeitdeckel erreicht"); cleanup(); process.exit(2); }, 8 * 60 * 1000);
@@ -56,14 +56,14 @@ try {
   await send("Runtime.enable"); await send("Log.enable"); await send("Network.enable"); await send("Page.enable");
   await send("Browser.setPermission", { permission: { name: "microphone" }, setting: "denied" }).catch(() => {});
 
-  const vps = full ? viewports : viewports.filter((v) => ["desktop", "tablet-p", "phone-p"].includes(v[0]));
+  const vps = full ? viewports : viewports.filter((v) => ["w1440", "w768", "w390"].includes(v[0]));
   for (const [vname, w, h, dpr, mobile] of vps) {
     await send("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: dpr, mobile });
     await send("Emulation.setTouchEmulationEnabled", { enabled: mobile, maxTouchPoints: mobile ? 5 : 1 });
     await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: reducedRun ? "reduce" : "no-preference" }] });
     for (const page of pages) {
-      if (!full && vname !== "desktop" && !["/en/", "/de/"].includes(page)) continue;
-      if (page.includes("?orb=") && vname !== "desktop" && vname !== "phone-p") continue;
+      if (!full && vname !== "w1440" && !["/en/", "/de/"].includes(page)) continue;
+      if (page.includes("?orb=") && vname !== "w1440" && vname !== "w390") continue;
       events.length = 0;
       await send("Runtime.evaluate", { expression: "try{localStorage.clear()}catch(e){}" }).catch(() => {});
       await send("Page.navigate", { url: ORIGIN + page });
@@ -71,6 +71,7 @@ try {
       // langsam durchscrollen, damit Reveal/Lazy-Load/Videos auslösen
       const r = await send("Runtime.evaluate", { returnByValue: true, awaitPromise: true, expression: `(async () => {
         const H = document.documentElement.scrollHeight; for (let y = 0; y < H; y += innerHeight * .8) { scrollTo({ top: y, behavior: "instant" }); await new Promise(r => setTimeout(r, 120)); }
+        await new Promise(r => setTimeout(r, 400));
         const notRevealed = [...document.querySelectorAll(".reveal:not(.is-in)")].map(e => (e.closest("section")?.id || "?") + ">" + e.className).slice(0, 6);
         scrollTo(0, 0); await new Promise(r => setTimeout(r, 500));
         const sw = document.documentElement.scrollWidth, iw = innerWidth;
@@ -101,7 +102,7 @@ try {
         }
         if (e.method === "Network.responseReceived" && e.params.response.status >= 400 && page !== "/does-not-exist") problems.push(`${tag}: HTTP ${e.params.response.status} ${e.params.response.url}`);
       }
-      if (["/en/", "/de/"].includes(page) && ["desktop", "phone-p"].includes(vname) && !reducedRun) {
+      if (["/en/", "/de/"].includes(page) && ["w1440", "w390"].includes(vname) && !reducedRun) {
         const d = await send("Runtime.evaluate", { returnByValue: true, awaitPromise: true, expression: `(async () => {
           const wait = (ms) => new Promise(r => setTimeout(r, ms)); const res = {};
           document.getElementById("demo").scrollIntoView(); await wait(2500);
@@ -121,7 +122,7 @@ try {
         if (x.sound && (x.sound.muted || x.sound.t <= 0 || !x.sound.tracks)) problems.push(`${vname} ${page}: Ton-Fassung fehlerhaft (${JSON.stringify(x.sound)})`);
         if (x.phoneClick && (x.phoneClick.err || x.phoneClick.t <= 0)) problems.push(`${vname} ${page}: Szene startet nicht (${JSON.stringify(x.phoneClick)})`);
       }
-      if (page === "/en/" && vname === "phone-p") {
+      if (page === "/en/" && vname === "w390") {
         const m = await send("Runtime.evaluate", { returnByValue: true, awaitPromise: true, expression: `(async () => {
           const wait = (ms) => new Promise(r => setTimeout(r, ms)); const b = document.querySelector("[data-menu-open]"), sh = document.querySelector("[data-menu]");
           b.click(); await wait(200);

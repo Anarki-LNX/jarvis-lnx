@@ -200,8 +200,9 @@ if (demo) {
     const btn = (a: string) => ctrl.querySelector<HTMLButtonElement>(`[data-act="${a}"]`)!;
     const play = btn("play"), sound = btn("sound"), cc = btn("cc"), bar = ctrl.querySelector<HTMLElement>("[data-progress]")!;
     const desc = panel.querySelector<HTMLElement>("p[data-desc]");
+    const cur = panel.querySelector<HTMLElement>("[data-cur]");
     const scenes = Array.from(panel.querySelectorAll<HTMLButtonElement>("[data-scene]"));
-    const reducedNote = panel.querySelector<HTMLElement>("[data-reduced]");
+    const reducedNote = demo.querySelector<HTMLElement>("[data-reduced]");
     let clip: Clip | null = null, withSound = false, userPaused = false, inView = false, ccTrack = -1;
 
     const pageLang = root.lang;
@@ -266,6 +267,7 @@ if (demo) {
       scenes.forEach((o) => o.setAttribute("aria-pressed", String(o === s)));
       const c = JSON.parse(s.dataset.scene!) as Clip;
       if (desc) desc.textContent = s.dataset.desc || desc.textContent;
+      if (cur) cur.textContent = s.dataset.title || cur.textContent;
       userPaused = false;
       load(c, false, true); // ausdrücklicher Klick = Abspielwunsch
     }));

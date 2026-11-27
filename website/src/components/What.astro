@@ -10,27 +10,27 @@ const n = d.nodes;
   <div class="wrap">
     <div class="head reveal">
       <p class="kicker">{d.kicker}</p>
-      <h2 id="what-title">{d.title}</h2>
+      <h2 id="what-title" class="lines">{d.title.split(/(?<=\.)\s+/).map((l, i) => <>{i > 0 && " "}<span>{l}</span></>)}</h2>
       <p class="lead">{d.text}</p>
     </div>
     <figure class="arch reveal" aria-labelledby="arch-cap">
       <figcaption id="arch-cap"><span class="arch__t">{d.archTitle}</span><span class="sr-only"> – {d.archDesc}</span></figcaption>
       <div class="arch__grid" aria-hidden="true">
-        <div class="node node--client"><Icon name="phone" /><strong>{n.client[0]}</strong><span>{n.client[1]}</span></div>
+        <div class="node node--client"><Icon name="phone" /><p class="lbl">{n.client[0]}</p> <p class="val">{n.client[1]}</p></div>
         <div class="link link--a"><i></i></div>
         <div class="node node--server">
-          <div class="node__head"><Icon name="server" /><strong>{n.server[0]}</strong><span>{n.server[1]}</span></div>
+          <div class="node__head"><Icon name="server" /><p class="lbl">{n.server[0]}</p> <p class="val">{n.server[1]}</p></div>
           <div class="sub">
-            <div><Icon name="mic" /><b>{n.stt[0]}</b><small>{n.stt[1]}</small></div>
-            <div><Icon name="chip" /><b>{n.agent[0]}</b><small>{n.agent[1]}</small></div>
-            <div><Icon name="sound" /><b>{n.tts[0]}</b><small>{n.tts[1]}</small></div>
+            <div><Icon name="mic" /><p class="lbl">{n.stt[0]}</p> <p class="val">{n.stt[1]}</p></div>
+            <div><Icon name="chip" /><p class="lbl">{n.agent[0]}</p> <p class="val">{n.agent[1]}</p></div>
+            <div><Icon name="sound" /><p class="lbl">{n.tts[0]}</p> <p class="val">{n.tts[1]}</p></div>
           </div>
         </div>
         <div class="link link--b"><i></i></div>
         <div class="outs">
-          <div class="node node--local"><Icon name="chip" /><strong>{n.llm[0]}</strong><span>{n.llm[1]}</span></div>
-          <div class="node node--opt"><Icon name="cloud" /><strong>{n.cloud[0]}</strong><span>{n.cloud[1]}</span></div>
-          <div class="node node--opt"><Icon name="home" /><strong>{n.home[0]}</strong><span>{n.home[1]}</span></div>
+          <div class="node node--local"><Icon name="chip" /><p class="lbl">{n.llm[0]}</p> <p class="val">{n.llm[1]}</p></div>
+          <div class="node node--opt"><Icon name="cloud" /><p class="lbl">{n.cloud[0]}</p> <p class="val">{n.cloud[1]}</p></div>
+          <div class="node node--opt"><Icon name="home" /><p class="lbl">{n.home[0]}</p> <p class="val">{n.home[1]}</p></div>
         </div>
       </div>
       <ul class="arch__legend">
@@ -42,21 +42,22 @@ const n = d.nodes;
 </section>
 
 <style>
+  .lines span { display: block; }
   .arch { margin: 0; padding: clamp(1.2rem, 3vw, 2.5rem); border: 1px solid var(--line); border-radius: var(--r-lg);
     background: radial-gradient(800px 300px at 50% 0, rgba(56, 217, 255, .06), transparent 70%), var(--ink-1); }
   .arch__t { display: block; font: 500 .78rem/1 var(--f-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); margin-bottom: 1.6rem; }
-  .arch__grid { display: grid; grid-template-columns: minmax(0, .8fr) 48px minmax(0, 1.5fr) 48px minmax(0, 1fr); align-items: center; }
+  .arch__grid { display: grid; grid-template-columns: minmax(0, .8fr) 40px minmax(0, 1.75fr) 40px minmax(0, 1fr); align-items: center; }
   .node { position: relative; display: grid; gap: .3rem; padding: 1.1rem 1.15rem; border-radius: var(--r-md); border: 1px solid var(--line-2); background: rgba(255,255,255,.03); }
   .node :global(svg) { width: 22px; height: 22px; color: var(--cyan); margin-bottom: .3rem; }
-  .node strong { font: 600 1.02rem/1.25 var(--f-display); }
-  .node span { font-size: .88rem; color: var(--text-2); line-height: 1.45; }
+  .node .lbl { margin: 0; font: 600 1.02rem/1.25 var(--f-display); color: var(--text); text-wrap: balance; }
+  .node .val { margin: .1rem 0 0; font-size: .88rem; color: var(--text-2); line-height: 1.5; }
   .node--server { border-color: rgba(56, 217, 255, .4); background: linear-gradient(180deg, rgba(56, 217, 255, .08), rgba(56, 217, 255, .02)); box-shadow: 0 0 60px rgba(56, 217, 255, .08); gap: 1rem; }
   .node__head { display: grid; gap: .3rem; }
-  .sub { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; }
-  .sub > div { display: grid; gap: .2rem; padding: .8rem; border-radius: var(--r-sm); border: 1px solid var(--line); background: rgba(5, 6, 10, .5); }
+  .sub { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: .6rem; }
+  .sub > div { display: grid; align-content: start; gap: .15rem; padding: .85rem .9rem; border-radius: var(--r-sm); border: 1px solid var(--line); background: rgba(5, 6, 10, .5); }
   .sub :global(svg) { width: 18px; height: 18px; color: var(--mint); margin: 0 0 .2rem; }
-  .sub b { font-size: .86rem; font-weight: 600; }
-  .sub small { font-size: .76rem; color: var(--text-3); line-height: 1.4; }
+  .sub .lbl { hyphens: auto; -webkit-hyphens: auto; margin: 0; font: 600 .9rem/1.3 var(--f-text); color: var(--text); }
+  .sub .val { margin: .15rem 0 0; font-size: .8rem; color: var(--text-2); line-height: 1.45; }
   .outs { display: grid; gap: .7rem; }
   .node--local { border-color: rgba(78, 230, 168, .4); }
   .node--local :global(svg) { color: var(--mint); }
