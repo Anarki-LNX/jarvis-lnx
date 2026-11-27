@@ -1,4 +1,4 @@
-# Eigene Stimme für NuOrb – Vorbereitung (Stand 2026-11-24)
+# Eigene Stimme für NuOrb: Vorbereitung (Stand 2026-11-24)
 
 Status: vorbereitet, **noch nichts installiert oder trainiert**.
 - Das früher genutzte Projekt ist nicht erreichbar (liegt auf einem entfernten PC).
@@ -20,7 +20,7 @@ Status: vorbereitet, **noch nichts installiert oder trainiert**.
 | `export-22050/` | entsteht beim Export: `wavs/`, `metadata.csv` (`id|text`, Piper/LJSpeech), `liste.txt` (`wavs/id.wav|text`) |
 
 **Satzquelle:** Common Voice Deutsch, `sentence-collector.txt` + `wiki.de.rerun-2022-08.txt` (CC0) und eigene Sätze (CC0).
-- **Filter:** 5–14 Wörter, keine Ziffern und Abkürzungen, nur Wörter, die im Korpus mindestens 3× vorkommen (keine exotischen Eigennamen), keine heiklen Themen.
+- **Filter:** 5-14 Wörter, keine Ziffern und Abkürzungen, nur Wörter, die im Korpus mindestens 3× vorkommen (keine exotischen Eigennamen), keine heiklen Themen.
 - **Auswahl:** gierig nach Phonem- und Diphon-Abdeckung. 1018/1018 Diphone des Pools sind abgedeckt, ~10 % sind Fragen.
 
 ## Aufnehmen
@@ -42,7 +42,7 @@ cd voice && python3 aufnahme.py
 - **Mikrofon:**
   - Am besten USB- oder XLR-Mikro bzw. Headset-Mikro; das Kameramikro der Webcam reicht nicht.
   - Immer **dasselbe Mikro, gleiche Position**, alle Sitzungen.
-- **Abstand:** 15–25 cm, leicht seitlich am Mund vorbei (gegen Plopp-Laute). Mit Popschutz, wenn vorhanden.
+- **Abstand:** 15-25 cm, leicht seitlich am Mund vorbei (gegen Plopp-Laute). Mit Popschutz, wenn vorhanden.
 - **Pegel:** Sprachspitzen bei −12 bis −6 dBFS (gelber Bereich nur kurz streifen, nie rot).
   - Pegel in den System-Toneinstellungen (pavucontrol) einstellen, nicht während der Aufnahmen ändern.
   - **Rauschunterdrückung, AGC und Effekte aus.**
@@ -57,7 +57,7 @@ cd voice && python3 aufnahme.py
   - Versprecher → einfach neu aufnehmen.
   - Satzzeichen ernst nehmen: Fragen als Fragen, Ausrufe mit etwas Energie.
 - **Sitzungen:**
-  - 20–30 min am Stück, dann Pause und Wasser trinken.
+  - 20-30 min am Stück, dann Pause und Wasser trinken.
   - Nicht verschnupft oder heiser aufnehmen.
   - Lieber 3 Tage à 20 min als 1 Tag à 60 min.
 
@@ -65,8 +65,8 @@ cd voice && python3 aufnahme.py
 
 | Verfahren | Benötigt | Sätze |
 |---|---|---|
-| Piper-Fine-Tune (thorsten als Basis) | brauchbar ab ~20 min, gut ab 45–60 min | 300 / 650–850 |
-| **Kokoro-Fine-Tune** (HUI-Basis) | Vorbilder: 455–627 Clips (~0,5–1 h) | **600–1000** |
+| Piper-Fine-Tune (thorsten als Basis) | brauchbar ab ~20 min, gut ab 45-60 min | 300 / 650-850 |
+| **Kokoro-Fine-Tune** (HUI-Basis) | Vorbilder: 455-627 Clips (~0,5-1 h) | **600-1000** |
 | IMS-Toucan | laut Paper ab ~30 min | 400+ |
 
 **Ziel also: mindestens 600, besser alle 1000 Sätze.**
@@ -82,7 +82,7 @@ python3 frei-verarbeiten.py pruefe        # Feedback zur neuesten Aufnahme: Pege
 ```
 
 ```bash
-python3 frei-verarbeiten.py alles         # an Pausen in 3–12-s-Clips schneiden + auf dem Server transkribieren
+python3 frei-verarbeiten.py alles         # an Pausen in 3-12-s-Clips schneiden + auf dem Server transkribieren
 ```
 
 ```bash
@@ -95,10 +95,10 @@ Was dabei passiert:
   - 0,2 s Rand bleibt dran, nichts wird über 12 s lang.
   - Hat ein Stück über 12 s gar keine Pause, wird es an der leisesten Stelle geteilt. Der Clip bekommt `_h` im Namen und landet nicht im Export.
 - **Transkription:**
-  - Mit Parakeet (sherpa-onnx), dem Modell, das auf dem Server schon läuft. Nur CPU, ~0,1–0,3 × Echtzeit.
+  - Mit Parakeet (sherpa-onnx), dem Modell, das auf dem Server schon läuft. Nur CPU, ~0,1-0,3 × Echtzeit.
   - Das Audio geht nur ins LAN und wird auf dem Server danach sofort gelöscht.
   - Clips mit Auffälligkeiten (harter Schnitt, kein Text, unplausibles Tempo, Ende evtl. abgeschnitten) kommen nach `frei-clips/transkript-ausgeschlossen.tsv`.
-- **Wichtig – einmal durchlesen:** Der Text in `frei-clips/transkript.tsv` muss **exakt** dem Gesagten entsprechen.
+- **Wichtig, einmal durchlesen:** Der Text in `frei-clips/transkript.tsv` muss **exakt** dem Gesagten entsprechen.
   - Parakeet lässt „äh“ und Wiederholungen meist weg und schreibt Zahlen als Ziffern („14.30 Uhr“, „Dr.“).
   - Solche Zeilen korrigieren (Zahlen ausschreiben) oder löschen. Ein Clip mit „äh“ im Ton und ohne „äh“ im Text lehrt das Modell Unsinn.
 - **Getestet** mit synthetischer Probe: 58 s Audio ergaben 8 Clips, alle Sätze korrekt erkannt.
@@ -107,33 +107,33 @@ Was dabei passiert:
 
 **Nutzbare** Minuten sind die nach dem Schneiden, Aussortieren und Korrigieren.
 
-- **Freies Erzählen:** Erfahrungsgemäß bleiben **60–75 %** übrig. Abzüge sind Pausen, Füllwörter, abgebrochene Sätze und Lachen. 10 min Erzählen ergeben also ~6–7 min Trainingsmaterial.
+- **Freies Erzählen:** Erfahrungsgemäß bleiben **60-75 %** übrig. Abzüge sind Pausen, Füllwörter, abgebrochene Sätze und Lachen. 10 min Erzählen ergeben also ~6-7 min Trainingsmaterial.
 - **Vorlesen:** Es bleiben ~90 % übrig.
 
 | Ziel | Piper-Fine-Tune (thorsten-Basis) | Kokoro-Fine-Tune (HUI-Basis) |
 |---|---|---|
-| erkennbar „du“, aber mit Artefakten | ~15–20 min nutzbar | ~20–30 min (unbestätigt) |
-| **gut für den Alltag** | **~45–60 min** nutzbar | **~45–60 min** (Vorbilder: 455–627 Clips) |
+| erkennbar „du“, aber mit Artefakten | ~15-20 min nutzbar | ~20-30 min (unbestätigt) |
+| **gut für den Alltag** | **~45-60 min** nutzbar | **~45-60 min** (Vorbilder: 455-627 Clips) |
 | sehr gut | 2 h + | 2 h + |
 
 Alle Werte sind Erfahrungswerte aus der Community, keine Herstellerangaben.
 
 **Umgerechnet auf freies Erzählen:**
-- „gut“ braucht etwa **70–90 min Rohaufnahme**.
-- Sitzungen von 1 min reichen also nicht weit; 5–15 min am Stück sind praktischer.
-- **Empfehlung:** freies Erzählen (natürliche Sprechmelodie, ideal für einen Gesprächs-Assistenten) **plus 300–500 gelesene Sätze** aus `saetze.tsv`.
+- „gut“ braucht etwa **70-90 min Rohaufnahme**.
+- Sitzungen von 1 min reichen also nicht weit; 5-15 min am Stück sind praktischer.
+- **Empfehlung:** freies Erzählen (natürliche Sprechmelodie, ideal für einen Gesprächs-Assistenten) **plus 300-500 gelesene Sätze** aus `saetze.tsv`.
   - Die decken die Laute und Zahlen/Uhrzeiten systematisch ab, die beim freien Reden zufällig fehlen.
   - 500 Sätze sind ~36 min, davon ~32 min nutzbar.
 
-**Zero-Shot-Klon als Brücke:** Klont aus 5–15 s Referenz sofort, ohne Training.
+**Zero-Shot-Klon als Brücke:** Klont aus 5-15 s Referenz sofort, ohne Training.
 
 | | F5-TTS German (HPI) | Qwen3-TTS |
 |---|---|---|
 | Lizenz | Code MIT, **Gewichte CC-BY-NC-4.0** (privat ok, nicht kommerziell) | Apache-2.0 |
-| braucht | 5–15 s saubere Referenz | 3–10 s Referenz |
+| braucht | 5-15 s saubere Referenz | 3-10 s Referenz |
 | läuft auf | **nur GPU** | **nur GPU** |
-| Downloads | PyTorch-ROCm (~4–6 GB) + Modell ~1,3 GB (unbestätigt) | PyTorch-ROCm + Modell ~1,5–4 GB (unbestätigt) |
-| VRAM | ~2–4 GB (unbestätigt): neben Gemma (3,1 GiB frei) zu knapp, Ruckelgefahr → **nur im Modus Remote** | ähnlich |
+| Downloads | PyTorch-ROCm (~4-6 GB) + Modell ~1,3 GB (unbestätigt) | PyTorch-ROCm + Modell ~1,5-4 GB (unbestätigt) |
+| VRAM | ~2-4 GB (unbestätigt): neben Gemma (3,1 GiB frei) zu knapp, Ruckelgefahr → **nur im Modus Remote** | ähnlich |
 
 **Lohnt sich die Brücke? Ehrlich gesagt nur begrenzt.**
 - **Ja, als Hörprobe:** Schon nach der ersten Aufnahme hört man, wie „NuOrb mit deiner Stimme“ klingen könnte. Kostet einen Abend Einrichtung plus ~6 GB Download.
@@ -172,15 +172,15 @@ Training auf der PC-GPU, danach spricht das Modell **Text in der Stimme des Nutz
 
 | Kandidat | Lizenz Code / Gewichte | Training (Daten / VRAM / ROCm) | Ausgabe auf dem Server-CPU | Deutsch |
 |---|---|---|---|---|
-| **Piper-Fine-Tune** (piper1-gpl, Basis thorsten medium) | GPL-3.0 / thorsten CC0 (Checkpoints MIT-getaggt) | `wav\|Text`, 22050 Hz. Bei < 5 h laut Doku ~2000 Epochen. Ab ~8 GB VRAM (Batch 16–64). AMD: „Erfolg mit RX 7600“ gemeldet. | **Ja**, ONNX eingebaut. Gemessen thorsten medium: RTF 0,08, ~45 ms bis Audio. Läuft heute schon in Hermes. | gut verständlich, Prosodie eher flach |
-| **Kokoro-82M-Fine-Tune** (StyleTTS2-Familie, Rezept kikiri-tts, Basis „kokoro-deutsch-hui-base“) | Apache-2.0 / Apache-2.0, HUI-Basis CC0 | Zwei StyleTTS2-Stufen (Akustik, dann GAN + WavLM). Beispielstimmen mit nur **455–627 Clips** (~0,5–1 h). VRAM „10 GB+“, Batch 4 auf 12 GB. ROCm laut kikiri **nur fp32**, fp16 hängt; erste MIOpen-Kompilierung 10–30 min. | **wahrscheinlich ja**: „Echtzeit oder schneller“ laut Modellkarte, Fremd-Benchmark ONNX RTF ~0,64. Auf dem Server noch zu messen. ONNX-Export des deutschen Fine-Tunes unbestätigt. | **natürlicher als Piper** (Thorsten-Kokoro) |
+| **Piper-Fine-Tune** (piper1-gpl, Basis thorsten medium) | GPL-3.0 / thorsten CC0 (Checkpoints MIT-getaggt) | `wav\|Text`, 22050 Hz. Bei < 5 h laut Doku ~2000 Epochen. Ab ~8 GB VRAM (Batch 16-64). AMD: „Erfolg mit RX 7600“ gemeldet. | **Ja**, ONNX eingebaut. Gemessen thorsten medium: RTF 0,08, ~45 ms bis Audio. Läuft heute schon in Hermes. | gut verständlich, Prosodie eher flach |
+| **Kokoro-82M-Fine-Tune** (StyleTTS2-Familie, Rezept kikiri-tts, Basis „kokoro-deutsch-hui-base“) | Apache-2.0 / Apache-2.0, HUI-Basis CC0 | Zwei StyleTTS2-Stufen (Akustik, dann GAN + WavLM). Beispielstimmen mit nur **455-627 Clips** (~0,5-1 h). VRAM „10 GB+“, Batch 4 auf 12 GB. ROCm laut kikiri **nur fp32**, fp16 hängt; erste MIOpen-Kompilierung 10-30 min. | **wahrscheinlich ja**: „Echtzeit oder schneller“ laut Modellkarte, Fremd-Benchmark ONNX RTF ~0,64. Auf dem Server noch zu messen. ONNX-Export des deutschen Fine-Tunes unbestätigt. | **natürlicher als Piper** (Thorsten-Kokoro) |
 | **StyleTTS2** pur (Columbia) | MIT / Pretrained mit Auflage: Hörer informieren, dass die Stimme synthetisch ist (außer mit Zustimmung des Sprechers) | Fine-Tune ~1 h Daten, Beispiel 4 h auf 4× A100. Deutsch nur über multilingualen PL-BERT oder Umbau. | ja, aber Diffusion in PyTorch, langsamer als Kokoro | kein fertiges deutsches Modell. **Kokoro ist der praktische deutsche StyleTTS2-Weg** |
 | **IMS-Toucan** (Uni Stuttgart) | Apache-2.0 / Apache-2.0 | `--finetune` vorhanden. Paper: 30 min reichen für neuen Sprecher und neue Sprache. VRAM, ROCm und Zeit nicht dokumentiert. Seit v3.0 (2024) kein neues Release. | laut README „keine GPU nötig“, RTF unbestätigt | ja (Mehrsprachen-Modell), Qualität gegenüber Kokoro unbekannt |
-| F5-TTS German (HPI) | MIT / **CC-BY-NC-4.0** | Zero-Shot ab 5–15 s | **nein**, GPU | gut |
+| F5-TTS German (HPI) | MIT / **CC-BY-NC-4.0** | Zero-Shot ab 5-15 s | **nein**, GPU | gut |
 | IndexTTS 2.5 German | bilibili-Lizenz (Schwellen, kommerziell nur auf Anfrage) | LoRA, 0,8 B Parameter | **nein**, GPU | gut (WER 5,35 %) |
 | MiraToffel (miraTTS DE) | / **CC-BY-NC-SA-4.0**, gated | 0,5 B Parameter | **nein**, GPU | ja, 48 kHz |
 | Kartoffelbox (Chatterbox DE) | MIT / MIT | 0,5 B Parameter | CPU-Fallback, aber nicht echtzeitfähig (vermutet) | ja |
-| Qwen3-TTS | Apache-2.0 / Apache-2.0 | Klon aus 3–10 s | **nein**, GPU, Streaming ~100 ms | offiziell |
+| Qwen3-TTS | Apache-2.0 / Apache-2.0 | Klon aus 3-10 s | **nein**, GPU, Streaming ~100 ms | offiziell |
 
 - **Fallen raus,** weil sie nur mit GPU sprechen: F5, IndexTTS, MiraToffel, Kartoffelbox, Qwen3-TTS.
 - **Bleibt Reserve:** Qwen3-TTS, nur für den Fall, dass die CPU-Stimmen hörbar deutlich schlechter klingen.
@@ -195,7 +195,7 @@ Beide Wege bauen auf denselben Aufnahmen auf und enden mit einer Stimme, die auf
 1. **Hauptweg: Kokoro-Fine-Tune** (StyleTTS2-Familie, passt zur Erinnerung „StyleTTS2“)
    - Klingt natürlicher als Piper.
    - Komplett Apache/CC0.
-   - Datenmenge passt: Die Vorbilder kamen mit 455–627 Clips aus, das sind ~0,5–1 h. **Also 600–1000 Sätze aufnehmen.**
+   - Datenmenge passt: Die Vorbilder kamen mit 455-627 Clips aus, das sind ~0,5-1 h. **Also 600-1000 Sätze aufnehmen.**
 2. **Sicherheitsnetz: Piper-Fine-Tune** (thorsten medium als Basis)
    - Dieselben Aufnahmen, Export auf 22050 Hz.
    - Am besten dokumentiert, Hermes kann es sofort (`tts.piper.voice`).
@@ -216,8 +216,8 @@ Gemma belegt mit dem Desktop bis 12,9 GiB, frei bleiben ~3,1 GiB.
 
 | Bedarf | VRAM | passt neben Gemma? |
 |---|---|---|
-| Piper-Training (Batch 16–32) | ~8–10 GB | **nein** |
-| Kokoro-Training (fp32, Batch 2–4) | ~10–12 GB | **nein** |
+| Piper-Training (Batch 16-32) | ~8-10 GB | **nein** |
+| Kokoro-Training (fp32, Batch 2-4) | ~10-12 GB | **nein** |
 | Ausgabe Piper / Kokoro | 0 (läuft auf dem Server-CPU) | egal |
 
 **Training also nur im Wechselbetrieb, Ablauf:**
@@ -225,14 +225,14 @@ Gemma belegt mit dem Desktop bis 12,9 GiB, frei bleiben ~3,1 GiB.
 2. **Gehirn-Modus auf „Remote“.**
    - Das macht der Nutzer selbst (Admin-Panel oder Handy) oder es geschieht mit seiner Zustimmung über das NuOrb-Admin-Panel (`/internal/brain`).
    - Gemma wird dabei sofort aus dem PC-VRAM entladen. NuOrb antwortet in der Zeit über Claude.
-3. **Mit `rocm-smi --showmeminfo vram` prüfen,** dass das VRAM frei ist (nur noch der Desktop belegt ~1–2 GiB). Sonst nicht starten.
+3. **Mit `rocm-smi --showmeminfo vram` prüfen,** dass das VRAM frei ist (nur noch der Desktop belegt ~1-2 GiB). Sonst nicht starten.
 4. **Training mit VRAM-Deckel 0,75** (Details siehe unten).
 5. **Danach den Modus zurück auf die vorherige Wahl des Nutzers stellen.** Diese Wahl wird in Schritt 2 notiert.
 
 - **VRAM-Deckel für das Training:**
   - Im Trainingsskript `torch.cuda.set_per_process_memory_fraction(0.75)` (≈ 12 GiB).
-  - So bleiben ≥ 3–4 GiB für Desktop und Compositor.
-  - Batch-Größe so wählen, dass das reicht (Piper 16, Kokoro 2–4).
+  - So bleiben ≥ 3-4 GiB für Desktop und Compositor.
+  - Batch-Größe so wählen, dass das reicht (Piper 16, Kokoro 2-4).
 - **Zeitfenster:** abends, nachts oder während der Nutzer weg ist. Volle GPU-Rechenlast lässt den Desktop auch bei freiem VRAM etwas zäher reagieren.
 - **Checkpoints alle ~30 min:**
   - Das Training lässt sich jederzeit stoppen (Gemma wieder laden) und später fortsetzen.
@@ -243,13 +243,13 @@ Gemma belegt mit dem Desktop bis 12,9 GiB, frei bleiben ~3,1 GiB.
 
 ## Nächste Schritte nach Rückkehr (je mit Zustimmung und Größenangabe)
 
-1. **Aufnehmen.** Zuerst 10 Sätze zum Pegel-Check, dann Sitzungen à 20–30 min bis 600–1000 Sätze.
-2. **PyTorch-ROCm-Umgebung auf dem PC** (~4–6 GB Download). Kurztest auf der GPU, ob fp32-Training stabil läuft.
+1. **Aufnehmen.** Zuerst 10 Sätze zum Pegel-Check, dann Sitzungen à 20-30 min bis 600-1000 Sätze.
+2. **PyTorch-ROCm-Umgebung auf dem PC** (~4-6 GB Download). Kurztest auf der GPU, ob fp32-Training stabil läuft.
 3. **Piper-Fine-Tune.**
    - Download: thorsten-medium-Checkpoint (~800 MB, unbestätigt).
    - Erst ein kurzer Probelauf, dann über Nacht.
 4. **Kokoro-Fine-Tune** über kikiri-tts.
-   - Download: Repo, Kokoro-82M, HUI-Basis, WavLM, zusammen grob 2–3 GB (unbestätigt, wird vorher genau geprüft).
+   - Download: Repo, Kokoro-82M, HUI-Basis, WavLM, zusammen grob 2-3 GB (unbestätigt, wird vorher genau geprüft).
 5. **Auf dem Server messen und Hörtest,** dann in Hermes eintragen.
    - Piper: `tts.piper.voice`.
    - Kokoro: über einen kleinen lokalen TTS-Dienst wie beim STT-Router (Hermes-Anbindung prüfen).

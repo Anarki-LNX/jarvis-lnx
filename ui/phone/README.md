@@ -25,12 +25,12 @@ cage + WebKit (Kiosk)  ──▶  http://127.0.0.1:8765  nuorb-shell.py  (diese 
 
 | Methode | Pfad | Body | Antwort |
 |---|---|---|---|
-| GET | /device/status | – | `{battery:{percent,charging,status}, wifi:{enabled,connected,ssid,signal}, temp:{cpu_c,battery_c,warn}, brightness:{percent}, volume:{percent,muted}, screen:{on}}` (unbekannt = null) |
+| GET | /device/status | · | `{battery:{percent,charging,status}, wifi:{enabled,connected,ssid,signal}, temp:{cpu_c,battery_c,warn}, brightness:{percent}, volume:{percent,muted}, screen:{on}}` (unbekannt = null) |
 | POST | /device/wifi | `{on: bool}` | `{ok:true,…}` |
-| POST | /device/brightness | `{percent: 1–100}` | |
-| POST | /device/volume | `{percent: 0–100}` und/oder `{muted: bool}` | |
+| POST | /device/brightness | `{percent: 1-100}` | |
+| POST | /device/volume | `{percent: 0-100}` und/oder `{muted: bool}` | |
 | POST | /device/screen | `{on: bool}` | |
-| POST | /device/reboot, /device/poweroff | `{}` | `{ok:true, in_s:3}` – erst nach ~3 s ausführen |
+| POST | /device/reboot, /device/poweroff | `{}` | `{ok:true, in_s:3}`, erst nach ~3 s ausführen |
 
 Fehler: 4xx/5xx mit `{"detail": "<deutscher Text>"}`. `mock-device.py` ist eine Attrappe genau dieses Vertrags (Tests auf dem PC).
 
