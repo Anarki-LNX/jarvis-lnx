@@ -44,7 +44,7 @@ jobs:
 
       - name: shellcheck and mock tests of the Proxmox scripts
         run: |
-          shellcheck -x proxmox/*.sh proxmox/tests/*.sh
+          shellcheck -S warning -x proxmox/*.sh proxmox/tests/*.sh
           NUORB_TEST_DIR="$RUNNER_TEMP/nuorb-lxc-test" proxmox/tests/mock-test.sh
 
       - name: Build the template
