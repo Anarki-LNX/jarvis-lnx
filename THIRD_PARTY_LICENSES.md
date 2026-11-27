@@ -92,6 +92,27 @@ The NuOrb Android app and its "Hey NuOrb" wake-word models are not part of the s
 own licenses. The NuOrb server only passes wake-word files to the app if the operator puts them into
 `/opt/data/nuorb/wakeword/`.
 
+## 7. Proxmox LXC template
+
+Each release since 0.6.6 has a ready made container template, `nuorb-lxc-<version>-amd64.tar.zst`. It is a minimal
+Debian GNU/Linux 12 (bookworm) system with Docker, built by [`proxmox/build-template.sh`](proxmox/build-template.sh).
+The NuOrb image itself is not inside; the container downloads it at its first start, so sections 1 to 4 apply to it as
+usual.
+
+| Part | Version (0.6.6) | License | Notes |
+|---|---|---|---|
+| Debian 12 base system (203 packages, e.g. bash, coreutils, systemd, apt, git, GnuPG, OpenSSL, nano) | bookworm | mostly GPL/LGPL, plus BSD, MIT, Apache-2.0, Artistic, public domain | 142 of the packages contain GPL-licensed parts. License of each package: `/usr/share/doc/<package>/copyright` in the container, license texts in `/usr/share/common-licenses/`. |
+| Docker Engine, CLI and rootless extras (`docker-ce`, `docker-ce-cli`, `docker-ce-rootless-extras`) from Docker's Debian repository | 29.10.1 | Apache-2.0 | [moby/moby](https://github.com/moby/moby), [docker/cli](https://github.com/docker/cli) |
+| containerd (`containerd.io`) | 2.4.2 | Apache-2.0 | [containerd/containerd](https://github.com/containerd/containerd) |
+| Docker Compose and Buildx plugins | 5.8.1 / 0.39.1 | Apache-2.0 | [docker/compose](https://github.com/docker/compose), [docker/buildx](https://github.com/docker/buildx) |
+| NuOrb scripts in the template (`update`, `nuorb-setup-code`, `nuorb-reset-password`, `nuorb-firstboot`) | 0.6.6 | MIT | this repository, `proxmox/` |
+
+**Source code:** the exact package list with versions is attached to every release as
+`nuorb-lxc-<version>-amd64.packages.txt` (inside the container: `dpkg -l`). The source code of every Debian package at
+exactly these versions is available from the Debian archive at [snapshot.debian.org](https://snapshot.debian.org/) and
+with `apt-get source <package>=<version>`. The Docker packages are built from the tagged releases of the projects linked
+above. If you cannot get a source package this way, open an issue and we will provide it.
+
 ## Trademarks
 
 NuOrb is not affiliated with Nous Research, NVIDIA, Anthropic, Google, Home Assistant, ioBroker, GitHub or any other
