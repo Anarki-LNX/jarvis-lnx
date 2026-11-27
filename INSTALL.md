@@ -7,6 +7,27 @@
 NuOrb is a private voice assistant you run yourself: **one Docker container** on a home server, a Proxmox VM/LXC or
 your PC. Your phone (NuOrb app) or any browser in your home network talks to it.
 
+## Which way?
+
+| Way | For whom | How |
+|---|---|---|
+| **Installer** (Docker) | most people: any Linux machine, home server, VM or PC, amd64 or arm64 | one command, see below |
+| **Docker Compose** (manual) | people who manage their containers with Compose themselves | `compose.yaml` + `.env`, see section 6 |
+| **Proxmox LXC** | Proxmox VE users (amd64) who want NuOrb as its own container with `vzdump` backups | one command in the host shell or a ready-made template: **[docs/proxmox.md](docs/proxmox.md)** |
+
+### Proxmox LXC
+
+On a Proxmox VE host, run this in the **host** shell (node → *Shell*):
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/proxmox/nuorb-lxc.sh)"
+```
+
+A dialog asks for the settings (defaults: Debian 12, unprivileged, 4 cores, 6 GB RAM, 24 GB disk, DHCP on `vmbr0`),
+creates the container and shows the admin address and setup code at the end. Prefer a ready-made template? It is on
+the [release page](https://github.com/Anarki-LNX/nuorb/releases/latest). Everything else (template, update, backup,
+uninstall, troubleshooting): **[docs/proxmox.md](docs/proxmox.md)**. Sections 3 to 5 of this guide apply to the LXC as well.
+
 ## 1. Requirements
 
 | | Minimum |
@@ -17,7 +38,8 @@ your PC. Your phone (NuOrb app) or any browser in your home network talks to it.
 | Brain | an [Ollama](https://ollama.com) server or any OpenAI-compatible server (llama.cpp, vLLM, LM Studio) **or** an [Anthropic API key](https://console.anthropic.com) (Claude), or both |
 | Network | phone and server in the same home network, or connected by VPN (WireGuard, Tailscale) |
 
-Proxmox LXC: enable nesting and keyctl first. On the Proxmox host: `pct set <ID> -features nesting=1,keyctl=1`.
+Docker in your own Proxmox LXC: enable nesting and keyctl first. On the Proxmox host: `pct set <ID> -features nesting=1,keyctl=1`.
+Or skip that and use the ready-made [Proxmox LXC](docs/proxmox.md).
 
 ## 2. One-command install
 
