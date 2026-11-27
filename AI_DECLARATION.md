@@ -6,11 +6,11 @@ The maintainer is not a professional programmer. The maintainer decides what NuO
 
 | Area | AI involvement |
 |---|---|
-| Design (architecture, features, UX) | Pair – ideas and decisions by the maintainer, worked out together with AI |
+| Design (architecture, features, UX) | Pair: ideas and decisions by the maintainer, worked out together with AI |
 | Implementation (production code) | Generated |
-| Testing (end-to-end tests, test plans) | Generated – every release runs the end-to-end test suite before it is published |
+| Testing (end-to-end tests, test plans) | Generated: every release runs the end-to-end test suite before it is published |
 | Documentation (README, install guides, release notes) | Generated |
-| Review | Generated – human code reviews are very welcome, see [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Review | Generated: human code reviews are very welcome, see [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Deployment (Docker build, CI, installer) | Generated |
 
 Levels follow the common scheme *Hint / Assisted / Pair / Generated*.

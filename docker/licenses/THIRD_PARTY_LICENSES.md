@@ -1,4 +1,4 @@
-# NuOrb – third-party components and licenses
+# NuOrb: third-party components and licenses
 
 NuOrb's own code is under the [MIT license](LICENSE). NuOrb builds on many open-source projects and models; each keeps
 its own license. This file lists them for the repository and for the Docker image `ghcr.io/anarki-lnx/nuorb`.
@@ -22,9 +22,9 @@ legal advice. Corrections are welcome as an issue.
 | [python-zeroconf](https://github.com/python-zeroconf/python-zeroconf) (mDNS announcement) | 0.154.0 | LGPL-2.1-or-later | Unmodified, loaded as a separate Python package; you may replace it. |
 | [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) (Hermes) | 22.8 | LGPL-3.0-only | Unmodified, part of Hermes. |
 | Debian GNU/Linux 13 base system (277 packages, e.g. bash, coreutils, Python 3.13, OpenSSL) | trixie | mostly GPL/LGPL/BSD/MIT, see `/usr/share/doc/<package>/copyright` | Sources: <https://snapshot.debian.org> (exact package versions: `dpkg -l` in the container). |
-| [NVIDIA Parakeet-TDT-0.6B-v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3), int8 conversion by [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) (speech recognition, **downloaded at first start**, not in the image) | v3 | **CC-BY-4.0** | Commercial use allowed. Attribution: "Speech recognition: NVIDIA Parakeet-TDT-0.6B-v3 (CC-BY-4.0), ONNX export by k2-fsa/sherpa-onnx" – shown in the admin panel under **Docker → About**. |
-| webgl-noise by Ashima Arts and Stefan Gustavson (simplex noise in `ui/static/orb.js`) | 2011–2016 | MIT | Copyright and license notice in the header of `orb.js` and in [`webgl-noise-LICENSE.txt`](docker/licenses/webgl-noise-LICENSE.txt). |
-| Fonts [Inter](https://github.com/rsms/inter), [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), [Space Grotesk](https://github.com/floriankarsten/space-grotesk) | – | SIL OFL 1.1 | License texts next to the font files (`ui/static/fonts/LICENSE-*.txt`). |
+| [NVIDIA Parakeet-TDT-0.6B-v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3), int8 conversion by [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) (speech recognition, **downloaded at first start**, not in the image) | v3 | **CC-BY-4.0** | Commercial use allowed. Attribution: "Speech recognition: NVIDIA Parakeet-TDT-0.6B-v3 (CC-BY-4.0), ONNX export by k2-fsa/sherpa-onnx", shown in the admin panel under **Docker → About**. |
+| webgl-noise by Ashima Arts and Stefan Gustavson (simplex noise in `ui/static/orb.js`) | 2011-2016 | MIT | Copyright and license notice in the header of `orb.js` and in [`webgl-noise-LICENSE.txt`](docker/licenses/webgl-noise-LICENSE.txt). |
+| Fonts [Inter](https://github.com/rsms/inter), [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono), [Space Grotesk](https://github.com/floriankarsten/space-grotesk) | · | SIL OFL 1.1 | License texts next to the font files (`ui/static/fonts/LICENSE-*.txt`). |
 
 ## 2. Voices (Piper, downloaded at runtime)
 
@@ -62,7 +62,7 @@ Elazar Gershuni, MIT; `piper/tashkeel/model.onnx`, libtashkeel, MIT). NuOrb does
 
 ### Hermes Agent base image (`/opt/hermes`)
 
-- [Hermes Agent](https://github.com/NousResearch/hermes-agent) by Nous Research, v0.23.4 – **MIT** (`/opt/hermes/LICENSE`).
+- [Hermes Agent](https://github.com/NousResearch/hermes-agent) by Nous Research, v0.23.4: **MIT** (`/opt/hermes/LICENSE`).
 - Its Python environment (158 packages): permissive (MIT, BSD, Apache-2.0, ISC, PSF), plus MPL-2.0 (certifi, mautrix,
   pathspec, unmodified) and LGPL-3.0 (python-telegram-bot, section 1). `fal_client` and `agent-client-protocol` are
   Apache-2.0, `resvg_py` is MIT (license files in the packages).
@@ -70,7 +70,7 @@ Elazar Gershuni, MIT; `piper/tashkeel/model.onnx`, libtashkeel, MIT). NuOrb does
   BSD, BlueOak-1.0.0, CC0; `spdx-exceptions` CC-BY-3.0); each keeps its license file in `node_modules`.
 - Python 3.14.9 (PSF-2.0), ripgrep 15.2.0 (MIT or Unlicense), uv 0.13.5 (MIT or Apache-2.0).
 - [s6-overlay](https://github.com/just-containers/s6-overlay) 3.2.3.0 with s6, s6-rc, execline (ISC), tini (MIT).
-- `tools/wakewords/hey_hermes.tflite` – Hermes' own wake-word model; Hermes states it may be redistributed. NuOrb does
+- `tools/wakewords/hey_hermes.tflite`: Hermes' own wake-word model; Hermes states it may be redistributed. NuOrb does
   not use it (the engine is not installed).
 
 ## 4. Telemetry

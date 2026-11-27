@@ -1,4 +1,4 @@
-# NuOrb – Server als Docker-Container
+# NuOrb: Server als Docker-Container
 
 Dein eigener Sprachassistent in **einem** Container: Hermes Agent als Gehirn-Framework, die NuOrb-Oberfläche mit Orb,
 ein Admin-Panel, Spracherkennung (Parakeet, läuft auf der CPU) und Sprachausgabe (Piper). Denken lässt du entweder
@@ -8,7 +8,7 @@ Die **NuOrb-App für Android** und jeder Browser im Heimnetz verbinden sich dami
 wurden (QR-Code oder Code im Admin-Panel).
 
 > **Am einfachsten:** `curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/install.sh | bash -s -- --lang de`
-> – prüft Docker und Firewall, fragt kurz nach, startet NuOrb und zeigt Adresse und Einrichtungscode.
+> Prüft Docker und Firewall, fragt kurz nach, startet NuOrb und zeigt Adresse und Einrichtungscode.
 > Ausführliche Anleitung: [INSTALL.de.md](../INSTALL.de.md) · [INSTALL.md](../INSTALL.md) (English).
 > Von Hand: `.env` anlegen → `docker compose up -d` → `https://<server>:8444` öffnen → Einrichtungscode eingeben →
 > Gehirn wählen → Smartphone koppeln. Dauert etwa 10 Minuten, davon die meiste Zeit Downloads.
@@ -37,13 +37,13 @@ LAN erreichbar machen (`OLLAMA_HOST=0.0.0.0`, Port 11434 nur für den NuOrb-Serv
 mit Werkzeugnutzung, z. B. Gemma 4 26B oder gpt-oss 20B (16 GB VRAM).
 
 **Claude:** Schlüssel unter <https://console.anthropic.com>, dort ein Ausgabenlimit setzen. Eine kurze Sprachfrage
-kostet mit Haiku etwa 0,1–0,5 Cent.
+kostet mit Haiku etwa 0,1-0,5 Cent.
 
 ## Installation
 
 ### Wohin? Proxmox oder PC
 
-* **Proxmox, VM (empfohlen):** Debian-13-VM mit 4–6 Kernen, 6 GB RAM, 20 GB Platte. Darin Docker installieren:
+* **Proxmox, VM (empfohlen):** Debian-13-VM mit 4-6 Kernen, 6 GB RAM, 20 GB Platte. Darin Docker installieren:
   `curl -fsSL https://get.docker.com | sh`.
 * **Proxmox, LXC:** Debian-13-Container, *unprivilegiert*, unter *Optionen → Features* `nesting=1` und `keyctl=1`.
   Darin Docker wie oben. (Docker im LXC ist von Proxmox nicht offiziell unterstützt, läuft aber meist; sonst VM.)
@@ -97,7 +97,7 @@ Seit v0.4.0 heißen Compose-Projekt, Dienst und Container `nuorb` (vorher `jarvi
 
 ```bash
 cd nuorb/docker                                  # Ordner mit deiner .env
-docker compose -p jarvis-lnx down                # alten Container stoppen – OHNE -v, sonst sind die Daten weg
+docker compose -p jarvis-lnx down                # alten Container stoppen, OHNE -v, sonst sind die Daten weg
 git pull                                         # neue compose.yaml (oder die Datei aus dem Repo holen)
 docker compose pull && docker compose up -d      # startet „nuorb“ mit denselben Daten
 ```
@@ -267,7 +267,7 @@ recognition (Parakeet, CPU) and speech synthesis (Piper). The LLM is your own Ol
 Claude API, or both with automatic fallback.
 
 1. `git clone https://github.com/Anarki-LNX/nuorb && cd nuorb/docker`
-2. `cp .env.example .env` – set `JARVIS_HOSTS` (server IP), `JARVIS_LANG=en`, `TZ`
+2. `cp .env.example .env`: set `JARVIS_HOSTS` (server IP), `JARVIS_LANG=en`, `TZ`
 3. `docker compose up -d` (first start downloads ~530 MB of speech models)
 4. `docker compose logs nuorb | grep -i "setup code"`
 5. Open `https://<server-ip>:8444`, enter the code, set a password, follow the setup (language, brain), then
