@@ -15,6 +15,7 @@ export const GITHUB = {
   install: "https://github.com/Anarki-LNX/nuorb/blob/main/INSTALL.md",
   installDe: "https://github.com/Anarki-LNX/nuorb/blob/main/INSTALL.de.md",
   docker: "https://github.com/Anarki-LNX/nuorb/blob/main/docker/README.md",
+  dockerHub: "https://hub.docker.com/r/anarkilnx/nuorb",
   contributing: "https://github.com/Anarki-LNX/nuorb/blob/main/CONTRIBUTING.md",
   aiDeclaration: "https://github.com/Anarki-LNX/nuorb/blob/main/AI_DECLARATION.md",
   license: "https://github.com/Anarki-LNX/nuorb/blob/main/LICENSE",

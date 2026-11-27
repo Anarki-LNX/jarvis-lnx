@@ -185,6 +185,7 @@ const de: Dict = {
       ["Starten", "Startet NuOrb und zeigt das Protokoll. Sobald der Einrichtungscode erscheint, beendest du die Anzeige mit Strg+C."],
     ],
     composeDocs: "Ausführliche Anleitung zur manuellen Installation",
+    hubNote: ["Das Image gibt es auch auf Docker Hub. Wenn du lieber von dort lädst, trage in der compose.yaml", "image: anarkilnx/nuorb:latest", "statt der Adresse bei ghcr.io ein."],
     proxmox: {
       commandLabel: "Proxmox-Host-Shell, als root",
       stepsTitle: "Was das Skript macht",
@@ -228,6 +229,7 @@ const de: Dict = {
     docsDe: "Installationsanleitung (Deutsch)",
     docker: "Docker-Dokumentation",
     proxmoxDocs: "Proxmox-Anleitung",
+    dockerHub: "Docker Hub",
     repo: "GitHub-Repository",
     video: "Video-Anleitung ansehen (3 Minuten)",
     videoCaption: "Video-Anleitung, aufgenommen mit einer Testinstallation.",

@@ -183,6 +183,7 @@ const en = {
       ["Start", "Starts NuOrb and shows the log. Once the setup code appears, press Ctrl+C to close the log."],
     ],
     composeDocs: "Full guide to the manual installation",
+    hubNote: ["The image is also available on Docker Hub. To pull it from there, put", "image: anarkilnx/nuorb:latest", "in compose.yaml instead of the ghcr.io address."],
     proxmox: {
       commandLabel: "Proxmox host shell, as root",
       stepsTitle: "What the script does",
@@ -226,6 +227,7 @@ const en = {
     docsDe: "Install guide (German)",
     docker: "Docker documentation",
     proxmoxDocs: "Proxmox guide",
+    dockerHub: "Docker Hub",
     repo: "GitHub repository",
     video: "Watch the video tutorial (3 minutes)",
     videoCaption: "Video tutorial, recorded on a test installation.",

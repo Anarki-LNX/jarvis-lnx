@@ -62,6 +62,7 @@ const tutSources = tut ? ["video/webm", "video/mp4"].map((ty) => tut.video.filte
               <li><p><strong>{title}.</strong> {text}</p><Cmd label={d.terminal} code={composeCode[i]} copy={d.copy} copied={d.copied} /></li>
             ))}
           </ol>
+          <p class="hub"><Icon name="cloud" /><span>{d.hubNote[0]} <code>{d.hubNote[1]}</code> {d.hubNote[2]}</span></p>
           <p class="after">{d.after}</p>
           <p><a class="more" href={lang === "de" ? GITHUB.manualDe : GITHUB.manual} rel="noopener">{d.composeDocs.replace(/\s+\S+$/, "")} <span class="nw">{d.composeDocs.split(" ").at(-1)}<Icon name="external" class="ext" /></span></a></p>
         </div>
@@ -93,6 +94,7 @@ const tutSources = tut ? ["video/webm", "video/mp4"].map((ty) => tut.video.filte
           <a href={lang === "de" ? GITHUB.installDe : GITHUB.install} rel="noopener"><Icon name="code" />{lang === "de" ? d.docsDe : d.docsEn}<Icon name="external" class="ext" /></a>
           <a href={lang === "de" ? GITHUB.install : GITHUB.installDe} rel="noopener" hreflang={lang === "de" ? "en" : "de"}><Icon name="globe" />{lang === "de" ? d.docsEn : d.docsDe}<Icon name="external" class="ext" /></a>
           <a href={GITHUB.docker} rel="noopener"><Icon name="server" />{d.docker}<Icon name="external" class="ext" /></a>
+          <a href={GITHUB.dockerHub} rel="noopener"><Icon name="cloud" />{d.dockerHub}<Icon name="external" class="ext" /></a>
           <a href={lang === "de" ? GITHUB.proxmoxDe : GITHUB.proxmox} rel="noopener"><Icon name="chip" />{d.proxmoxDocs}<Icon name="external" class="ext" /></a>
           <a href={tutorialUrl} rel="noopener"><Icon name="youtube" />{d.video}<Icon name="external" class="ext" /></a>
           <a href={GITHUB.repo} rel="noopener"><Icon name="github" />{d.repo}<Icon name="external" class="ext" /></a>
@@ -130,6 +132,9 @@ const tutSources = tut ? ["video/webm", "video/mp4"].map((ty) => tut.video.filte
   .tpl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem 1.5rem; align-items: center; padding: 1.2rem 1.3rem; border: 1px solid var(--line-2); border-radius: var(--r-md); background: rgba(255,255,255,.03); }
   .tpl h4 { margin: 0 0 .35rem; font-size: 1.02rem; }
   .tpl p { margin: 0; color: var(--text-2); font-size: .93rem; line-height: 1.55; }
+  .hub { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .7rem; margin: 0; padding: .9rem 1.1rem; border: 1px dashed var(--line-2); border-radius: var(--r-sm); color: var(--text-2); font-size: .93rem; line-height: 1.6; }
+  .hub :global(svg) { width: 18px; height: 18px; color: var(--violet); margin-top: .2rem; }
+  .hub code { font: 400 .86rem/1.4 var(--f-mono); color: var(--text); background: rgba(255,255,255,.06); padding: .1rem .35rem; border-radius: 6px; white-space: nowrap; }
   .upd { color: var(--text-2); margin: 0; font-size: .95rem; }
   .more { font-weight: 500; }
   .nw { white-space: nowrap; }
