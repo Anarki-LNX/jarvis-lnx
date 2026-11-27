@@ -10,7 +10,7 @@ const { lang } = Astro.props;
 const d = t(lang);
 const p = d.policy;
 ---
-<Base lang={lang} title={`${p.title} – NuOrb`} description={p.title} path={policyPath(lang)} alternates={{ en: policyPath("en"), de: policyPath("de") }}>
+<Base lang={lang} title={`${p.title} · NuOrb`} description={p.title} path={policyPath(lang)} alternates={{ en: policyPath("en"), de: policyPath("de") }}>
   <Nav lang={lang} altPath={policyPath(other(lang))} home={false} />
   <main id="main" class="wrap legal">
     <h1>{p.title}</h1>

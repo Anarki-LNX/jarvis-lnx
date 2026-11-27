@@ -106,7 +106,7 @@ const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, 
                 </>
               )}
               {list.some((s) => s.id.includes("trailer")) && (
-                <p class="tnote">{d.trailerNote} <code>{lang === "de" ? INSTALL_CMD_DE : INSTALL_CMD}</code> – <a href="#install">{d.trailerNoteLink}</a></p>
+                <p class="tnote">{d.trailerNote} <code>{lang === "de" ? INSTALL_CMD_DE : INSTALL_CMD}</code> (<a href="#install">{d.trailerNoteLink}</a>)</p>
               )}
             </div>
           </div>

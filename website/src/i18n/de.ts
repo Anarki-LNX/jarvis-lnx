@@ -6,10 +6,10 @@ const de: Dict = {
   lang: "de",
   locale: "de_DE",
   meta: {
-    title: "NuOrb – dein privater KI-Sprachassistent, selbst gehostet und Open Source",
+    title: "NuOrb: dein privater KI-Sprachassistent, selbst gehostet und Open Source",
     description:
       "NuOrb ist ein KI-Sprachassistent, den du selbst betreibst: ein Docker-Container mit lokaler Spracherkennung und Sprachausgabe. Als KI dient dein eigener Server (Ollama, llama.cpp, vLLM, LM Studio) oder optional Claude.",
-    ogAlt: "NuOrb – der leuchtende Orb deines privaten Sprachassistenten",
+    ogAlt: "Der leuchtende Orb von NuOrb, deinem privaten Sprachassistenten",
   },
   skip: "Zum Inhalt springen",
   nav: {
@@ -34,19 +34,19 @@ const de: Dict = {
     demo: "Demo ansehen",
     start: "Loslegen",
     badges: ["Open Source", "Selbst gehostet", "Lokale KI", "Ohne Cloud-Zwang"],
-    orbLabel: "Animierter NuOrb-Orb. Rein optisch – kein Mikrofon, keine KI-Verbindung.",
-    orbHint: "Bewege den Mauszeiger über den Orb – er reagiert darauf. Das ist die echte NuOrb-Animation, ohne Mikrofon und ohne KI-Verbindung.",
+    orbLabel: "Animierter NuOrb-Orb. Rein optisch, ohne Mikrofon und ohne KI-Verbindung.",
+    orbHint: "Bewege den Mauszeiger über den Orb, er reagiert darauf. Das ist die echte NuOrb-Animation, ohne Mikrofon und ohne KI-Verbindung.",
     states: { idle: "Bereit", listening: "Hört zu", thinking: "Denkt nach", speaking: "Spricht" },
   },
   what: {
     kicker: "Was ist NuOrb?",
     title: "Dein Sprachassistent. Auf deiner Hardware. Unter deiner Kontrolle.",
-    text: "NuOrb läuft auf deinem eigenen Server und verbindet sich mit dem KI-Modell deiner Wahl. Du sprichst mit ihm über dein Smartphone oder einen Browser im Heimnetz – ganz natürlich per Sprache.",
+    text: "NuOrb läuft auf deinem eigenen Server und verbindet sich mit dem KI-Modell deiner Wahl. Du sprichst mit ihm über dein Smartphone oder einen Browser im Heimnetz, ganz natürlich per Sprache.",
     archTitle: "Wie die Teile zusammenspielen",
     archDesc:
       "Grafik: Dein Smartphone oder Browser spricht mit dem NuOrb-Server in deinem Heimnetz. Der Server erkennt die Sprache, führt den Agenten aus, erzeugt die Sprachausgabe und fragt deinen lokalen KI-Server. Claude und Smart Home sind optional.",
-    legendLocal: "Lokal – bleibt in deinem Netzwerk (Standard)",
-    legendOptional: "Optional – nur, wenn du es einschaltest",
+    legendLocal: "Lokal: bleibt in deinem Netzwerk (Standard)",
+    legendOptional: "Optional: nur, wenn du es einschaltest",
     nodes: {
       client: ["Smartphone oder Browser", "NuOrb-App (geschlossener Test) oder ein Browser im Heimnetz"],
       server: ["NuOrb-Server", "Ein Docker-Container auf deiner Hardware"],
@@ -62,7 +62,7 @@ const de: Dict = {
     kicker: "Demo",
     title: "So sieht NuOrb im Einsatz aus.",
     text: "Wähle ein Gerät und dann eine Szene.",
-    label: "Aufgezeichnete Produktdemo — vorproduziertes Video, keine Live-KI-Verbindung.",
+    label: "Aufgezeichnete Produktdemo: vorproduziertes Video, keine Live-KI-Verbindung.",
     devices: { desktop: "Desktop", tablet: "Tablet", phone: "Smartphone" },
     devicesLabel: "Gerät wählen",
     scenesLabel: "Szenen",
@@ -91,7 +91,7 @@ const de: Dict = {
       },
       talk: {
         title: "Natürlich sprechen",
-        text: "Tippen und lossprechen – NuOrb erkennt selbst, wann du fertig bist. Alternativ hältst du die Taste gedrückt. NuOrb antwortet dir mit Sprache und hört im Gesprächsmodus danach direkt weiter zu.",
+        text: "Tippen und lossprechen: NuOrb erkennt selbst, wann du fertig bist. Alternativ hältst du die Taste gedrückt. NuOrb antwortet dir mit Sprache und hört im Gesprächsmodus danach direkt weiter zu.",
       },
       local: {
         title: "Lokale KI nach Wahl",
@@ -107,7 +107,7 @@ const de: Dict = {
       },
       smarthome: {
         title: "Smart Home und MCP",
-        text: "Auf Wunsch bindest du Home Assistant, ioBroker oder beide an. NuOrb fragt dann Licht, Steckdosen, Szenen und Sensoren ab und schaltet sie – vor jedem Schaltvorgang fragt er nach. Eigene Werkzeuge ergänzt du als MCP-Server im Admin-Panel.",
+        text: "Auf Wunsch bindest du Home Assistant, ioBroker oder beide an. NuOrb fragt dann Licht, Steckdosen, Szenen und Sensoren ab und schaltet sie. Vor jedem Schaltvorgang fragt er nach. Eigene Werkzeuge ergänzt du als MCP-Server im Admin-Panel.",
       },
       secure: {
         title: "Erst fragen, dann handeln",
@@ -116,7 +116,7 @@ const de: Dict = {
       },
       admin: {
         title: "Admin-Panel",
-        text: "Modell und Fallback, Persönlichkeit, Gedächtnis, Skills, Zeitpläne, MCP-Server, API-Schlüssel, Logs und Backups mit Rückgängig-Funktion – alles in einer Weboberfläche.",
+        text: "Modell und Fallback, Persönlichkeit, Gedächtnis, Skills, Zeitpläne, MCP-Server, API-Schlüssel, Logs und Backups mit Rückgängig-Funktion. Alles in einer Weboberfläche.",
       },
       languages: {
         title: "Deutsch und Englisch",
@@ -136,9 +136,9 @@ const de: Dict = {
     text: "NuOrb ist für dein Heimnetz gebaut. Die Übersicht zeigt, welche Daten wo verarbeitet werden.",
     head: ["Was", "Wo", "Status"],
     rows: [
-      ["Deine Stimme (Audio)", "Auf deinem NuOrb-Server – Spracherkennung und Sprachausgabe laufen dort", "local"],
+      ["Deine Stimme (Audio)", "Auf deinem NuOrb-Server, dort laufen Spracherkennung und Sprachausgabe", "local"],
       ["Gesprächsinhalte im lokalen Modus", "Auf deinem eigenen KI-Server im Heimnetz", "local"],
-      ["Gesprächsinhalte mit Claude", "Als Text an Anthropic – nur, wenn du Claude aktivierst", "optional"],
+      ["Gesprächsinhalte mit Claude", "Als Text an Anthropic, nur wenn du Claude aktivierst", "optional"],
       ["Sprachmodelle", "Einmaliger Download bei der Einrichtung (ca. 530 MB)", "once"],
       ["Telemetrie und Update-Abfragen", "Keine", "none"],
     ],
@@ -151,7 +151,7 @@ const de: Dict = {
     steps: [
       {
         title: "Server einrichten",
-        text: "Installiere NuOrb mit Docker – auf einer Proxmox-VM oder in einem LXC-Container, auf einem Heimserver oder einem PC mit Linux (amd64 oder arm64). Ein einziger Befehl erledigt die Installation.",
+        text: "Installiere NuOrb mit Docker auf einer Proxmox-VM oder in einem LXC-Container, auf einem Heimserver oder einem PC mit Linux (amd64 oder arm64). Ein einziger Befehl erledigt die Installation.",
       },
       {
         title: "KI auswählen",
@@ -159,7 +159,7 @@ const de: Dict = {
       },
       {
         title: "Smartphone koppeln",
-        text: "Im Admin-Panel unter „Gerät koppeln“ scannst du den QR-Code mit der NuOrb-App. Die App ist noch im geschlossenen Test bei Google Play – ein Browser im Heimnetz funktioniert schon heute.",
+        text: "Im Admin-Panel unter „Gerät koppeln“ scannst du den QR-Code mit der NuOrb-App. Die App ist noch im geschlossenen Test bei Google Play. Ein Browser im Heimnetz funktioniert schon heute.",
       },
       {
         title: "Loslegen",
@@ -205,9 +205,9 @@ const de: Dict = {
     kicker: "Für Bastler",
     badge: "Experimentell · gerätespezifisch",
     title: "Ein altes Smartphone als NuOrb-Gerät.",
-    text: "Hier hat NuOrb angefangen: Ein altes Xiaomi Mi 11 Lite 4G wurde komplett gelöscht und läuft mit NixOS und einem Mainline-Linux-Kernel – ganz ohne Android. Ein Kiosk zeigt nur den NuOrb-Orb, das Gerät erkennt sein Weckwort selbst und ändert WLAN, Helligkeit, Lautstärke oder Neustart erst nach einer Bestätigung.",
+    text: "Hier hat NuOrb angefangen: Ein altes Xiaomi Mi 11 Lite 4G wurde komplett gelöscht und läuft mit NixOS und einem Mainline-Linux-Kernel, ganz ohne Android. Ein Kiosk zeigt nur den NuOrb-Orb, das Gerät erkennt sein Weckwort selbst und ändert WLAN, Helligkeit, Lautstärke oder Neustart erst nach einer Bestätigung.",
     facts: [
-      ["Gerät", "Xiaomi Mi 11 Lite 4G (courbet) – nur dieses Modell"],
+      ["Gerät", "Xiaomi Mi 11 Lite 4G (courbet), nur dieses Modell"],
       ["System", "NixOS mit Mainline-Linux-Kernel 7.3"],
       ["Oberfläche", "Kiosk-Modus, nur der NuOrb-Orb"],
       ["Spracheingabe", "Weckwort direkt auf dem Gerät (openWakeWord), Tippen zum Sprechen"],
@@ -216,10 +216,10 @@ const de: Dict = {
     paused: "Dieser Teil des Projekts ruht zurzeit.",
     warnTitle: "Bitte lesen, bevor du loslegst",
     warn: [
-      "Die Installation löscht das Smartphone vollständig – Android startet danach nicht mehr.",
+      "Die Installation löscht das Smartphone vollständig. Android startet danach nicht mehr.",
       "Sie setzt einen entsperrten Bootloader voraus.",
       "Sie funktioniert nur mit diesem einen Gerät. Andere Xiaomi-Modelle werden nicht unterstützt.",
-      "Das ist keine App-Installation. Flashe nie ein ROM mit niedrigerem Anti-Rollback-Index – sonst kann das Gerät unbrauchbar werden.",
+      "Das ist keine App-Installation. Flashe nie ein ROM mit niedrigerem Anti-Rollback-Index, sonst kann das Gerät unbrauchbar werden.",
     ],
     more: "NixOS-Hinweise auf GitHub",
   },
@@ -256,17 +256,17 @@ const de: Dict = {
     title: "Häufige Fragen",
     items: [
       ["Was ist NuOrb?", "Ein privater KI-Sprachassistent, den du selbst betreibst: ein Docker-Container mit Agent, Orb-Oberfläche, Admin-Panel, lokaler Spracherkennung und Sprachausgabe. Du sprichst mit ihm über dein Smartphone oder einen Browser im Heimnetz."],
-      ["Ist NuOrb kostenlos?", "Ja. Der NuOrb-Server ist kostenlos und Open Source (MIT). Kosten entstehen nur für deine eigene Hardware und den Strom – und bei Anthropic, falls du Claude mit deinem eigenen API-Schlüssel nutzt."],
+      ["Ist NuOrb kostenlos?", "Ja. Der NuOrb-Server ist kostenlos und Open Source (MIT). Kosten entstehen nur für deine eigene Hardware und den Strom. Dazu kommen die Kosten bei Anthropic, falls du Claude mit deinem eigenen API-Schlüssel nutzt."],
       ["Läuft NuOrb lokal?", "Ja. Mit einem lokalen KI-Server (Ollama, llama.cpp, vLLM oder LM Studio) im Modus „lokal“ bleibt alles in deinem Netzwerk. Spracherkennung und Sprachausgabe laufen immer auf deinem NuOrb-Server."],
       ["Brauche ich einen Anthropic-API-Schlüssel?", "Nein. Den brauchst du nur, wenn du Claude nutzen möchtest. Ein lokaler KI-Server genügt."],
-      ["Kann ich Ollama verwenden?", "Ja. Neben Ollama funktioniert jeder OpenAI-kompatible Server wie llama.cpp, vLLM oder LM Studio. Das Modell muss Werkzeuge (Tool Use) unterstützen und mindestens 64k Kontext bieten – zum Beispiel Gemma 4 26B oder gpt-oss 20B auf einer GPU mit 16 GB."],
-      ["Verlassen Audiodaten mein Netzwerk?", "Nein. Die Audioverarbeitung läuft auf deinem NuOrb-Server. Wenn du Claude aktivierst, gehen die Gesprächsinhalte als Text an Anthropic – das Audio nie."],
+      ["Kann ich Ollama verwenden?", "Ja. Neben Ollama funktioniert jeder OpenAI-kompatible Server wie llama.cpp, vLLM oder LM Studio. Das Modell muss Werkzeuge (Tool Use) unterstützen und mindestens 64k Kontext bieten, zum Beispiel Gemma 4 26B oder gpt-oss 20B auf einer GPU mit 16 GB."],
+      ["Verlassen Audiodaten mein Netzwerk?", "Nein. Die Audioverarbeitung läuft auf deinem NuOrb-Server. Wenn du Claude aktivierst, gehen die Gesprächsinhalte als Text an Anthropic, das Audio nie."],
       ["Wie verbinde ich mein Smartphone?", "Im Admin-Panel wählst du „Gerät koppeln“ und scannst den QR-Code mit der NuOrb-App. Bei der Kopplung merkt sich die App das Zertifikat deines Servers. Alternativ nutzt du einen Browser im Heimnetz."],
-      ["Unterstützt NuOrb Home Assistant?", "Ja, optional – ebenso ioBroker, auch beide zusammen. Abfragen laufen ohne Rückfrage, vor jedem Schaltvorgang erscheint eine Bestätigungskarte. Mit Claude funktioniert das zuverlässig, mit kleinen lokalen Modellen noch eingeschränkt."],
+      ["Unterstützt NuOrb Home Assistant?", "Ja, optional. Ebenso ioBroker, auch beide zusammen. Abfragen laufen ohne Rückfrage, vor jedem Schaltvorgang erscheint eine Bestätigungskarte. Mit Claude funktioniert das zuverlässig, mit kleinen lokalen Modellen noch eingeschränkt."],
       ["Kann ich NuOrb von unterwegs nutzen?", "Ja, über ein VPN in dein Heimnetz, etwa WireGuard oder Tailscale. NuOrb nimmt nur Verbindungen aus privaten Netzwerken und aus Tailscale an."],
       ["Warum sollte ich die Ports nicht ins Internet freigeben?", "NuOrb ist ein persönlicher Assistent mit Admin-Panel und Werkzeugen, die in deinem Namen handeln können. Er ist für dein Heimnetz gedacht, nicht für das offene Internet. Ein VPN schützt den Zugang."],
-      ["Welche Hardware brauche ich?", "Für den Server: Linux auf amd64 oder arm64 mit 4 CPU-Kernen, etwa 4 GB freiem Arbeitsspeicher und 8 GB Speicherplatz. Für lokale KI brauchst du zusätzlich einen Rechner, der dein Modell ausführen kann – wie schnell das geht, hängt von GPU und Modellgröße ab."],
-      ["Gibt es die Android-App schon?", "Noch nicht öffentlich. Die NuOrb-App ist im geschlossenen Test bei Google Play, Beta-Tester sind willkommen – melde dich dazu auf GitHub. Bis dahin nutzt du einfach einen Browser im Heimnetz."],
+      ["Welche Hardware brauche ich?", "Für den Server: Linux auf amd64 oder arm64 mit 4 CPU-Kernen, etwa 4 GB freiem Arbeitsspeicher und 8 GB Speicherplatz. Für lokale KI brauchst du zusätzlich einen Rechner, der dein Modell ausführen kann. Wie schnell das geht, hängt von GPU und Modellgröße ab."],
+      ["Gibt es die Android-App schon?", "Noch nicht öffentlich. Die NuOrb-App ist im geschlossenen Test bei Google Play, Beta-Tester sind willkommen. Melde dich dazu auf GitHub. Bis dahin nutzt du einfach einen Browser im Heimnetz."],
       ["Was hat es mit dem Xiaomi-NixOS-Setup auf sich?", "Damit hat das Projekt angefangen: ein Xiaomi Mi 11 Lite 4G mit NixOS als eigenes NuOrb-Gerät. Die Installation löscht das Smartphone vollständig, setzt einen entsperrten Bootloader voraus und funktioniert nur mit genau diesem Modell. Dieser Teil ruht zurzeit."],
       ["Wie aktualisiere ich NuOrb?", "Im NuOrb-Ordner führst du „docker compose pull && docker compose up -d“ aus. Deine Daten und gekoppelten Geräte bleiben erhalten."],
       ["Wie kann ich mitmachen?", "Lies den Leitfaden zum Mitmachen (CONTRIBUTING), eröffne Issues und schick Pull Requests auf GitHub. Code-Reviews von Menschen sind besonders willkommen."],
@@ -290,7 +290,7 @@ const de: Dict = {
     paypalSoon: "PayPal (bald)",
   },
   picker: {
-    title: "NuOrb – Sprache wählen",
+    title: "NuOrb: Sprache wählen",
     text: "Deine KI. Deine Stimme. Dein Zuhause.",
     en: "English",
     de: "Deutsch",
