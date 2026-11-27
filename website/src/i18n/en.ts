@@ -4,10 +4,10 @@ const en = {
   lang: "en",
   locale: "en_US",
   meta: {
-    title: "NuOrb — A Private, Self-Hosted AI Voice Assistant",
+    title: "NuOrb: A Private, Self-Hosted AI Voice Assistant",
     description:
       "NuOrb is an AI voice assistant you run yourself: one Docker container with local speech recognition and text-to-speech, connected to your own model server (Ollama, llama.cpp, vLLM, LM Studio) or, optionally, Claude.",
-    ogAlt: "NuOrb – the glowing orb of your private voice assistant",
+    ogAlt: "The glowing orb of NuOrb, your private voice assistant",
   },
   skip: "Skip to content",
   nav: {
@@ -32,8 +32,8 @@ const en = {
     demo: "Watch the demo",
     start: "Get started",
     badges: ["Open source", "Self-hosted", "Local AI", "No cloud required"],
-    orbLabel: "Animated NuOrb orb. Purely visual – no microphone, no AI connection.",
-    orbHint: "Move your pointer over the orb and it reacts. This is the real NuOrb animation – no microphone, no AI connection.",
+    orbLabel: "Animated NuOrb orb. Purely visual, with no microphone and no AI connection.",
+    orbHint: "Move your pointer over the orb and it reacts. This is the real NuOrb animation, with no microphone and no AI connection.",
     states: { idle: "Ready", listening: "Listening", thinking: "Thinking", speaking: "Speaking" },
   },
   what: {
@@ -43,8 +43,8 @@ const en = {
     archTitle: "How it fits together",
     archDesc:
       "Diagram: your phone or browser talks to the NuOrb server on your home network. The server handles speech recognition, the agent and text-to-speech, and queries your local AI server. Claude and smart home connections are optional.",
-    legendLocal: "Local – stays on your network (default)",
-    legendOptional: "Optional – only if you turn it on",
+    legendLocal: "Local: stays on your network (default)",
+    legendOptional: "Optional: only if you turn it on",
     nodes: {
       client: ["Phone or browser", "NuOrb app (closed testing) or any browser on your home network"],
       server: ["NuOrb server", "One Docker container on your hardware"],
@@ -60,7 +60,7 @@ const en = {
     kicker: "Demo",
     title: "See NuOrb in action.",
     text: "Pick a device, then a scene.",
-    label: "Recorded product demonstration — prerecorded video, no live AI connection.",
+    label: "Recorded product demonstration: prerecorded video, no live AI connection.",
     devices: { desktop: "Desktop", tablet: "Tablet", phone: "Smartphone" },
     devicesLabel: "Choose a device",
     scenesLabel: "Scenes",
@@ -85,11 +85,11 @@ const en = {
     items: {
       assistant: {
         title: "Make it your own",
-        text: "NuOrb greets you on first start. After that, you decide on its name, personality and behaviour – you can even rename it mid-conversation: “From now on you're Max.” The wake word stays “Hey NuOrb”. Memory and skills are set up in the admin panel.",
+        text: "NuOrb greets you on first start. After that, you decide on its name, personality and behaviour. You can even rename it mid-conversation: “From now on you're Max.” The wake word stays “Hey NuOrb”. Memory and skills are set up in the admin panel.",
       },
       talk: {
         title: "Talk naturally",
-        text: "Tap and speak – NuOrb notices when you've finished. Or hold to talk. NuOrb responds with spoken answers, and in conversation mode it keeps listening for your next question.",
+        text: "Tap and speak, and NuOrb notices when you've finished. Or hold to talk. NuOrb responds with spoken answers, and in conversation mode it keeps listening for your next question.",
       },
       local: {
         title: "Local AI, your choice",
@@ -105,7 +105,7 @@ const en = {
       },
       smarthome: {
         title: "Smart home and MCP",
-        text: "Optionally connect Home Assistant, ioBroker or both. NuOrb can then check and switch lights, plugs, scenes and sensors – and always asks before it switches anything. Add your own tools as MCP servers in the admin panel.",
+        text: "Optionally connect Home Assistant, ioBroker or both. NuOrb can then check and switch lights, plugs, scenes and sensors, and always asks before it switches anything. Add your own tools as MCP servers in the admin panel.",
       },
       secure: {
         title: "Confirmation first",
@@ -114,7 +114,7 @@ const en = {
       },
       admin: {
         title: "Admin panel",
-        text: "Model and fallback, personality, memory, skills, schedules, MCP servers, API keys, logs and backups with undo – all in one web interface.",
+        text: "Model and fallback, personality, memory, skills, schedules, MCP servers, API keys, logs and backups with undo, all in one web interface.",
       },
       languages: {
         title: "German and English",
@@ -134,9 +134,9 @@ const en = {
     text: "NuOrb is built for your home network. Here's where each kind of data is processed.",
     head: ["Data", "Where it's processed", "Status"],
     rows: [
-      ["Your voice (audio)", "On your NuOrb server – speech recognition and text-to-speech run there", "local"],
+      ["Your voice (audio)", "On your NuOrb server, where speech recognition and text-to-speech run", "local"],
       ["Conversations in local mode", "On your own AI server at home", "local"],
-      ["Conversations with Claude", "Sent to Anthropic as text – only if you enable Claude", "optional"],
+      ["Conversations with Claude", "Sent to Anthropic as text, only if you enable Claude", "optional"],
       ["Speech models", "Downloaded once during setup (about 530 MB)", "once"],
       ["Telemetry and update checks", "None", "none"],
     ],
@@ -157,7 +157,7 @@ const en = {
       },
       {
         title: "Pair your phone",
-        text: "In the admin panel, open “Pair device” and scan the QR code with the NuOrb app. The app is in closed testing on Google Play – any browser on your home network works today.",
+        text: "In the admin panel, open “Pair device” and scan the QR code with the NuOrb app. The app is in closed testing on Google Play. Any browser on your home network works today.",
       },
       {
         title: "Start talking",
@@ -203,9 +203,9 @@ const en = {
     kicker: "For tinkerers",
     badge: "Experimental · device-specific",
     title: "An old smartphone as a NuOrb device.",
-    text: "This is where NuOrb started: an old Xiaomi Mi 11 Lite 4G, wiped and running NixOS with a mainline Linux kernel – no Android left. A kiosk shows nothing but the NuOrb orb, the phone listens for its wake word on-device, and Wi-Fi, brightness, volume and reboot only change after you confirm.",
+    text: "This is where NuOrb started: an old Xiaomi Mi 11 Lite 4G, wiped and running NixOS with a mainline Linux kernel, with no Android left. A kiosk shows nothing but the NuOrb orb, the phone listens for its wake word on-device, and Wi-Fi, brightness, volume and reboot only change after you confirm.",
     facts: [
-      ["Device", "Xiaomi Mi 11 Lite 4G (courbet) – this model only"],
+      ["Device", "Xiaomi Mi 11 Lite 4G (courbet), this model only"],
       ["System", "NixOS with a mainline Linux 7.3 kernel"],
       ["Interface", "Kiosk mode showing only the NuOrb orb"],
       ["Voice input", "On-device wake word (openWakeWord), tap to talk"],
@@ -214,10 +214,10 @@ const en = {
     paused: "This part of the project is on hold for now.",
     warnTitle: "Read this before you start",
     warn: [
-      "Installing wipes the phone completely – Android will no longer start.",
+      "Installing wipes the phone completely. Android will no longer start.",
       "It requires an unlocked bootloader.",
       "It only works on this one device. No other Xiaomi model is supported.",
-      "This is not an app install. Never flash a ROM with a lower anti-rollback index – you can brick the device.",
+      "This is not an app install. Never flash a ROM with a lower anti-rollback index, or you can brick the device.",
     ],
     more: "NixOS notes on GitHub",
   },
@@ -254,21 +254,21 @@ const en = {
     title: "Frequently asked questions",
     items: [
       ["What is NuOrb?", "A private AI voice assistant you run yourself: one Docker container with an agent, the orb interface, an admin panel, local speech recognition and text-to-speech. You talk to it from your phone or any browser on your home network."],
-      ["Is NuOrb free?", "Yes. The NuOrb server is free and open source (MIT). Your only costs are your own hardware and electricity – plus Anthropic's charges if you choose to use Claude with your own API key."],
+      ["Is NuOrb free?", "Yes. The NuOrb server is free and open source (MIT). Your only costs are your own hardware and electricity, plus Anthropic's charges if you choose to use Claude with your own API key."],
       ["Does NuOrb run locally?", "Yes. With a local AI server (Ollama, llama.cpp, vLLM or LM Studio) in “local” mode, everything stays on your network. Speech recognition and text-to-speech always run on your NuOrb server."],
       ["Do I need an Anthropic API key?", "No. You only need one if you want to use Claude. A local AI server is enough on its own."],
-      ["Can I use Ollama?", "Yes. Besides Ollama, any OpenAI-compatible server works, such as llama.cpp, vLLM or LM Studio. The model needs tool calling and at least a 64k context window – for example Gemma 4 26B or gpt-oss 20B on a 16 GB GPU."],
-      ["Does audio leave my network?", "No. Audio is processed on your NuOrb server. If you enable Claude, the conversation text is sent to Anthropic – never the audio."],
+      ["Can I use Ollama?", "Yes. Besides Ollama, any OpenAI-compatible server works, such as llama.cpp, vLLM or LM Studio. The model needs tool calling and at least a 64k context window, for example Gemma 4 26B or gpt-oss 20B on a 16 GB GPU."],
+      ["Does audio leave my network?", "No. Audio is processed on your NuOrb server. If you enable Claude, the conversation text is sent to Anthropic, never the audio."],
       ["How do I connect my phone?", "In the admin panel, choose “Pair device” and scan the QR code with the NuOrb app. During pairing, the app remembers your server's certificate. A browser on your home network works too."],
-      ["Does NuOrb work with Home Assistant?", "Yes, optionally – and with ioBroker, or both at once. Queries run without asking; switching always shows a confirmation card first. It works reliably with Claude and is still limited with small local models."],
+      ["Does NuOrb work with Home Assistant?", "Yes, optionally. It also works with ioBroker, or both at once. Queries run without asking; switching always shows a confirmation card first. It works reliably with Claude and is still limited with small local models."],
       ["Can I use NuOrb away from home?", "Yes, through a VPN into your home network, such as WireGuard or Tailscale. NuOrb only accepts connections from private networks and Tailscale."],
       ["Why shouldn't I expose the ports to the internet?", "NuOrb is a personal assistant with an admin panel and tools that can act on your behalf. It's designed for your home network, not the open internet. A VPN keeps access private."],
-      ["What hardware do I need?", "For the server: Linux on amd64 or arm64 with 4 CPU cores, about 4 GB of free RAM and 8 GB of disk space. For local AI, you also need a machine that can run your model – how fast depends on the GPU and the model size."],
-      ["Is the Android app available?", "Not publicly yet. The NuOrb app is in closed testing on Google Play, and beta testers are welcome – get in touch on GitHub. Until then, any browser on your home network will do."],
+      ["What hardware do I need?", "For the server: Linux on amd64 or arm64 with 4 CPU cores, about 4 GB of free RAM and 8 GB of disk space. For local AI, you also need a machine that can run your model. How fast depends on the GPU and the model size."],
+      ["Is the Android app available?", "Not publicly yet. The NuOrb app is in closed testing on Google Play, and beta testers are welcome. Get in touch on GitHub. Until then, any browser on your home network will do."],
       ["What's the Xiaomi NixOS setup?", "It's where the project started: a Xiaomi Mi 11 Lite 4G running NixOS as a dedicated NuOrb device. Installing it wipes the phone, needs an unlocked bootloader and only works on this one model. This part is on hold for now."],
       ["How do I update NuOrb?", "Run “docker compose pull && docker compose up -d” in the NuOrb folder. Your data and paired devices are kept."],
       ["How can I contribute?", "Read the contributing guide, open issues and send pull requests on GitHub. Code reviews by humans are especially welcome."],
-      ["How can I support the project?", "Star the repository, report bugs, join the Android beta – or support development via PayPal."],
+      ["How can I support the project?", "Star the repository, report bugs, join the Android beta, or support development via PayPal."],
     ],
   },
   footer: {
@@ -288,7 +288,7 @@ const en = {
     paypalSoon: "PayPal (coming soon)",
   },
   picker: {
-    title: "NuOrb — choose your language",
+    title: "NuOrb: choose your language",
     text: "Your AI. Your Voice. Your Home.",
     en: "English",
     de: "Deutsch",
