@@ -125,7 +125,7 @@
       <h2 id="brTitle">Gehirn</h2>
       <div class="br-modes" role="radiogroup">
         <button class="br-opt" data-mode="local" role="radio"><b>Lokal</b><span>Gemma auf dem PC · alles bleibt im Haus</span></button>
-        <button class="br-opt" data-mode="auto" role="radio"><b>Automatisch</b><span>Gemma, wenn der PC läuft – sonst Claude</span></button>
+        <button class="br-opt" data-mode="auto" role="radio"><b>Automatisch</b><span>Gemma, wenn der PC läuft, sonst Claude</span></button>
         <button class="br-opt" data-mode="remote" role="radio"><b>Remote</b><span>nur Claude · PC wird geschont</span></button>
       </div>
       <div class="br-models" id="brModels" role="radiogroup" aria-label="Claude-Modell"></div>
@@ -151,9 +151,9 @@
     <div class="sheet settings">
       <h2>Gerät</h2>
       <div class="dev" id="devBox" hidden>
-        <div class="dev-line" id="devLine">–</div>
+        <div class="dev-line" id="devLine">·</div>
         <div class="dev-tiles">
-          <button class="tile" id="tWifi" data-on="false"><svg viewBox="0 0 24 24" class="ico"><path d="M2 9.5a15 15 0 0 1 20 0M5.5 13a10 10 0 0 1 13 0M9 16.5a5 5 0 0 1 6 0"/><circle cx="12" cy="20" r="1.2"/></svg><b>WLAN</b><span id="tWifiSub">–</span></button>
+          <button class="tile" id="tWifi" data-on="false"><svg viewBox="0 0 24 24" class="ico"><path d="M2 9.5a15 15 0 0 1 20 0M5.5 13a10 10 0 0 1 13 0M9 16.5a5 5 0 0 1 6 0"/><circle cx="12" cy="20" r="1.2"/></svg><b>WLAN</b><span id="tWifiSub">·</span></button>
           <button class="tile" id="tScreen"><svg viewBox="0 0 24 24" class="ico"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10 18.5h4"/></svg><b>Bildschirm aus</b><span>Tippen weckt</span></button>
           <button class="tile danger" id="tReboot"><svg viewBox="0 0 24 24" class="ico"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg><b>Neu starten</b><span>mit Bestätigung</span></button>
           <button class="tile danger" id="tOff"><svg viewBox="0 0 24 24" class="ico"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg><b>Ausschalten</b><span>mit Bestätigung</span></button>
@@ -174,7 +174,7 @@
       <label class="row"><span>Reduzierte Bewegung</span><input type="checkbox" id="optCalm"></label>
       <label class="row"><span>Signaltöne</span><input type="checkbox" id="optEarcons" checked></label>
       <label class="row"><span>Mikrofon-Pegelanzeige</span><input type="checkbox" id="optMicviz" checked></label>
-      <div class="row info"><span>Systeme</span><span class="mono" id="sysInfo">–</span></div>
+      <div class="row info"><span>Systeme</span><span class="mono" id="sysInfo">·</span></div>
       <div class="row info" id="privacyRow" hidden><span>Datenschutz</span><span>Remote-Modus: Text geht an Anthropic (Claude), Audio bleibt lokal.</span></div>
       <button class="btn btn-ghost" id="setClose">Schließen</button>
     </div>

@@ -6,7 +6,7 @@
   const DE = !window.I18N || window.I18N.lang === "de"; // lokale Sprachbefehle (deutsche Muster) nur auf Deutsch
   const LOC = DE ? "de-DE" : "en-GB";
   const $ = (id) => document.getElementById(id);
-  const VERSION = "2026-11-26.59";
+  const VERSION = "2026-11-27.60";
   // Kurzes Client-Log ins Server-Journal (Kiosk hat keine JS-Konsole)
   function clog(msg) {
     try { fetch("/api/clientlog", { method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
@@ -556,7 +556,7 @@
       t("Der PC schläft, und mit ihm mein Sprachmodell. Uhr und Notizen laufen trotzdem."),
     ];
     const line = lines[Math.floor(Math.random() * lines.length)];
-    card("sys", t("Gehirn offline – Frage nicht möglich."));
+    card("sys", t("Gehirn offline. Frage nicht möglich."));
     speech.say(line);
   }
 
@@ -650,7 +650,7 @@
         clearInterval(watch); clog(`Run ${runId.slice(0, 12)}: keine Ereignisse seit ${Math.round((Date.now() - lastEv) / 1000)} s – abgebrochen`);
         fetch(`/api/runs/${encodeURIComponent(runId)}/stop`, { method: "POST" }).catch(() => {});
         finished = true; ctl.abort(); speech.stop(); S.retryAsk = null;
-        fail(S.brain === false ? t("Gehirn offline.") : t("Das Sprachmodell antwortet gerade nicht (2 Minuten ohne Lebenszeichen). Abgebrochen – bitte gleich nochmal versuchen."));
+        fail(S.brain === false ? t("Gehirn offline.") : t("Das Sprachmodell antwortet gerade nicht (2 Minuten ohne Lebenszeichen). Abgebrochen. Bitte gleich nochmal versuchen."));
       }
     }, 5000);
     const handle = (ev) => {
@@ -742,7 +742,7 @@
             const offline = S.brain === false;
             S.busy = false; S.run = null; hideRunApproval();
             const er = String(ev.error || "");
-            const why = offline ? t("Gehirn offline – das Sprachmodell auf dem PC ist nicht erreichbar.")
+            const why = offline ? t("Gehirn offline: das Sprachmodell auf dem PC ist nicht erreichbar.")
               : /too large|context|token/i.test(er) ? t("Das Sprachmodell hat zu wenig Kontext für Hermes (Backend-Einstellung nötig).")
               : /connect|refused|unreachable|timed? ?out/i.test(er) ? t("Das Sprachmodell antwortet nicht. Läuft der Sprachmodell-Server?")
               : t("Hermes: {e}", { e: er || t("Lauf fehlgeschlagen") });
@@ -797,10 +797,10 @@
   const CLAUDE_ZIEL = t("Projekt-Claude (Sonnet 5.5), Ordner jarvis-ui (Arbeitskopie auf jarvis)");
   const KNOWN = {
     "claude:fragen": { title: t("Claude fragen?"), ziel: CLAUDE_ZIEL, befehl: t("nur lesen und durchsuchen"), arg: ["frage", t("Frage")],
-      kosten: t("ca. 1–30 Cent"), folgen: t("Claude antwortet auf Deutsch in höchstens fünf Sätzen. Es wird nichts geändert."),
+      kosten: t("ca. 1-30 Cent"), folgen: t("Claude antwortet auf Deutsch in höchstens fünf Sätzen. Es wird nichts geändert."),
       yes: t("Ja, fragen"), say: t("Soll ich Claude das fragen? Kostet ein paar Cent.") },
     "claude:auftrag": { title: t("Claude-Auftrag ausführen?"), ziel: CLAUDE_ZIEL, befehl: t("Dateien lesen und ändern, keine Befehle ausführen"), arg: ["auftrag", t("Auftrag")],
-      kosten: t("ca. 5–100 Cent"), folgen: t("Die Änderung wird als Git-Commit gespeichert und lässt sich mit „rückgängig“ zurücknehmen. Die laufende Oberfläche bleibt unverändert."),
+      kosten: t("ca. 5-100 Cent"), folgen: t("Die Änderung wird als Git-Commit gespeichert und lässt sich mit „rückgängig“ zurücknehmen. Die laufende Oberfläche bleibt unverändert."),
       yes: t("Ja, ausführen"), say: t("Soll Claude das wirklich ändern?") },
     "claude:rueckgaengig": { title: t("Letzte Claude-Änderung zurücknehmen?"), ziel: CLAUDE_ZIEL, befehl: t("git revert der letzten Claude-Änderung"),
       kosten: t("kostenlos"), folgen: t("Die letzte Änderung von Claude wird mit einem neuen Commit zurückgenommen."),
@@ -822,7 +822,7 @@
     return { title: t("{r}: Soll-Temperatur auf {z}?", { r: a.raum || t("Raum"), z: ziel }), facts: [[t("Raum"), a.raum], [t("Neu"), ziel]],
       say: a.soll != null ? t("Soll ich {r} auf {s} Grad stellen?", { r: a.raum || t("den Raum"), s: a.soll }) : t("Soll ich {r} auf {z} stellen?", { r: a.raum || t("den Raum"), z: ziel }),
       yes: t("Ja, einstellen"),
-      folgen: t("Größere Änderung (über drei Grad) – deshalb diese Rückfrage.") }; } };
+      folgen: t("Größere Änderung (über drei Grad), deshalb diese Rückfrage.") }; } };
   // Smart Home (Server smarthome_schalten, ki-backend): Home Assistant / ioBroker. Argumente laut Uebergabe:
   // schalten {name, aktion: an|aus|umschalten, helligkeit 1-100, raum, art, alle}, szene {name}
   const SH_ZIEL = t("Smart Home (Home Assistant / ioBroker)");
@@ -844,7 +844,7 @@
   function mcpDetails(cmd) {
     const out = {};
     const c = cmd.match(/Costs?\s+([0-9]+(?:\s*[-–]\s*[0-9]+)?)\s*Cent/i);
-    if (c) out.kosten = t("ca. {c} Cent", { c: c[1].replace(/\s*[-–]\s*/, "–") });
+    if (c) out.kosten = t("ca. {c} Cent", { c: c[1].replace(/\s*[-–]\s*/, "-") });
     const a = cmd.match(/Arguments:\s*(\{[\s\S]*\})/);
     if (a) { try { out.args = JSON.parse(a[1]); } catch (e) { /* redigiert/abgeschnitten */ } }
     return out;
@@ -880,7 +880,7 @@
         say = t("Darf ich das Werkzeug {tool} ausführen?", { tool });
       }
     } else {
-      const RISK = [[/recursive delete|rm -r/i, t("Rekursives Löschen – Dateien und Ordner werden endgültig entfernt.")],
+      const RISK = [[/recursive delete|rm -r/i, t("Rekursives Löschen: Dateien und Ordner werden endgültig entfernt.")],
         [/delete|remov/i, t("Löschen von Dateien.")], [/overwrit|truncat/i, t("Überschreiben von Dateien.")],
         [/sudo|privilege|root/i, t("Befehl mit erhöhten Rechten.")], [/chmod|chown|permission/i, t("Ändern von Rechten oder Besitzern.")],
         [/kill|shutdown|reboot|systemctl/i, t("Eingriff in laufende Dienste oder das System.")], [/network|curl|wget|download/i, t("Netzwerkzugriff / Download.")],
@@ -985,7 +985,7 @@
     } catch (e) { DEV.err = t("Gerätedienst nicht erreichbar"); }
     renderDevice();
   }
-  const pct = (x) => (x == null ? "–" : Math.round(x) + " %");
+  const pct = (x) => (x == null ? "·" : Math.round(x) + " %");
   function renderDevice() {
     const st = DEV.st, has = !!DEV.available;
     $("devBox").hidden = !has;
@@ -1212,7 +1212,7 @@
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(d.detail || t("Umschalten fehlgeschlagen."));
     const label = MODE_DE[mode] + (mode !== "local" ? " · " + modelShort(claude, "remote") : "");
-    card("sys", t("Gehirn: {l}", { l: label + (d.effect ? " – " + d.effect : "") }));
+    card("sys", t("Gehirn: {l}", { l: label + (d.effect ? ": " + d.effect : "") }));
     speech.say(mode === "local" ? t("Erledigt. Ich denke jetzt wieder lokal.") : t("Erledigt. Ich nutze jetzt {m}.", { m: modelShort(claude, "remote") }));
     clog("Gehirn umgeschaltet: " + label);
     S._remote = undefined; pollStatus();
@@ -1313,7 +1313,7 @@
     $("apDesc").textContent = mode === "local" ? t("Alles bleibt im Haus. Braucht den PC mit Gemma.")
       : t("Datenschutz: Die Gesprächstexte gehen an Anthropic (USA). Audio bleibt lokal auf deinem Server.");
     setFacts([[t("Neu"), name], info ? [t("Preis"), t("Eingabe {i}, Ausgabe {o} je 1 Mio. Token", { i: fmtUsd(info.in), o: fmtUsd(info.out) })] : null,
-      mode === "auto" ? [t("Ablauf"), t("Gemma, wenn der PC läuft – sonst {m}", { m: modelShort(claude, "remote") })] : null].filter(Boolean));
+      mode === "auto" ? [t("Ablauf"), t("Gemma, wenn der PC läuft, sonst {m}", { m: modelShort(claude, "remote") })] : null].filter(Boolean));
     $("apCmd").textContent = ""; $("apYes").textContent = t("Ja, wechseln");
     $("approvalBackdrop").hidden = false; view("talk"); earcon("confirm");
     speech.say(mode === "local" ? t("Soll ich zurück auf das lokale Gehirn wechseln?")

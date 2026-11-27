@@ -499,7 +499,7 @@ def assistant_update(d: dict, who: str) -> dict:
         if key in d and d[key] is not None:
             v = re.sub(r"\s+", " ", str(d[key])).strip()
             if v and not NAME_RE.fullmatch(v):
-                raise HTTPException(400, jc.tr("Name: 1–40 Zeichen, Buchstaben, Ziffern, Leerzeichen, . ' -", "Name: 1–40 characters, letters, digits, spaces, . ' -"))
+                raise HTTPException(400, jc.tr("Name: 1-40 Zeichen, Buchstaben, Ziffern, Leerzeichen, . ' -", "Name: 1-40 characters, letters, digits, spaces, . ' -"))
             fields[key] = v or None   # leer = zurück auf Standard
             notes.append(f"{key}={v or '(default)'}")
     if "onboarded" in d:

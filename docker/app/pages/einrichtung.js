@@ -10,11 +10,11 @@
     h_mode: "2 · Brain", m_local: "Local", m_local_d: "Only your own server (Ollama, llama.cpp …). Nothing leaves your home. Free.",
     m_auto: "Both (automatic)", m_auto_d: "Your own server, and Claude when the PC is off.", m_remote: "Claude (API)",
     m_remote_d: "No PC of your own needed, costs per question.",
-    h_ollama: "Local language model server", fw_title: "Open the port on the computer running the server – one of these, depending on its firewall:", l_type: "Server type", t_openai: "OpenAI-compatible (llama.cpp, vLLM, LM Studio, LocalAI)", l_lkey: "API key (only if the server needs one)", l_url: "Address", probe: "Test connection",
+    h_ollama: "Local language model server", fw_title: "Open the port on the computer running the server, one of these, depending on its firewall:", l_type: "Server type", t_openai: "OpenAI-compatible (llama.cpp, vLLM, LM Studio, LocalAI)", l_lkey: "API key (only if the server needs one)", l_url: "Address", probe: "Test connection",
     url_hint: "Ollama: http://<IP>:11434. llama.cpp/LocalAI usually port 8080, vLLM 8000, LM Studio 1234. Use the IP of the computer running the server, also if it is this one; the server must listen on the network (0.0.0.0) and its port must be open in that computer's firewall.", l_model: "Model", l_ctx: "Context (tokens)",
-    ctx_hint: "Important: NuOrb needs at least 64k tokens of context – Ollama: OLLAMA_CONTEXT_LENGTH=65536, llama.cpp: -c 65536, vLLM: --max-model-len 65536, LM Studio: Context Length 65536. The model must support tool calling (llama.cpp: --jinja, vLLM: --enable-auto-tool-choice).",
+    ctx_hint: "Important: NuOrb needs at least 64k tokens of context. Ollama: OLLAMA_CONTEXT_LENGTH=65536, llama.cpp: -c 65536, vLLM: --max-model-len 65536, LM Studio: Context Length 65536. The model must support tool calling (llama.cpp: --jinja, vLLM: --enable-auto-tool-choice).",
     h_claude: "Claude", l_key: "Anthropic API key", l_remote: "Claude model",
-    cost: "Cost: billed per token directly by Anthropic (console.anthropic.com). A short voice question costs about 0.1–0.5 cents with Haiku, a few cents with Sonnet. Set a spending limit there.",
+    cost: "Cost: billed per token directly by Anthropic (console.anthropic.com). A short voice question costs about 0.1-0.5 cents with Haiku, a few cents with Sonnet. Set a spending limit there.",
     privacy: "Privacy: with Claude, conversation text is sent to Anthropic (USA). Audio always stays local.",
     save: "Save brain", skip: "Later", h_pair: "3 · Pair a device", pair_d: "Create a QR code for the {brand} app or a code for a browser.",
     pair_go: "Go to “Pair device”",
@@ -27,11 +27,11 @@
     h_mode: "2 · Gehirn", m_local: "Lokal", m_local_d: "Nur dein eigener Server (Ollama, llama.cpp …). Nichts verlässt das Haus. Kostenlos.",
     m_auto: "Beides (Automatik)", m_auto_d: "Dein eigener Server, und Claude, wenn der PC aus ist.", m_remote: "Claude (API)",
     m_remote_d: "Kein eigener PC nötig, kostet pro Frage.",
-    h_ollama: "Lokaler Sprachmodell-Server", fw_title: "Port am Rechner des Servers freigeben – je nach Firewall einer dieser Befehle:", l_type: "Server-Typ", t_openai: "OpenAI-kompatibel (llama.cpp, vLLM, LM Studio, LocalAI)", l_lkey: "API-Key (nur wenn der Server einen verlangt)", l_url: "Adresse", probe: "Verbindung testen",
+    h_ollama: "Lokaler Sprachmodell-Server", fw_title: "Port am Rechner des Servers freigeben, je nach Firewall einer dieser Befehle:", l_type: "Server-Typ", t_openai: "OpenAI-kompatibel (llama.cpp, vLLM, LM Studio, LocalAI)", l_lkey: "API-Key (nur wenn der Server einen verlangt)", l_url: "Adresse", probe: "Verbindung testen",
     url_hint: "Ollama: http://<IP>:11434. llama.cpp/LocalAI meist Port 8080, vLLM 8000, LM Studio 1234. IP des Rechners eintragen, auf dem der Server läuft, auch wenn es dieser ist; der Server muss im Netz lauschen (0.0.0.0) und sein Port in der Firewall dieses Rechners offen sein.", l_model: "Modell", l_ctx: "Kontext (Token)",
-    ctx_hint: "Wichtig: NuOrb braucht mindestens 64k Token Kontext – Ollama: OLLAMA_CONTEXT_LENGTH=65536, llama.cpp: -c 65536, vLLM: --max-model-len 65536, LM Studio: Context Length 65536. Das Modell muss Werkzeuge aufrufen können (llama.cpp: --jinja, vLLM: --enable-auto-tool-choice).",
+    ctx_hint: "Wichtig: NuOrb braucht mindestens 64k Token Kontext. Ollama: OLLAMA_CONTEXT_LENGTH=65536, llama.cpp: -c 65536, vLLM: --max-model-len 65536, LM Studio: Context Length 65536. Das Modell muss Werkzeuge aufrufen können (llama.cpp: --jinja, vLLM: --enable-auto-tool-choice).",
     h_claude: "Claude", l_key: "Anthropic-API-Schlüssel", l_remote: "Claude-Modell",
-    cost: "Kosten: Abrechnung pro Token direkt bei Anthropic (console.anthropic.com). Eine kurze Sprachfrage kostet mit Haiku etwa 0,1–0,5 Cent, mit Sonnet einige Cent. Lege dort ein Ausgabenlimit fest.",
+    cost: "Kosten: Abrechnung pro Token direkt bei Anthropic (console.anthropic.com). Eine kurze Sprachfrage kostet mit Haiku etwa 0,1-0,5 Cent, mit Sonnet einige Cent. Lege dort ein Ausgabenlimit fest.",
     privacy: "Datenschutz: Bei Claude gehen die Gesprächstexte an Anthropic (USA). Audio bleibt immer lokal.",
     save: "Gehirn speichern", skip: "Später", h_pair: "3 · Gerät koppeln", pair_d: "Erzeuge einen QR-Code für die {brand}-App oder einen Code für den Browser.",
     pair_go: "Zu „Gerät koppeln“",
@@ -39,7 +39,7 @@
   const MSG = {
     de: { set: "Schlüssel gesetzt: ", none: "Noch kein Schlüssel hinterlegt.", saving: "Speichere … (Hermes startet neu, ~20 s)",
           ok: "Fertig. {brand} denkt jetzt mit: ", probing: "Teste …", found: (sv, v, n) => `Verbunden: ${sv}${v ? " " + v : ""}, ${n} Modelle.`, err: "Fehler: ",
-          noBrain: "⚠ Noch kein Gehirn eingerichtet – {brand} kann noch nicht antworten.", brain: (m) => `✓ Gehirn eingerichtet (${m}).`,
+          noBrain: "⚠ Noch kein Gehirn eingerichtet. {brand} kann noch nicht antworten.", brain: (m) => `✓ Gehirn eingerichtet (${m}).`,
           load: (s) => s.total_mb ? `Lade Sprachmodelle: ${s.item || ""} ${s.done_mb || 0} / ${s.total_mb} MB` : `Verbinde für den Download der Sprachmodelle${s.item ? " (" + s.item + ")" : ""} …`, ready: "✓ Sprachmodelle bereit (Spracherkennung und Stimme).",
           offline: "Der Container hat keine Internetverbindung: Die Sprachmodelle (~530 MB) konnten nicht geladen werden. Neuer Versuch läuft automatisch. Häufigste Ursache ist die Firewall des Rechners (ufw: „sudo ufw default allow routed && sudo ufw reload“), sonst DNS oder Proxy.",
           fw: "Firewall am Rechner des Servers? Seinen Port für Docker freigeben (172.16.0.0/12), z. B. sudo ufw allow from 172.16.0.0/12 to any port 11434 proto tcp (Port anpassen).",
@@ -47,7 +47,7 @@
           langOk: "Übernommen.", dl: (v) => `Übernommen, Stimme ${v} wird geladen …`, modes: { local: "Lokal", auto: "Automatik", remote: "Claude" } },
     en: { set: "Key set: ", none: "No key stored yet.", saving: "Saving … (Hermes restarts, ~20 s)",
           ok: "Done. {brand} now thinks with: ", probing: "Testing …", found: (sv, v, n) => `Connected: ${sv}${v ? " " + v : ""}, ${n} models.`, err: "Error: ",
-          noBrain: "⚠ No brain configured yet – {brand} cannot answer yet.", brain: (m) => `✓ Brain configured (${m}).`,
+          noBrain: "⚠ No brain configured yet. {brand} cannot answer yet.", brain: (m) => `✓ Brain configured (${m}).`,
           load: (s) => s.total_mb ? `Downloading speech models: ${s.item || ""} ${s.done_mb || 0} / ${s.total_mb} MB` : `Connecting to download the speech models${s.item ? " (" + s.item + ")" : ""} …`, ready: "✓ Speech models ready (recognition and voice).",
           offline: "The container has no internet connection: the speech models (~530 MB) could not be downloaded. Retrying automatically. Most common cause is the host firewall (ufw: “sudo ufw default allow routed && sudo ufw reload”), otherwise DNS or proxy.",
           fw: "Firewall on the server's machine? Allow its port from Docker (172.16.0.0/12), e.g. sudo ufw allow from 172.16.0.0/12 to any port 11434 proto tcp (adjust the port).",
@@ -158,7 +158,7 @@
     if (s.ollama_model) { const o = document.createElement("option"); o.value = o.textContent = s.ollama_model; $("model").replaceChildren(o); }
     $("keyState").textContent = s.anthropic_key ? m.set + s.anthropic_key : m.none;
     for (const [id, x] of Object.entries(s.claude_models || {})) {
-      const o = document.createElement("option"); o.value = id; o.textContent = `${x.name} – ${I.tr(x.hint)}`; $("remote").append(o);
+      const o = document.createElement("option"); o.value = id; o.textContent = `${x.name}: ${I.tr(x.hint)}`; $("remote").append(o);
     }
     $("remote").value = s.remote_model || "claude-haiku-5-5";
     const want = s.done ? s.brain : (s.ollama_url ? (s.anthropic_key ? "auto" : "local") : (s.anthropic_key ? "remote" : "local"));

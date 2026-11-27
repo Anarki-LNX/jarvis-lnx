@@ -40,7 +40,7 @@
       const mono = document.createElement("div"); mono.className = "mono muted"; mono.textContent = v.id; c.append(mono);
       tr.insertCell().textContent = v.license || "?";
       const cr = tr.insertCell();
-      if (v.data_url) cr.append(link(v.data_url, v.data), ` · ${v.base}`); else cr.textContent = "–";
+      if (v.data_url) cr.append(link(v.data_url, v.data), ` · ${v.base}`); else cr.textContent = "·";
     }
     $("licLink").href = d.licenses_url; $("licPath").textContent = d.licenses_path;
   }).catch(() => {});

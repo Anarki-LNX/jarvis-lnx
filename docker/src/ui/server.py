@@ -149,7 +149,7 @@ PERSONA = (
     "Antworte immer auf Deutsch und duze den Nutzer, knapp, natuerlich und gesprochen: meist ein bis drei Saetze, "
     "kein Markdown, keine Tabellen, keine Aufzaehlungszeichen, keine Emojis, keine URLs vorlesen. "
     "Uhrzeiten exakt nennen, in der Form 'zwoelf Uhr siebenundzwanzig'. Ton: ruhig, kompetent, mit einer "
-    "Prise trockenem Humor – wie ein britischer Butler mit Ingenieursdiplom. "
+    "Prise trockenem Humor, wie ein britischer Butler mit Ingenieursdiplom. "
     "Vor gefaehrlichen oder unumkehrbaren Aktionen kurz sagen, was du vorhast. "
     "Jede Nachricht beginnt mit einer internen Systeminfo in eckigen Klammern (Uhrzeit, Datum, Geraet, Weckwort). "
     "Nutze sie, aber lies sie nie vor und zitiere sie nie, auch nicht teilweise. "
@@ -669,7 +669,7 @@ async def geraet_aktion(session_id: str, tool_call_id: str):
         if aktion not in GERAET_AKTIONEN:
             raise HTTPException(422, f"unbekannte Aktion {str(aktion)[:30]}")
         if wert is not None and (not isinstance(wert, int) or isinstance(wert, bool) or not 0 <= wert <= 100):
-            raise HTTPException(422, "wert muss eine ganze Zahl 0–100 sein")
+            raise HTTPException(422, "wert muss eine ganze Zahl 0-100 sein")
         if aktion in ("helligkeit", "lautstaerke") and wert is None:
             raise HTTPException(422, "wert fehlt")
         return {"aktion": aktion, "wert": wert, "tool_call_id": m.get("tool_call_id")}
@@ -860,7 +860,7 @@ async def _admin(method: str, path: str, payload: dict | None = None) -> tuple[i
     try:
         token = ADMIN_TOKEN_FILE.read_text().strip()
     except OSError:
-        return 503, {"detail": "Umschalten vom Handy ist noch nicht eingerichtet – bitte im Admin-UI (:8444) umschalten."}
+        return 503, {"detail": "Umschalten vom Handy ist noch nicht eingerichtet. Bitte im Admin-UI (:8444) umschalten."}
     try:
         async with httpx.AsyncClient(verify=str(CERT_DIR / "jarvis-ca.crt"), timeout=httpx.Timeout(60, connect=3)) as c:
             r = await c.request(method, ADMIN_URL + path, json=payload, headers={"X-Jarvis-Internal": token})
@@ -869,7 +869,7 @@ async def _admin(method: str, path: str, payload: dict | None = None) -> tuple[i
         except Exception:
             data = {"detail": r.text[:300]}
         if r.status_code == 404:
-            data = {"detail": "Admin-UI kennt die Handy-Schnittstelle noch nicht – bitte im Admin-UI (:8444) umschalten."}
+            data = {"detail": "Admin-UI kennt die Handy-Schnittstelle noch nicht. Bitte im Admin-UI (:8444) umschalten."}
         return r.status_code, data if isinstance(data, dict) else {"data": data}
     except Exception as exc:
         return 503, {"detail": f"Admin-UI nicht erreichbar ({exc.__class__.__name__})."}
@@ -986,7 +986,7 @@ async def assistant_set(request: Request):
     if "assistant_name" in body:
         n = str(body["assistant_name"] or "").strip() or ui_cfg()["brand"]  # leer = zurueck zur Marke
         if not NAME_RE.fullmatch(n):
-            raise HTTPException(400, "Name ungültig (1–24 Zeichen, Buchstaben, Ziffern, Leerzeichen, Punkt, Bindestrich).")
+            raise HTTPException(400, "Name ungültig (1-24 Zeichen, Buchstaben, Ziffern, Leerzeichen, Punkt, Bindestrich).")
         d["assistant_name"] = n
     if "onboarded" in body:
         if not isinstance(body["onboarded"], bool):
@@ -1011,7 +1011,7 @@ async def setting_set(request: Request):
     if "assistant_name" in d:
         d["assistant_name"] = d["assistant_name"].strip()
         if not NAME_RE.fullmatch(d["assistant_name"]):
-            raise HTTPException(400, "Name ungültig (1–24 Zeichen, Buchstaben, Ziffern, Leerzeichen, Punkt, Bindestrich).")
+            raise HTTPException(400, "Name ungültig (1-24 Zeichen, Buchstaben, Ziffern, Leerzeichen, Punkt, Bindestrich).")
     if not d or len(d) != len(body) or ("follow_up_timeout_s" in d and not 4 <= d["follow_up_timeout_s"] <= 30):
         raise HTTPException(400, "Unbekannte oder ungültige Einstellung.")
     code, data = await _admin("POST", "/internal/ui", {**d, "source": "handy"})

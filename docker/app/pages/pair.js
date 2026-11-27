@@ -2,10 +2,10 @@
 (function () {
   const $ = (id) => document.getElementById(id);
   const T = {
-    de: { lead: "Dieses Gerät ist noch nicht gekoppelt. Öffne im Admin-Panel „Gerät koppeln“ und gib den Code ein – oder scanne dort den QR-Code.",
+    de: { lead: "Dieses Gerät ist noch nicht gekoppelt. Öffne im Admin-Panel „Gerät koppeln“ und gib den Code ein oder scanne dort den QR-Code.",
           go: "Koppeln", hint: "Der Code gilt 10 Minuten und nur einmal.", bad: "Code falsch oder abgelaufen.", many: "Zu viele Versuche. Bitte 15 Minuten warten.",
           net: "Keine Verbindung zum Server.", busy: "Kopple …", label: "Kopplungscode" },
-    en: { lead: "This device is not paired yet. Open “Pair device” in the admin panel and enter the code – or scan the QR code there.",
+    en: { lead: "This device is not paired yet. Open “Pair device” in the admin panel and enter the code, or scan the QR code there.",
           go: "Pair", hint: "The code is valid for 10 minutes and only once.", bad: "Wrong or expired code.", many: "Too many attempts. Please wait 15 minutes.",
           net: "No connection to the server.", busy: "Pairing …", label: "Pairing code" },
   };
