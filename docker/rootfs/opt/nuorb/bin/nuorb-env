@@ -30,7 +30,11 @@ export NUORB_UI_URL=$SCHEME://127.0.0.1:$UI_PORT ADMIN_URL=$SCHEME://127.0.0.1:$
 # Leer = Feld in der Einrichtung bleibt leer (Vorschlag nur, wenn das gebündelte Ollama-Profil läuft).
 export OLLAMA_URL="${NUORB_INIT_OLLAMA_URL:-}"
 export BRAIN_URL="${OLLAMA_URL:-http://127.0.0.1:11434}"; BRAIN_URL="${BRAIN_URL%/}/api/version"; export BRAIN_URL
-NETS="${NUORB_ALLOWED_NETS:-127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,fc00::/7,fe80::/10}"
+# Heimnetz, VPN (100.64/10) und Link-Local. Nicht das ganze 172.16.0.0/12 (Docker-Netze), sondern nur der eigene
+# Docker-Gateway: unter dieser Adresse erscheinen Clients, wenn Docker die Ports per Proxy weiterreicht (z. B. IPv6).
+GW=$(awk '$2 == "00000000" {print $3; exit}' /proc/net/route 2>/dev/null)
+[ -n "$GW" ] && GW=$(printf '%d.%d.%d.%d' "0x${GW#??????}" "0x$(printf '%s' "$GW" | cut -c5-6)" "0x$(printf '%s' "$GW" | cut -c3-4)" "0x${GW%??????}")
+NETS="${NUORB_ALLOWED_NETS:-127.0.0.0/8,::1/128,10.0.0.0/8,192.168.0.0/16,100.64.0.0/10,fc00::/7,fe80::/10${GW:+,$GW/32}}"
 export UI_ALLOWED_NETS="$NETS" ADMIN_ALLOWED_NETS="$NETS"
 # Marke/Oberflächensprache (NuOrb-Oberfläche): BRAND_NAME, UI_LANG=de|en|auto, WAKE_PHRASE; ui.json hat Vorrang
 export BRAND_NAME="${BRAND_NAME:-NuOrb}" UI_LANG="${UI_LANG:-auto}"

@@ -93,5 +93,50 @@ class Sperren(unittest.TestCase):
         self.assertEqual(stat.S_IMODE(lock.stat().st_mode), 0o600)
 
 
+class NetzUndProxy(unittest.TestCase):
+    """P1.6: Allowlist ohne das ganze 172.16.0.0/12, eigener Docker-Gateway erlaubt, Proxy-Köpfe nur auf Wunsch."""
+
+    def setUp(self):
+        import os
+        self.os = os
+        self.vorher = (jc.default_gateway, os.environ.pop("NUORB_ALLOWED_NETS", None), os.environ.pop("NUORB_TRUSTED_PROXY", None))
+        jc.default_gateway = lambda route_file="/proc/net/route": "172.17.0.1"
+
+    def tearDown(self):
+        jc.default_gateway = self.vorher[0]
+        for k, v in (("NUORB_ALLOWED_NETS", self.vorher[1]), ("NUORB_TRUSTED_PROXY", self.vorher[2])):
+            self.os.environ.pop(k, None)
+            if v is not None:
+                self.os.environ[k] = v
+
+    def erlaubt(self, ip):
+        import ipaddress
+        return any(ipaddress.ip_address(ip) in n for n in jc.allowed_nets())
+
+    def test_standard(self):
+        for ip in ("192.168.1.60", "10.1.2.3", "100.101.102.103", "127.0.0.1", "172.17.0.1", "fd00::5"):
+            with self.subTest(ip=ip):
+                self.assertTrue(self.erlaubt(ip))
+        for ip in ("172.18.0.7", "172.20.0.5", "8.8.8.8", "203.0.113.5"):
+            with self.subTest(ip=ip):
+                self.assertFalse(self.erlaubt(ip))
+
+    def test_eigene_liste_ersetzt_den_standard(self):
+        self.os.environ["NUORB_ALLOWED_NETS"] = "172.20.0.0/16"
+        self.assertTrue(self.erlaubt("172.20.0.5"))
+        self.assertFalse(self.erlaubt("192.168.1.60"))
+
+    def test_gateway_aus_routentabelle(self):
+        f = T / "route"
+        f.write_text("Iface\tDestination\tGateway\teth0\nx\t0000FEA9\t00000000\neth0\t00000000\t010011AC\n")
+        self.assertEqual(self.vorher[0](str(f)), "172.17.0.1")
+        self.assertIsNone(self.vorher[0](str(T / "fehlt")))
+
+    def test_proxy_koepfe_nur_mit_vertrauenswuerdigem_proxy(self):
+        self.assertEqual(jc.proxy_kwargs(), {"proxy_headers": False})
+        self.os.environ["NUORB_TRUSTED_PROXY"] = "192.168.1.2"
+        self.assertEqual(jc.proxy_kwargs(), {"proxy_headers": True, "forwarded_allow_ips": "192.168.1.2"})
+
+
 if __name__ == "__main__":
     unittest.main()

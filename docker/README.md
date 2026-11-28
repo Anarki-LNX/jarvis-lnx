@@ -131,7 +131,16 @@ genau diesem Server, ohne Warnung. Browser warnen einmal; wer das nicht will, im
 
 Eigenes Zertifikat (z. B. `tailscale cert`, eigene CA, Let's Encrypt per DNS): `NUORB_TLS=custom` und den Ordner
 mit `fullchain.pem`/`privkey.pem` in `compose.yaml` unter `/certs` einbinden. Hinter einem Reverse-Proxy (z. B.
-Caddy): `NUORB_TLS=off`, `NUORB_BIND=127.0.0.1`, `NUORB_PUBLIC_URL` auf die Proxy-Adresse.
+Caddy): `NUORB_TLS=off`, `NUORB_BIND=127.0.0.1`, `NUORB_PUBLIC_URL` auf die Proxy-Adresse und
+`NUORB_TRUSTED_PROXY` auf die Adresse des Proxys, damit Allowlist und Fehlversuchssperre die echten Client-Adressen sehen.
+Eigene Hostnamen des Proxys gehören nach `NUORB_ALLOWED_HOSTS`.
+
+**Netz-Allowlist:** `NUORB_ALLOWED_NETS` ist ein Zusatzschutz, Passwort und Kopplung schützen auch ohne sie. Ohne
+Angabe gelten die üblichen Heimnetze, VPN-Adressen und der eigene Docker-Gateway. Reicht Docker die Ports per Proxy
+weiter (z. B. bei IPv6), erscheinen alle Clients mit der Gateway-Adresse, dann gilt auch die Fehlversuchssperre für
+alle gemeinsam. Von Docker veröffentlichte Ports umgehen ufw: mit `NUORB_BIND` (oder `install.sh --bind`) lässt sich
+NuOrb an eine Adresse binden, z. B. die Heimnetz-Adresse. Wer NuOrb unterwegs über ein VPN nutzt, bindet nicht oder an
+die VPN-Adresse.
 
 **Server automatisch finden (mDNS):** Mit `network_mode: host` und `NUORB_MDNS=1` kündigt sich der Server als
 `_nuorb._tcp` im Heimnetz an, und die App listet ihn. Im normalen Bridge-Netz geht das nicht; dann IP eintragen.

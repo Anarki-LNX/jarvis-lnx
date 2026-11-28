@@ -586,4 +586,4 @@ if __name__ == "__main__":
         await app(scope, receive, send)
 
     uvicorn.run(lang_app, host=jc.env("ADMIN_HOST", "0.0.0.0"), port=int(jc.env("ADMIN_PORT", "8444")),
-                log_level="warning", proxy_headers=False, server_header=False, **jc.ssl_kwargs())
+                log_level="warning", server_header=False, **jc.proxy_kwargs(), **jc.ssl_kwargs())

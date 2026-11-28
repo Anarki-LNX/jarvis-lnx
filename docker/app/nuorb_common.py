@@ -202,9 +202,34 @@ def _write_json(p: Path, data) -> None:
     os.replace(tmp, p)
 
 
+DEFAULT_NETS = "127.0.0.0/8,::1/128,10.0.0.0/8,192.168.0.0/16,100.64.0.0/10,fc00::/7,fe80::/10"
+
+
+def default_gateway(route_file: str = "/proc/net/route") -> str | None:
+    """IPv4-Standardgateway (im Container: der Docker-Gateway), None wenn unbekannt."""
+    with contextlib.suppress(OSError, ValueError, IndexError):
+        for line in Path(route_file).read_text().splitlines()[1:]:
+            f = line.split()
+            if len(f) > 2 and f[1] == "00000000":
+                return str(ipaddress.IPv4Address(bytes.fromhex(f[2])[::-1]))
+    return None
+
+
 def allowed_nets() -> list:
-    raw = env("NUORB_ALLOWED_NETS") or "127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,fc00::/7,fe80::/10"
+    """Heimnetz, VPN und Link-Local, dazu der eigene Docker-Gateway (nicht das ganze 172.16.0.0/12): unter dieser
+    Adresse erscheinen Clients, wenn Docker die Ports per Proxy weiterreicht. NUORB_ALLOWED_NETS ersetzt die Liste."""
+    raw = env("NUORB_ALLOWED_NETS")
+    if not raw:
+        gw = default_gateway()
+        raw = DEFAULT_NETS + (f",{gw}/32" if gw else "")
     return [ipaddress.ip_network(n.strip(), strict=False) for n in raw.split(",") if n.strip()]
+
+
+def proxy_kwargs() -> dict:
+    """Reverse-Proxy (NUORB_TRUSTED_PROXY, Komma-Liste): nur dann X-Forwarded-For auswerten, und nur von diesen Adressen.
+    Dann sehen Allowlist und Sperre die echte Client-Adresse statt der des Proxys."""
+    p = env("NUORB_TRUSTED_PROXY")
+    return {"proxy_headers": True, "forwarded_allow_ips": p} if p else {"proxy_headers": False}
 
 
 def is_loopback(host: str | None) -> bool:

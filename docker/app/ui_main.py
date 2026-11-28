@@ -344,4 +344,4 @@ if __name__ == "__main__":
     jc.ensure_certs()
     mdns_start()
     uvicorn.run(app, host=jc.env("UI_HOST", "0.0.0.0"), port=int(jc.env("UI_PORT", "8443")), log_level="info",
-                proxy_headers=False, server_header=False, **jc.ssl_kwargs())
+                server_header=False, **jc.proxy_kwargs(), **jc.ssl_kwargs())

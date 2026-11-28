@@ -24,6 +24,7 @@ UNINSTALL=0
 SOURCE=""                    # local docker/ folder instead of download (development, offline)
 IMAGE=""                     # use this image instead of ghcr.io/anarki-lnx/nuorb (development)
 IP=""
+BIND=""                      # NUORB_BIND: Adresse, an die die Ports gebunden werden (leer = alle)
 OLLAMA=""                    # URL des lokalen Gehirns (Ollama oder OpenAI-kompatibel), oder "none"
 LLM_KEY=""
 
@@ -70,6 +71,7 @@ NuOrb server installer (install, update, repair)
   --llm-key KEY     API key of that server, if it requires one
   --yes             no questions, use defaults (never runs sudo)
   --no-firewall     do not check or change the firewall
+  --bind ADDRESS    publish the ports only on this address (default: all, needed for VPN access)
   --uninstall       remove NuOrb (asks; data only with an extra confirmation)
   --name NAME       other project/container name, for a second instance (default: nuorb)
   --help
@@ -86,6 +88,7 @@ while [ $# -gt 0 ]; do
     --llm-key) LLM_KEY="$2"; shift ;;
     --yes|-y) YES=1 ;;
     --no-firewall) FIREWALL=0 ;;
+    --bind) BIND="$2"; shift ;;
     --uninstall) UNINSTALL=1 ;;
     --name) NAME="$2"; shift ;;
     --source) SOURCE="$2"; shift ;;
@@ -327,6 +330,7 @@ configure() {
     ok "$(t "Keeping your settings in $DIR/.env" "Deine Einstellungen in $DIR/.env bleiben")"
     [ "$PORTS_SET" = 1 ] && { set_env NUORB_UI_PORT_PUBLIC "$UI_PORT"; set_env NUORB_ADMIN_PORT_PUBLIC "$ADMIN_PORT"; }
     [ -n "$LANG_SEL" ] && { set_env NUORB_LANG "$LANG_SEL"; set_env ADMIN_LANG "$LANG_SEL"; }
+    [ -n "$BIND" ] && set_env NUORB_BIND "$BIND"
     UI_PORT=$(get_env NUORB_UI_PORT_PUBLIC); UI_PORT=${UI_PORT:-8443}
     ADMIN_PORT=$(get_env NUORB_ADMIN_PORT_PUBLIC); ADMIN_PORT=${ADMIN_PORT:-8444}
     IP=${IP:-$(get_env NUORB_HOSTS | cut -d, -f1)}; IP=${IP:-$(detect_ip)}
@@ -341,6 +345,7 @@ configure() {
   [ -n "$IP" ] || fail "$(t "Could not detect the IP address, use --ip 192.168.1.50" "IP-Adresse nicht erkannt, bitte --ip 192.168.1.50 angeben")"
   tz=$(timedatectl show -p Timezone --value 2>/dev/null || cat /etc/timezone 2>/dev/null || echo Europe/Berlin)
   set_env NUORB_LANG "$lang"; set_env ADMIN_LANG "$lang"; set_env TZ "${tz:-Europe/Berlin}"
+  [ -n "$BIND" ] && set_env NUORB_BIND "$BIND"
   set_env NUORB_HOSTS "$IP"; set_env NUORB_HOST_IP "$IP"; set_env NUORB_UI_PORT_PUBLIC "$UI_PORT"; set_env NUORB_ADMIN_PORT_PUBLIC "$ADMIN_PORT"
   ok "$(t "Language" "Sprache") $lang · IP $IP · $(t "ports" "Ports") $UI_PORT/$ADMIN_PORT · TZ ${tz:-Europe/Berlin}"
 
