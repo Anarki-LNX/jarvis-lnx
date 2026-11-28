@@ -166,6 +166,10 @@ def origin_ok(request: Request) -> bool:
         return False
     return origin == f"{request.url.scheme}://{(request.headers.get('host') or '').strip().lower()}"
 
+UI_CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; "
+          "media-src 'self' data: blob:; connect-src 'self' blob: data:; font-src 'self'; manifest-src 'self'; "
+          "worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'")
+
 # Schutz vor DNS-Rebinding: nur Hostnamen, die eine fremde Webseite nicht auf diesen Server umbiegen kann. Erlaubt sind
 # IP-Adressen, Namen ohne Punkt (nur im Heimnetz auflösbar), Heimnetz-Endungen, der eigene Hostname und alles aus
 # NUORB_HOSTS und NUORB_ALLOWED_HOSTS (Komma-Liste, auch *.beispiel.de). Gilt unabhängig von TLS und Kopplung.
@@ -369,6 +373,10 @@ async def lan_only(request: Request, call_next):
     resp.headers.setdefault("X-Content-Type-Options", "nosniff")
     resp.headers.setdefault("Referrer-Policy", "no-referrer")
     resp.headers.setdefault("Permissions-Policy", "microphone=(self), camera=()")
+    # Strenge CSP wie im Admin-Panel: nur eigene Skripte, keine Inline-Skripte. Audio kommt als data:/blob: (TTS),
+    # das Weckwort als EventSource vom selben Ursprung.
+    resp.headers.setdefault("Content-Security-Policy", UI_CSP)
+    resp.headers.setdefault("X-Frame-Options", "DENY")
     if request.url.path.startswith("/api/"):
         resp.headers["Cache-Control"] = "no-store"
     elif request.url.path.endswith((".js", ".css", ".html", ".webmanifest")) or request.url.path == "/":
@@ -1361,12 +1369,13 @@ async def manifest():
 async def index():
     b = build_id()
     html = (BASE / "static/index.html").read_text(encoding="utf-8")
-    html = re.sub(r'((?:src|href)="(?:app|orb|i18n|i18n-en)\.js|href="(?:style|orb|tokens)\.css)"', rf'\1?v={b}"', html)
+    html = re.sub(r'((?:src|href)="(?:app|orb|i18n|i18n-en|i18n-apply)\.js|href="(?:style|orb|tokens)\.css)"', rf'\1?v={b}"', html)
     html = html.replace('<html lang="de">', f'<html lang="de" data-build="{b}">', 1)
     uc = ui_cfg()
     html = html.replace("<title>NUORB</title>", f"<title>{uc['brand']}</title>", 1)
-    cfg_js = json.dumps(uc, ensure_ascii=False).replace("</", "<\\/")
-    html = html.replace('<script src="i18n.js', f'<script>window.NUORB_CFG={cfg_js};</script>\n<script src="i18n.js', 1)
+    # Konfiguration als JSON-Datenblock (wird nicht ausgeführt, verträgt sich mit der CSP ohne Inline-Skripte)
+    cfg_json = json.dumps(uc, ensure_ascii=False).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+    html = html.replace('<script src="i18n.js', f'<script type="application/json" id="nuorb-cfg">{cfg_json}</script>\n<script src="i18n.js', 1)
     return Response(html, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-cache, no-store"})
 
 

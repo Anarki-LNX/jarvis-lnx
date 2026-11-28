@@ -7,7 +7,10 @@
 // brand, wake_phrase, ui_lang), ueberschreibbar per ?lang=de|en|auto und ?brand=Name (z. B. fuer Screenshots).
 (function () {
   "use strict";
-  const cfg = window.NUORB_CFG || {};
+  // Konfiguration aus dem JSON-Datenblock, den der Server in index.html einsetzt
+  let cfg = window.NUORB_CFG || null;
+  if (!cfg) { try { cfg = JSON.parse((document.getElementById("nuorb-cfg") || {}).textContent || "{}"); } catch (e) { cfg = {}; } }
+  window.NUORB_CFG = cfg;
   const qp = new URLSearchParams(location.search);
   let lang = String(qp.get("lang") || cfg.ui_lang || "de").toLowerCase();
   if (lang === "auto") lang = String(navigator.language || "de").toLowerCase().startsWith("de") ? "de" : "en";

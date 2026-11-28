@@ -90,6 +90,41 @@ class Kopplungspflicht(unittest.TestCase):
         self.assertEqual(anfrage("GET", "/api/status", Authorization="Bearer falsch").status_code, 401)
 
 
+class XssSchutz(unittest.TestCase):
+    """S4: strenge CSP, keine ausführbaren Inline-Skripte, Konfiguration als JSON-Datenblock."""
+
+    def test_csp_ohne_inline_skripte(self):
+        r = anfrage("GET", "/")
+        csp = r.headers.get("content-security-policy", "")
+        self.assertIn("script-src 'self'", csp)
+        self.assertNotIn("unsafe-inline", csp)
+        self.assertIn("frame-ancestors 'none'", csp)
+        self.assertEqual(r.headers.get("x-frame-options"), "DENY")
+
+    def test_seite_hat_keine_ausfuehrbaren_inline_skripte(self):
+        import re
+        html = anfrage("GET", "/").text
+        for tag in re.findall(r"<script\b[^>]*>", html):
+            with self.subTest(tag=tag):
+                self.assertTrue("src=" in tag or 'type="application/json"' in tag, tag)
+        self.assertNotRegex(html, r"\son[a-z]+\s*=", "keine Inline-Event-Handler")
+
+    def test_konfiguration_bricht_nicht_aus_dem_datenblock_aus(self):
+        import json
+        import re
+        vorher = ui.ui_cfg
+        ui.ui_cfg = lambda: {**vorher(), "brand": "X</script><img src=x onerror=alert(1)>"}
+        try:
+            html = anfrage("GET", "/").text
+        finally:
+            ui.ui_cfg = vorher
+        m = re.search(r'<script type="application/json" id="nuorb-cfg">(.*?)</script>', html, re.S)
+        self.assertIsNotNone(m)
+        assert m is not None
+        self.assertNotIn("<", m.group(1))
+        self.assertEqual(json.loads(m.group(1))["brand"], "X</script><img src=x onerror=alert(1)>")
+
+
 class HostAllowlist(unittest.TestCase):
     """P1.5: DNS-Rebinding. Fremde Hostnamen werden abgelehnt, die Formen aus dem Heimnetz gehen durch."""
     ERLAUBT = ["192.168.1.50:{p}", "192.168.1.50", "[fe80::1]:{p}", "[::1]", "localhost:{p}", "nuorb:{p}", "nuorb.local:{p}",
