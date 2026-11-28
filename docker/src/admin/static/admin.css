@@ -253,3 +253,8 @@ input[type=range] { width: 100%; accent-color: var(--cyan); }
 .login-lang { position: absolute; top: 14px; right: 14px; z-index: 1; }
 @media (max-width: 920px) { .server-name { display: none; } .brand-row { justify-content: flex-start; } .side-brand .lang-toggle { height: 22px; } .side-brand .lang-toggle button { border-radius: 9px; } }
 #oRes:not(:empty) { display: flex; flex-direction: column; gap: 8px; margin: -4px 0 12px; } #oRes .note .dot { margin-right: 6px; }
+
+/* Spendenhinweis am Seitenende */
+.page-foot { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--text-2); font-size: 12px;
+  line-height: 1.5; overflow-wrap: anywhere; }
+.page-foot a { color: var(--cyan, inherit); white-space: nowrap; }

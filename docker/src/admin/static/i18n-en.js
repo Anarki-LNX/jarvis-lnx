@@ -604,6 +604,8 @@ window.I18N_EN = {
  "Zertifikats-Fingerabdruck (SHA-256 der Heim-CA)": "Certificate fingerprint (SHA-256 of the home CA)",
  "Zu viele Fehlversuche. Bitte {0} s warten.": "Too many failed attempts. Please wait {0} s.",
  "Bitte warten, die vorige Anmeldung läuft noch.": "Please wait, the previous login is still running.",
+ "NuOrb ist kostenlos und quelloffen. Wenn es dir gefällt, freue ich mich über einen Kaffee:": "NuOrb is free and open source. If you like it, you can buy me a coffee:",
+ "PayPal ☕": "PayPal ☕",
  "Unbekannter Hostname. Eigene Namen in NUORB_ALLOWED_HOSTS eintragen.": "Unknown host name. Add your own names to NUORB_ALLOWED_HOSTS.",
  "Zu viele Versuche. Bitte {0} s warten.": "Too many attempts. Please wait {0} s.",
  "Zuerst das lokale Modell auf dem PC; antwortet es nicht, übernimmt Claude.": "Tries the local model on the PC first; if it doesn't respond, Claude takes over.",
