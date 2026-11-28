@@ -19,8 +19,10 @@ cleanup() {
 trap cleanup EXIT
 
 python3 tools/mock-llm.py 18434 > .work/ci-mock.log 2>&1 & MOCK=$!
-"${C[@]}" build --build-arg NUORB_BUILD="${NUORB_BUILD:-ci}"
-"${C[@]}" up -d
+# Image direkt mit docker build bauen: Neuere Compose-Versionen bauen sonst über buildx bake, und das verlangt
+# für "network: host" aus compose.test.yaml eine eigene Freigabe. Das Ergebnis ist dasselbe Image.
+docker build -t nuorb:test --build-arg NUORB_BUILD="${NUORB_BUILD:-ci}" .
+"${C[@]}" up -d --no-build
 echo "Warte auf den Container"
 for _ in $(seq 1 180); do
   curl -sk -o /dev/null -w '%{http_code}' https://127.0.0.1:19444/api/auth/state 2>/dev/null | grep -q 200 && break
