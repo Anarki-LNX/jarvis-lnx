@@ -35,7 +35,7 @@ RUN ln -sfn /opt/data /opt/nuorb/home/.hermes \
  && /opt/nuorb/venv/bin/python -I /opt/nuorb/app/license_inventory.py /usr/share/doc/nuorb
 # Lizenzen: /usr/share/doc/nuorb/ (THIRD_PARTY_LICENSES.md, LICENSE-NuOrb.txt, Python-Paketliste + Lizenzdateien);
 # Debian-Pakete: /usr/share/doc/<paket>/copyright, Lizenztexte: /usr/share/common-licenses/
-LABEL org.opencontainers.image.licenses="MIT AND GPL-3.0-or-later AND LGPL-2.1-or-later" \
+LABEL org.opencontainers.image.licenses="MIT AND GPL-3.0-or-later AND LGPL-2.1-or-later AND LGPL-3.0-only" \
       org.opencontainers.image.source="https://github.com/Anarki-LNX/nuorb" \
       org.opencontainers.image.title="NuOrb"
 
