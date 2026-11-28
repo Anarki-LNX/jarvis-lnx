@@ -19,9 +19,10 @@ FROM ${HERMES_IMAGE}
 
 USER root
 COPY requirements.txt /opt/nuorb/requirements.txt
-# Eigenes venv mit Debians Python 3.13 (Hermes nutzt sein eigenes 3.14-venv, das bleibt unberührt)
+# Eigenes venv mit Debians Python 3.13 (Hermes nutzt sein eigenes 3.14-venv, das bleibt unberührt).
+# requirements.txt ist aus requirements.in erzeugt und enthält jedes Paket mit Hash: pip bricht ab, wenn eine Datei abweicht.
 RUN /usr/bin/python3 -m venv /opt/nuorb/venv \
- && /opt/nuorb/venv/bin/pip install --no-cache-dir --disable-pip-version-check -r /opt/nuorb/requirements.txt \
+ && /opt/nuorb/venv/bin/pip install --no-cache-dir --disable-pip-version-check --require-hashes --no-deps -r /opt/nuorb/requirements.txt \
  && find /opt/nuorb/venv -name '__pycache__' -prune -exec rm -rf {} + \
  && rm -rf /root/.cache
 

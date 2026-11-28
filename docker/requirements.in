@@ -1,4 +1,5 @@
-# NuOrb-Server: Python-Pakete für Oberfläche, Admin und Spracherkennung (eigenes venv, getrennt von Hermes)
+# NuOrb-Server: direkte Abhängigkeiten (eigenes venv, getrennt von Hermes). requirements.txt wird daraus mit Hashes erzeugt:
+#   pip-compile --allow-unsafe --generate-hashes --output-file=requirements.txt requirements.in
 fastapi==0.165.0
 starlette==1.10.0
 uvicorn==0.54.0
