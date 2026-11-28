@@ -400,7 +400,7 @@
     view("talk"); S.lastActivity = Date.now();
     setState("listening", "");
     earcon("start");
-    if (navigator.vibrate) navigator.vibrate(12);
+    if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(12);
     rec.timer = setTimeout(() => stopRec(), 30000);
     vadStart();
     if (rec.pendingStop) { rec.pendingStop = false; stopRec(); }
@@ -524,12 +524,14 @@
   const CONV_ASK = [t("Noch etwas?"), t("Kann ich noch etwas für dich tun?"), t("Sonst noch was?"), t("Noch eine Frage?")];
   const CONV_MAX = 5; // hoechstens so viele Nachfragen nach der ersten Frage
   // Abschied: nur der ganze Satz zaehlt (verankert), dann Ende ohne Abschlusssatz, nur Ton
-  const CONV_END = /^(nein|nee|ne|nö|nichts|nix|danke|das war'?s|das wars|das ist alles|das reicht|danke das reicht|passt|ruhemodus|ruhe|schlaf\w*|gute nacht|tschüss|tschau|mach'?s gut|bis später|bis bald|bis dann|fertig|ok(ay)? danke)( (danke|das war'?s|das wars|das reicht|mehr|nuorb|schön|sehr|alles|gut|bitte|für jetzt))*$/;
-  const CONV_END_EN = /^(no|nope|nothing|no thanks?|no thank you|thanks?|thank you|that'?s all|that'?s it|thats all|thats it|that'?s enough|thats enough|i'?m done|goodbye|good ?bye|bye|see you|see ya|good night|sleep|nothing else|all good)( (thanks?|thank you|nuorb|for now|that'?s all|thats all|bye|then|later|soon))*$/;
+  const CONV_END = /^(nein|nee|ne|nö|nichts|nix|danke|das war'?s|das wars|das ist alles|das reicht|danke das reicht|passt|ruhemodus|ruhe|schlaf\w*|gute nacht|tschüss|tschau|mach'?s gut|mach es gut|bis später|bis bald|bis dann|fertig|ok(ay)? danke)( (danke|das war'?s|das wars|das reicht|das ist alles|mehr|nuorb|schön|sehr|alles|gut|bitte|für jetzt|mach'?s gut|mach es gut|tschüss|bis später|bis bald|bis dann|gute nacht))*$/;
+  const CONV_END_EN = /^(no|nope|nothing|no thanks?|no thank you|thanks?|thank you|that'?s all|that'?s it|thats all|thats it|that is all|that is it|that'?s enough|thats enough|that is enough|i'?m done|i am done|goodbye|good ?bye|bye|see you|see ya|good night|sleep|nothing else|all good)( (thanks?|thank you|nuorb|for now|that'?s all|thats all|that is all|bye|then|later|soon|good night))*$/;
   // Stoppwort: sofort abbrechen, nichts sagen, nicht weiter zuhoeren (auch als „nuorb stopp“ oder „stopp nuorb“)
   const CONV_STOP = /^(nuorb )?(stopp?|ende|aufhören|hör auf|sei still|halt|halt stopp|ruhe jetzt)( (nuorb|bitte|jetzt|sofort))*$/;
   const CONV_STOP_EN = /^(nuorb )?(stop|halt|enough|be quiet|quiet|shut up|stop it|cancel)( (nuorb|please|now|it))*$/;
-  const normSay = (t) => String(t).toLowerCase().replace(/[.!?,;:]/g, " ").replace(/\s+/g, " ").trim();
+  // gleiche Listen und Normalisierung wie die App (Gespraechsende.kt): Anrede „(Hey) NuOrb“ vorne faellt weg
+  const CONV_ANREDE = /^(hey |hi |ok |okay )?nuorb /;
+  const normSay = (t) => (String(t).toLowerCase().replace(/[.!?,;:„“"»«]/g, " ").replace(/\s+/g, " ").trim() + " ").replace(CONV_ANREDE, "").trim();
   function convTouch(start) {
     if (!opts.follow) { CONV.active = false; return; }
     if (!CONV.active && !start) return;
@@ -911,7 +913,7 @@
     $("apYes").textContent = yes;
     $("approvalBackdrop").hidden = false; setTimeout(() => $("apNo").focus(), 50);
     view("talk"); setState("thinking", t("wartet auf Freigabe"));
-    earcon("confirm"); if (navigator.vibrate) navigator.vibrate([30, 60, 30]);
+    earcon("confirm"); if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate([30, 60, 30]);
     speech.say(say);
     clog("Bestätigungskarte: " + title);
   }
@@ -1050,7 +1052,7 @@
     S.approval = { shownAt: Date.now(), local: async (choice) => { if (choice === "once") await run(); else card("sys", t("Abgebrochen.")); } };
     $("apTitle").textContent = title; $("apDesc").textContent = desc || ""; setFacts(facts || []);
     $("apCmd").textContent = ""; $("apYes").textContent = yes || t("Ja");
-    $("approvalBackdrop").hidden = false; earcon("confirm"); if (navigator.vibrate) navigator.vibrate([30, 60, 30]);
+    $("approvalBackdrop").hidden = false; earcon("confirm"); if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate([30, 60, 30]);
     setTimeout(() => $("apNo").focus(), 50); // Tastatur: „Nein“ vorausgewaehlt, Tab -> „Ja“
     if (say) speech.say(say);
   }
@@ -1503,7 +1505,12 @@
   function onWake(d) {
     clog(`Wake: ${d.wort || "?"} ${d.score != null ? Number(d.score).toFixed(2) : ""} (Zustand ${S.state})`);
     if (!WAKE.on || S.approval || S.state === "listening" || rec.starting) return;
-    if (speech.active) { clog("Wake während Sprachausgabe: Stopp"); convStop("Weckwort"); return; } // wie ein Stoppwort
+    if (speech.active) { // wie ein Stoppwort, ausser NuOrb sagt gerade selbst seinen Namen (Selbstausloesung)
+      const satz = String((speech.playing && speech.playing.text) || speech.lastText || "").toLowerCase();
+      const name = String((window.I18N && I18N.name) || "NuOrb").toLowerCase();
+      if (satz.includes("nuorb") || (name && satz.includes(name))) { clog("Wake ignoriert (eigener Name in der Ausgabe)"); return; }
+      clog("Wake während Sprachausgabe: Stopp"); convStop("Weckwort"); return;
+    }
     if (Date.now() - (speech.endedAt || 0) < 1500) { clog("Wake ignoriert (Nachhall)"); return; }
     if (S.busy) return; // Antwort laeuft noch
     CONV.active = false;
