@@ -44,3 +44,8 @@ node_modules/
 
 # local screenshots / diagnostics
 diagnose/
+
+# Update-Hilfe des Testcontainers (docker/control, docker/bin)
+docker/control/
+docker/bin/
+.pytest_cache/

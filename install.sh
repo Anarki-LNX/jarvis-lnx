@@ -25,6 +25,7 @@ LANG_SEL=""
 FIREWALL=1
 UNINSTALL=0
 ROLLBACK=0
+PANEL_UPDATE=1               # Hilfe für „Jetzt aktualisieren“ im Admin-Panel einrichten (Rückfrage, Standard ja)
 SOURCE=""                    # local docker/ folder instead of download (development, offline)
 IMAGE=""                     # use this image instead of ghcr.io/anarki-lnx/nuorb (development)
 IP=""
@@ -78,6 +79,7 @@ NuOrb server installer (install, update, repair)
   --bind ADDRESS    publish the ports only on this address (default: all, needed for VPN access)
   --uninstall       remove NuOrb (asks; data only with an extra confirmation)
   --rollback        restore the backup made before the last update (settings, compose files, data)
+  --no-panel-update do not set up the helper for "Update now" in the admin panel
   --name NAME       other project/container name, for a second instance (default: nuorb)
   --release TAG     install this release, e.g. v0.7.0 (default: the newest release)
   --help
@@ -98,6 +100,7 @@ while [ $# -gt 0 ]; do
     --bind) BIND="$2"; shift ;;
     --uninstall) UNINSTALL=1 ;;
     --rollback) ROLLBACK=1 ;;
+    --no-panel-update) PANEL_UPDATE=0 ;;
     --name) NAME="$2"; shift ;;
     --source) SOURCE="$2"; shift ;;
     --release) RELEASE="$2"; shift ;;
@@ -218,6 +221,12 @@ uninstall() {
   [ -f "$DIR/compose.yaml" ] || fail "$(t "No installation in $DIR (use --dir)." "Keine Installation in $DIR (--dir angeben).")"
   confirm "$(t "Stop and remove the NuOrb container in $DIR?" "NuOrb-Container in $DIR stoppen und entfernen?")" n || exit 0
   dc down && ok "$(t "Container removed." "Container entfernt.")"
+  local scope="--user"; [ "$(id -u)" = 0 ] && scope=""
+  # shellcheck disable=SC2086
+  if systemctl $scope disable --now "$NAME-update.path" >/dev/null 2>&1; then
+    rm -f "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/$NAME-update."{path,service} "/etc/systemd/system/$NAME-update."{path,service} 2>/dev/null
+    ok "$(t "Update helper removed." "Update-Hilfe entfernt.")"
+  fi
   if [ -n "$TTY" ] && [ "$YES" = 0 ]; then
     local a
     printf '  %s!%s %s ' "$Y" "$N" "$(t "Also delete ALL data (password, keys, memory, paired phones)? Type DELETE to confirm, Enter keeps the data:" \
@@ -385,6 +394,54 @@ rollback() {   # die Sicherung vor dem letzten Update wiederherstellen
   ulog "rollback to $b"
   ok "$(t "Back on version" "Zurück auf Version") $(get_env NUORB_VERSION)"
   exit 0
+}
+
+# ------------------------------------------------------------------ update helper (admin panel, v0.7.3)
+# Das Admin-Panel schreibt nur eine Anforderung nach control/request/. Eine systemd-Path-Unit startet dann
+# nuorb-update-run (aus dem Release, gegen SHA256SUMS geprüft), das install.sh des neueren Releases ausführt.
+install_kind() { if [ "$IN_LXC" = 1 ] && [ -x /usr/local/bin/update ]; then echo proxmox; else echo docker; fi; }
+
+setup_update_helper() {
+  [ "$PANEL_UPDATE" = 1 ] || { rm -f "$DIR/control/status/helper.json" 2>/dev/null; return 0; }
+  command -v systemctl >/dev/null 2>&1 || { warn "$(t "No systemd: updates from the admin panel are not available, it shows the command instead." \
+                                                         "Kein systemd: Updates aus dem Admin-Panel gehen hier nicht, es zeigt stattdessen den Befehl.")"; return 0; }
+  if [ "${DOCKER[0]}" = sudo ]; then
+    warn "$(t "Docker needs sudo here: updates from the admin panel are not available, it shows the command instead." \
+              "Docker braucht hier sudo: Updates aus dem Admin-Panel gehen nicht, es zeigt stattdessen den Befehl.")"
+    return 0
+  fi
+  [ "$YES" = 1 ] || confirm "$(t "Allow updates from the admin panel (button Update now)?" "Updates aus dem Admin-Panel erlauben (Knopf Jetzt aktualisieren)?")" y || return 0
+  local c="$DIR/control" bin unitdir scope="--user" kind target=default.target
+  kind=$(install_kind)
+  mkdir -p "$c/request" "$c/status" "$DIR/bin"
+  chmod 755 "$c" "$c/status"
+  bin="$DIR/bin/nuorb-update-run"
+  if [ -n "$SOURCE" ]; then cp "$SOURCE/nuorb-update-run" "$bin"; else release_file nuorb-update-run "$bin"; fi
+  chmod 755 "$bin"
+  if [ "$(id -u)" = 0 ]; then unitdir=/etc/systemd/system; scope=""; target=multi-user.target
+  else unitdir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"; fi
+  mkdir -p "$unitdir"
+  printf '%s\n' "# NuOrb: startet $NAME-update.service, wenn das Admin-Panel ein Update anfordert (written by install.sh)" \
+    "[Unit]" "Description=NuOrb update request ($NAME)" "[Path]" "PathChanged=$c/request/request.json" \
+    "[Install]" "WantedBy=$target" > "$unitdir/$NAME-update.path"
+  printf '%s\n' "# NuOrb: führt ein angefordertes Update aus (written by install.sh)" \
+    "[Unit]" "Description=NuOrb update helper ($NAME)" "[Service]" "Type=oneshot" \
+    "ExecStart=\"$bin\" --dir \"$DIR\" --name $NAME" "Nice=10" > "$unitdir/$NAME-update.service"
+  # shellcheck disable=SC2086
+  if systemctl $scope daemon-reload 2>/dev/null && systemctl $scope enable --now "$NAME-update.path" >/dev/null 2>&1; then
+    printf '{"variant":"%s","version":1,"auto_rollback":%s}\n' "$kind" \
+      "$([ "${NUORB_AUTO_ROLLBACK:-1}" = 1 ] && echo true || echo false)" > "$c/status/helper.json"
+    set_env NUORB_INSTALL_KIND "$kind"
+    ok "$(t "Updates from the admin panel: on" "Updates aus dem Admin-Panel: an") ($NAME-update.path)"
+    if [ -n "$scope" ] && ! loginctl show-user "$(id -un)" -p Linger 2>/dev/null | grep -q yes; then
+      loginctl enable-linger "$(id -un)" 2>/dev/null \
+        || warn "$(t "Without lingering the helper only runs while you are logged in. Fix:" "Ohne Lingering läuft die Hilfe nur, solange du angemeldet bist. Abhilfe:") sudo loginctl enable-linger $(id -un)"
+    fi
+  else
+    warn "$(t "The update helper could not be started (systemd). The admin panel shows the command instead." \
+              "Die Update-Hilfe ließ sich nicht starten (systemd). Das Admin-Panel zeigt stattdessen den Befehl.")"
+    rm -f "$c/status/helper.json"
+  fi
 }
 
 # ------------------------------------------------------------------ files
@@ -711,4 +768,5 @@ configure
 check_ports
 firewall
 start
+setup_update_helper
 finish

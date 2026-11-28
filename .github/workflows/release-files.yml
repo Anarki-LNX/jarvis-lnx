@@ -27,13 +27,13 @@ jobs:
         run: |
           if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.+~-][0-9A-Za-z.]+)?$ ]]; then echo "::error::invalid tag $TAG"; exit 1; fi
           mkdir -p dist
-          cp install.sh proxmox/nuorb-lxc.sh proxmox/ct-setup.sh docker/compose.yaml docker/README.md dist/
+          cp install.sh proxmox/nuorb-lxc.sh proxmox/ct-setup.sh docker/compose.yaml docker/README.md docker/nuorb-update-run dist/
           cp docker/.env.example dist/env.example
           for f in dist/install.sh dist/nuorb-lxc.sh; do
             grep -q '^NUORB_RELEASE=""$' "$f" || { echo "::error::$f has no NUORB_RELEASE line"; exit 1; }
             sed -i "s/^NUORB_RELEASE=\"\"$/NUORB_RELEASE=\"$TAG\"/" "$f"
           done
-          (cd dist && sha256sum install.sh nuorb-lxc.sh ct-setup.sh compose.yaml env.example README.md > SHA256SUMS)
+          (cd dist && sha256sum install.sh nuorb-lxc.sh ct-setup.sh compose.yaml env.example README.md nuorb-update-run > SHA256SUMS)
           cat dist/SHA256SUMS
           {
             echo "### Installer files for $TAG"
@@ -53,6 +53,7 @@ jobs:
             dist/compose.yaml
             dist/env.example
             dist/README.md
+            dist/nuorb-update-run
 
       - name: Attach to the release
         env:
@@ -63,4 +64,4 @@ jobs:
             || gh release create "$TAG" --draft --verify-tag --title "NuOrb $TAG" --notes "Release notes follow." \
             || gh release view "$TAG" >/dev/null
           cd dist
-          gh release upload "$TAG" --clobber install.sh nuorb-lxc.sh ct-setup.sh compose.yaml env.example README.md SHA256SUMS
+          gh release upload "$TAG" --clobber install.sh nuorb-lxc.sh ct-setup.sh compose.yaml env.example README.md nuorb-update-run SHA256SUMS

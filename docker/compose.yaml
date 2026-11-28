@@ -49,6 +49,9 @@ services:
     volumes:
       - data:/opt/data        # Konfiguration, Schlüssel, Gedächtnis, Sitzungen, Zertifikate
       - models:/opt/models    # Stimmen und Spracherkennungs-Modell (beim ersten Start geladen)
+      # Ab v0.7.3: Austausch mit der Update-Hilfe auf dem Rechner (install.sh). Das Panel schreibt nur eine
+      # Anforderung nach control/request/, die Hilfe Status und Protokoll nach control/status/.
+      - ./control:/opt/nuorb/control
       # Eigenes Zertifikat (NUORB_TLS=custom): Ordner mit fullchain.pem + privkey.pem einbinden
       # - ./certs:/certs:ro
     stop_grace_period: 30s

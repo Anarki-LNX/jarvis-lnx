@@ -620,8 +620,22 @@ async def update_api(request: Request):
             asyncio.get_running_loop().create_task(uc.fetch())
         return st
     d = await adm.body(request)
-    if set(d) - {"check", "auto"} or ("auto" in d and not isinstance(d["auto"], bool)):
-        raise HTTPException(400, jc.tr("Erlaubt: check, auto (true/false).", "Allowed: check, auto (true/false)."))
+    if set(d) - {"check", "auto", "update"} or ("auto" in d and not isinstance(d["auto"], bool)):
+        raise HTTPException(400, jc.tr("Erlaubt: check, auto (true/false), update.", "Allowed: check, auto (true/false), update."))
+    if "update" in d:
+        try:
+            st = uc.request_update(str(d["update"]))
+        except PermissionError:
+            raise HTTPException(409, jc.tr("Keine Update-Hilfe installiert. Bitte den angezeigten Befehl ausführen.",
+                                           "No update helper installed. Please run the command shown.")) from None
+        except ValueError:
+            raise HTTPException(400, jc.tr("Nur die gefundene neuere Version kann installiert werden.",
+                                           "Only the newer version that was found can be installed.")) from None
+        except RuntimeError:
+            raise HTTPException(429, jc.tr("Ein Update läuft schon oder wurde gerade angefordert (höchstens alle 10 Minuten).",
+                                           "An update is running or was just requested (at most every 10 minutes).")) from None
+        adm.audit(adm.who(request), f"Update to {d['update']} requested")
+        return st
     if "auto" in d:
         uc.set_auto(d["auto"])
         adm.audit(adm.who(request), f"Automatic update check {'on' if d['auto'] else 'off'}")

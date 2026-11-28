@@ -265,3 +265,6 @@ input[type=range] { width: 100%; accent-color: var(--cyan); }
 .ver-bar .ver-label { font-family: "JetBrains Mono", monospace; }
 .ver-bar.newer { padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(255, 181, 71, .35); background: rgba(255, 181, 71, .08); color: #ffe2b8; }
 .ver-bar .ver-status a { color: var(--cyan, inherit); }
+.ver-bar .ver-cmd { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12.5px; }
+.ver-bar .ver-cmd code { font: 12px "JetBrains Mono", monospace; background: rgba(255, 255, 255, .04); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; overflow-wrap: anywhere; }
+.ver-bar .ver-note { flex-basis: 100%; color: #ffb547; }

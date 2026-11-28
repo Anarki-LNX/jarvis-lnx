@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+# NuOrb update helper (host side). Started by systemd when the admin panel writes control/request/request.json.
+# Runs install.sh of a newer, checked NuOrb release (backup included), watches the new container and rolls back
+# automatically if it does not become healthy. Writes status.json and update.log to control/status/.
+#
+#   nuorb-update-run --dir DIR [--name NAME]
+#
+# The request is data, never commands: exactly {"action":"update","release":"vX.Y.Z","id":"<hex>"}, at most 512 bytes,
+# no symlinks. At most one run at a time and one per 10 minutes. Only newer versions (going back: install.sh --rollback).
+# Release files are checked against SHA256SUMS of the release, and against its GitHub attestation when the GitHub CLI
+# is logged in (NUORB_REQUIRE_ATTESTATION=1 makes that mandatory). NUORB_AUTO_ROLLBACK=0 switches the rollback off.
+set -uo pipefail
+umask 022
+
+DIR="" NAME="nuorb"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dir) DIR="$2"; shift ;;
+    --name) NAME="$2"; shift ;;
+    *) echo "unknown option $1" >&2; exit 2 ;;
+  esac
+  shift
+done
+[ -n "$DIR" ] && [ -d "$DIR" ] || { echo "--dir missing" >&2; exit 2; }
+case "$NAME" in *[!a-z0-9_-]*|"") echo "--name: a-z 0-9 _ -" >&2; exit 2 ;; esac
+
+REPO="Anarki-LNX/nuorb"
+DL="${NUORB_DL_BASE:-https://github.com/${REPO}/releases}"
+C="$DIR/control"; REQ="$C/request/request.json"; ST="$C/status"
+MIN_GAP="${NUORB_UPDATE_MIN_GAP:-600}"
+HEALTH_WAIT="${NUORB_UPDATE_HEALTH_WAIT:-300}"
+DOCKER="${NUORB_DOCKER:-docker}"
+REL="" ID=""
+
+json_escape() { printf '%s' "$1" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g' | cut -c1-300; }
+status() {   # status STATE MESSAGE
+  local tmp="$ST/.status.$$"
+  printf '{"state":"%s","release":"%s","id":"%s","time":"%s","message":"%s"}\n' \
+    "$1" "$REL" "$ID" "$(date -u +%FT%TZ)" "$(json_escape "$2")" > "$tmp" && mv -f "$tmp" "$ST/status.json"
+}
+log() { printf '%s %s\n' "$(date '+%F %T')" "$1" >> "$ST/update.log"; }
+refuse() { log "refused: $1"; status refused "$1"; exit 0; }
+
+mkdir -p "$ST"
+[ -L "$ST" ] && { echo "status is a symlink" >&2; exit 1; }
+exec 9>>"$ST/.lock"
+flock -n 9 || exit 0                                     # schon ein Lauf aktiv
+
+[ -e "$REQ" ] || exit 0
+if [ -L "$C" ] || [ -L "$C/request" ] || [ -L "$REQ" ] || [ ! -f "$REQ" ]; then refuse "request is not a plain file"; fi
+[ "$(stat -c %s "$REQ")" -le 512 ] || refuse "request too large"
+body=$(tr -d '\n\r\t ' < "$REQ")
+re='^\{"action":"update","release":"(v[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4})","id":"([a-f0-9]{16,64})"\}$'
+[[ "$body" =~ $re ]] || refuse "invalid request"
+REL="${BASH_REMATCH[1]}"; ID="${BASH_REMATCH[2]}"
+[ "$ID" = "$(cat "$ST/last-id" 2>/dev/null)" ] && exit 0  # schon bearbeitet
+printf '%s\n' "$ID" > "$ST/last-id"
+
+now=$(date +%s); last=$(cat "$ST/last-run" 2>/dev/null || echo 0)
+case "$last" in *[!0-9]*|"") last=0 ;; esac
+[ $((now - last)) -ge "$MIN_GAP" ] || refuse "only one update every $((MIN_GAP / 60)) minutes"
+cur=$(sed -n 's/^NUORB_VERSION=//p' "$DIR/.env" 2>/dev/null | tail -1); cur="v${cur#v}"
+if [ "$cur" = "$REL" ] || [ "$(printf '%s\n%s\n' "$cur" "$REL" | sort -V | tail -1)" != "$REL" ]; then
+  refuse "$REL is not newer than $cur (going back: install.sh --rollback)"
+fi
+printf '%s\n' "$now" > "$ST/last-run"
+
+status running "update to $REL started"
+log "update $cur -> $REL (request $ID)"
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/nuorb-update.XXXXXX"); trap 'rm -rf "$tmp"' EXIT
+curl -fsSL --retry 3 "$DL/download/$REL/SHA256SUMS" -o "$tmp/SHA256SUMS" || refuse "download of SHA256SUMS failed"
+curl -fsSL --retry 3 "$DL/download/$REL/install.sh" -o "$tmp/install.sh" || refuse "download of install.sh failed"
+want=$(awk '$2 == "install.sh" || $2 == "*install.sh" {print $1; exit}' "$tmp/SHA256SUMS")
+got=$(sha256sum "$tmp/install.sh" | cut -d' ' -f1)
+[ -n "$want" ] && [ "$want" = "$got" ] || refuse "install.sh does not match SHA256SUMS of $REL"
+if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+  gh attestation verify "$tmp/SHA256SUMS" --repo "$REPO" >/dev/null 2>&1 || refuse "SHA256SUMS of $REL has no valid attestation"
+  log "attestation of $REL ok"
+elif [ "${NUORB_REQUIRE_ATTESTATION:-}" = 1 ]; then
+  refuse "NUORB_REQUIRE_ATTESTATION=1 needs the GitHub CLI, logged in"
+fi
+
+if ! bash "$tmp/install.sh" --dir "$DIR" --name "$NAME" --release "$REL" --yes --no-firewall >> "$ST/update.log" 2>&1; then
+  log "install.sh failed"
+  status failed "the installer stopped, see update.log. Going back: install.sh --rollback"
+  exit 0
+fi
+
+state="?"
+for _ in $(seq 1 $((HEALTH_WAIT / 5))); do
+  state=$($DOCKER inspect "$NAME" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' 2>/dev/null || echo "?")
+  [ "$state" = healthy ] && break
+  sleep 5
+done
+if [ "$state" = healthy ]; then
+  log "update to $REL done, container healthy"
+  status done "updated to $REL"
+  exit 0
+fi
+log "container not healthy after the update ($state)"
+if [ "${NUORB_AUTO_ROLLBACK:-1}" = 1 ]; then
+  if bash "$tmp/install.sh" --dir "$DIR" --name "$NAME" --rollback --yes >> "$ST/update.log" 2>&1; then
+    log "rolled back to $cur"
+    status rolled_back "$REL did not start cleanly, back on $cur with the data from before the update"
+  else
+    status failed "$REL did not start cleanly and the rollback failed, see update.log"
+  fi
+else
+  status failed "$REL did not start cleanly. Going back: install.sh --rollback"
+fi
+exit 0

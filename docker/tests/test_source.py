@@ -113,7 +113,11 @@ class ComposeHaertung(unittest.TestCase):
     def test_keine_host_mounts_und_kein_docker_socket(self):
         for v in self.svc.get("volumes", []):
             src = str(v).split(":")[0]
+            if src == "./control":   # einziger Host-Ordner: Austausch mit der Update-Hilfe (v0.7.3)
+                self.assertEqual(str(v), "./control:/opt/nuorb/control")
+                continue
             self.assertIn(src, ("data", "models"), f"Host-Mount {v}")
+            self.assertNotIn("docker.sock", str(v))
         self.assertNotIn("network_mode", self.svc)
 
 

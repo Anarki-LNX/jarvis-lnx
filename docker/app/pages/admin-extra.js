@@ -58,43 +58,12 @@
     const div = document.createElement("div"); div.className = "banner"; div.id = "toolsNotice"; div.setAttribute("role", "status");
     const span = document.createElement("span"); span.textContent = n.text;
     const a = document.createElement("a"); a.href = "/static/docker/werkzeuge.html"; a.textContent = n.link;
-    div.append(span, a); main.prepend(div);
+    div.append(span, a);
+    const vb = document.getElementById("verBar");   // unter die Versionszeile, nicht darüber
+    if (vb) vb.after(div); else main.prepend(div);
   }
-  // Versionszeile oben auf jeder Seite: „NuOrb Server vX.Y.Z“, Knopf „Auf Update prüfen“, Hinweis bei neuer Version
-  const VT = {
-    de: { check: "Auf Update prüfen", checking: "Prüfe …", current: "Aktuell.", newer: "Update verfügbar: {v}", notes: "Versionshinweise",
-          failed: "Prüfung fehlgeschlagen.", checked: "Geprüft {t}" },
-    en: { check: "Check for updates", checking: "Checking …", current: "Up to date.", newer: "Update available: {v}", notes: "Release notes",
-          failed: "Check failed.", checked: "Checked {t}" },
-  };
+  // Versionszeile oben auf jeder Seite (update-bar.js): Servername, „Auf Update prüfen“, „Jetzt aktualisieren“
   const vlang = () => (window.I18N && ok(window.I18N.lang)) || lang;
-  function renderVersion(bar, st, justChecked) {
-    const v = VT[vlang()] || VT.en;
-    bar.replaceChildren();
-    bar.classList.toggle("newer", !!st.newer);
-    const label = document.createElement("span"); label.className = "ver-label"; label.textContent = st.label || "";
-    bar.append(label);
-    if (st.enabled) {
-      const b = document.createElement("button"); b.type = "button"; b.className = "btn ghost small"; b.textContent = v.check;
-      b.addEventListener("click", async () => {
-        b.disabled = true; b.textContent = v.checking;
-        try {
-          const r = await fetch("/api/update", { method: "POST", headers: { "Content-Type": "application/json", "X-NuOrb": "1", "X-UI-Lang": vlang() },
-                                                 body: JSON.stringify({ check: true }) });
-          renderVersion(bar, await r.json(), true);
-        } catch (e) { b.disabled = false; b.textContent = v.check; }
-      });
-      bar.append(b);
-    }
-    const status = document.createElement("span"); status.className = "ver-status";
-    if (st.newer) {
-      const strong = document.createElement("strong"); strong.textContent = v.newer.replace("{v}", st.latest);
-      status.append(strong);
-      if (st.url) { const a = document.createElement("a"); a.href = st.url; a.target = "_blank"; a.rel = "noopener noreferrer"; a.textContent = v.notes; status.append(" ", a); }
-    } else if (st.error) status.textContent = v.failed;
-    else if (justChecked) status.textContent = v.current;
-    if (status.childNodes.length) bar.append(status);
-  }
   let versionStarted = false;
   async function versionBar() {
     const main = document.getElementById("main");
@@ -102,9 +71,12 @@
     versionStarted = true;
     const bar = document.createElement("div"); bar.className = "ver-bar"; bar.id = "verBar"; bar.setAttribute("data-noi18n", "");
     main.prepend(bar);
-    const load = async () => { try { const r = await fetch("/api/update", { cache: "no-store" }); if (r.ok) renderVersion(bar, await r.json()); } catch (e) { /* still */ } };
-    await load();
-    document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("[data-langtoggle] button")) setTimeout(load, 50); });
+    const go = () => {
+      const ub = window.NuUpdate.mount(bar, vlang);
+      document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("[data-langtoggle] button")) setTimeout(ub.reload, 50); });
+    };
+    if (window.NuUpdate) go();
+    else { const sc = document.createElement("script"); sc.src = "/static/docker/update-bar.js"; sc.addEventListener("load", go); document.head.append(sc); }
   }
   // Direktaufruf der nativen Kopplungsseite (#koppeln) -> Kopplung mit Einmal-Code im Image
   const redirect = () => { if (location.hash === "#koppeln") location.replace("/static/docker/koppeln.html"); };

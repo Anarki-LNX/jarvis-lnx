@@ -8,7 +8,11 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
+import re
+import secrets
 import time
+from pathlib import Path
 
 import httpx
 
@@ -19,6 +23,13 @@ NOTES_PREFIX = "https://github.com/Anarki-LNX/nuorb/"
 EVERY = 6 * 3600
 MIN_GAP = 60            # Knopf: höchstens einmal pro Minute wirklich abrufen
 _lock = asyncio.Lock()
+CONTROL = Path(os.environ.get("NUORB_CONTROL", "/opt/nuorb/control"))   # ./control auf dem Rechner (compose.yaml)
+REQUEST_GAP = 600       # höchstens eine Anforderung je 10 Minuten (die Hilfe prüft das selbst noch einmal)
+ONE_LINER = "curl -fsSL https://github.com/Anarki-LNX/nuorb/releases/latest/download/install.sh | bash"
+COMMANDS = {
+    "docker": {"update": ONE_LINER, "rollback": ONE_LINER + " -s -- --rollback"},
+    "proxmox": {"update": "update", "rollback": ONE_LINER + " -s -- --rollback --dir /root/nuorb"},
+}
 transport: httpx.AsyncBaseTransport | None = None   # in Tests ersetzbar
 
 
@@ -44,6 +55,55 @@ def set_auto(on: bool) -> None:
     jc._write_json(cache_file(), c)
 
 
+def _read_json(p: Path) -> dict:
+    """Kleine JSON-Datei der Hilfe lesen. Keine Symlinks, höchstens 4 KB, sonst leer."""
+    try:
+        if p.is_symlink() or p.stat().st_size > 4096:
+            return {}
+        d = json.loads(p.read_text(encoding="utf-8"))
+        return d if isinstance(d, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def helper() -> dict:
+    """Update-Hilfe auf dem Rechner: Variante, letzter Status. {} ohne Hilfe."""
+    h = _read_json(CONTROL / "status" / "helper.json")
+    if h.get("variant") not in ("docker", "proxmox"):
+        return {}
+    st = _read_json(CONTROL / "status" / "status.json")
+    if st.get("state") not in ("running", "done", "failed", "rolled_back", "refused"):
+        st = {}
+    return {"variant": h["variant"], "auto_rollback": h.get("auto_rollback") is not False,
+            "status": {k: str(st.get(k, ""))[:300] for k in ("state", "release", "time", "message")} if st else None}
+
+
+def request_update(release: str) -> dict:
+    """Anforderung für die Hilfe schreiben. Nur die Version, die die Prüfung gefunden hat, und nur wenn sie neuer ist."""
+    st = state()
+    if not st["helper"]:
+        raise PermissionError("no helper")
+    if not st["newer"] or release != st["latest"] or not re.fullmatch(r"v\d{1,4}\.\d{1,4}\.\d{1,4}", release):
+        raise ValueError("not the newer release")
+    cur = (st["helper"].get("status") or {})
+    if cur.get("state") == "running":
+        raise RuntimeError("running")
+    c = cache()
+    if time.time() - float(c.get("requested", 0)) < REQUEST_GAP:
+        raise RuntimeError("too soon")
+    d = CONTROL / "request"
+    if d.is_symlink() or not d.is_dir():
+        raise PermissionError("no request folder")
+    body = json.dumps({"action": "update", "release": release, "id": secrets.token_hex(16)}, separators=(",", ":"))
+    tmp = d / ".request.tmp"
+    tmp.write_text(body + "\n", encoding="utf-8")
+    os.chmod(tmp, 0o644)
+    os.replace(tmp, d / "request.json")
+    c["requested"] = time.time()
+    jc._write_json(cache_file(), c)
+    return state()
+
+
 def state() -> dict:
     c = cache()
     cur, latest = jc.version(), str(c.get("latest") or "")
@@ -51,7 +111,8 @@ def state() -> dict:
     return {"current": cur, "label": jc.server_label(), "latest": latest or None, "url": c.get("url"),
             "published": c.get("published"), "checked": c.get("checked"), "error": c.get("error"),
             "newer": bool(cv and lv and lv > cv), "auto": c.get("auto", True) is not False,
-            "enabled": enabled(), "kind": jc.env("NUORB_INSTALL_KIND") or None}
+            "enabled": enabled(), "kind": jc.env("NUORB_INSTALL_KIND") or None, "helper": helper() or None,
+            "commands": COMMANDS.get(jc.env("NUORB_INSTALL_KIND") or "docker", COMMANDS["docker"])}
 
 
 def due() -> bool:
