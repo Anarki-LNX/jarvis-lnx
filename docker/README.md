@@ -142,6 +142,11 @@ Caddy): `NUORB_TLS=off`, `NUORB_BIND=127.0.0.1`, `NUORB_PUBLIC_URL` auf die Prox
 `NUORB_TRUSTED_PROXY` auf die Adresse des Proxys, damit Allowlist und Fehlversuchssperre die echten Client-Adressen sehen.
 Eigene Hostnamen des Proxys gehören nach `NUORB_ALLOWED_HOSTS`.
 
+**Container-Härtung (ab v0.7.1):** `compose.yaml` startet NuOrb mit `no-new-privileges`, ohne alle Linux-Fähigkeiten
+außer den sechs, die der Start braucht (Besitz setzen, zum Nutzer `hermes` wechseln, Dienste beenden), und mit einer
+Obergrenze für Prozesse. Die NuOrb-Dienste selbst laufen als `hermes`. Wer für eigene Erweiterungen mehr braucht,
+ergänzt das in einer eigenen `compose.override.yaml`.
+
 **Netz-Allowlist:** `NUORB_ALLOWED_NETS` ist ein Zusatzschutz, Passwort und Kopplung schützen auch ohne sie. Ohne
 Angabe gelten die üblichen Heimnetze, VPN-Adressen und der eigene Docker-Gateway. Reicht Docker die Ports per Proxy
 weiter (z. B. bei IPv6), erscheinen alle Clients mit der Gateway-Adresse, dann gilt auch die Fehlversuchssperre für

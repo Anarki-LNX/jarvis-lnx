@@ -13,6 +13,13 @@ services:
         NUORB_BUILD: ${NUORB_BUILD:-dev}
     pull_policy: missing
     restart: unless-stopped
+    # Härtung: keine zusätzlichen Rechte zur Laufzeit, nur die Fähigkeiten, die s6 beim Start braucht (Besitz setzen,
+    # zum Nutzer hermes wechseln, Dienste beenden). Die NuOrb-Dienste selbst laufen als hermes, nicht als root.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID, KILL]
+    pids_limit: 2048
     healthcheck:
       test: ["CMD", "/opt/nuorb/bin/healthcheck"]
       interval: 30s
