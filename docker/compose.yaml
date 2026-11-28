@@ -19,7 +19,18 @@ services:
       - no-new-privileges:true
     cap_drop: [ALL]
     cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID, KILL]
-    pids_limit: 2048
+    pids_limit: 2048          # gemessen im e2e-Lauf: höchstens ~300 Prozesse
+    # Speichergrenze: gemessen höchstens ~1,5 GB (Sprache, Hermes, Smart Home). 4 GB lassen Luft für erweiterte
+    # Werkzeuge mit Browser. Eigener Wert in der .env: NUORB_MEM_LIMIT=6g. Keine feste CPU-Grenze (Spracherkennung
+    # braucht kurze Spitzen über mehrere Kerne).
+    mem_limit: ${NUORB_MEM_LIMIT:-4g}
+    # Ab v0.7.2: Dateisystem des Images schreibgeschützt. Geschrieben wird nur in die Volumes (data, models) und in
+    # die tmpfs-Bereiche unten (Laufzeitdateien von s6, Zwischendateien). Getestet mit dem ganzen e2e-Lauf.
+    read_only: true
+    tmpfs:
+      - /run:exec,mode=0755,size=64m
+      - /tmp:mode=1777,size=512m
+      - /var/tmp:mode=1777,size=64m
     healthcheck:
       test: ["CMD", "/opt/nuorb/bin/healthcheck"]
       interval: 30s

@@ -91,5 +91,31 @@ class Quelle(unittest.TestCase):
         self.assertEqual(funde, [])
 
 
+class ComposeHaertung(unittest.TestCase):
+    """Phase 2: Härtung des Containers in compose.yaml bleibt erhalten (gemessen und getestet im e2e-Lauf)."""
+
+    def setUp(self):
+        from ruamel.yaml import YAML
+        self.svc = YAML(typ="safe").load((DOCKER / "compose.yaml").read_text(encoding="utf-8"))["services"]["nuorb"]
+
+    def test_rechte(self):
+        self.assertIn("no-new-privileges:true", self.svc["security_opt"])
+        self.assertEqual(self.svc["cap_drop"], ["ALL"])
+        self.assertEqual(sorted(self.svc["cap_add"]), ["CHOWN", "DAC_OVERRIDE", "FOWNER", "KILL", "SETGID", "SETUID"])
+        self.assertNotIn("privileged", self.svc)
+
+    def test_schreibschutz_und_grenzen(self):
+        self.assertIs(self.svc["read_only"], True)
+        self.assertEqual(sorted(t.split(":")[0] for t in self.svc["tmpfs"]), ["/run", "/tmp", "/var/tmp"])
+        self.assertLessEqual(self.svc["pids_limit"], 4096)
+        self.assertIn("mem_limit", self.svc)
+
+    def test_keine_host_mounts_und_kein_docker_socket(self):
+        for v in self.svc.get("volumes", []):
+            src = str(v).split(":")[0]
+            self.assertIn(src, ("data", "models"), f"Host-Mount {v}")
+        self.assertNotIn("network_mode", self.svc)
+
+
 if __name__ == "__main__":
     unittest.main()

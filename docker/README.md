@@ -115,6 +115,12 @@ einmal neu koppeln.
 * **Kopplung:** Ohne gekoppeltes Gerät liefert der Server nichts außer der Kopplungsseite. Auf dem Server liegen nur
   Hashes der Gerätetoken.
 * **Bestätigungskarten:** Vor gefährlichen Aktionen fragt NuOrb nach (`approvals.mode: manual`).
+* **Container (ab v0.7.2):** Das Dateisystem des Images ist schreibgeschützt (`read_only`). Geschrieben wird nur in
+  die Volumes und in tmpfs für `/run`, `/tmp` und `/var/tmp`. Speichergrenze 4 GB (`NUORB_MEM_LIMIT`), höchstens
+  2048 Prozesse, keine neuen Rechte zur Laufzeit. Von allen Linux-Fähigkeiten bleiben nur die, die der Start als root
+  braucht: `CHOWN` und `FOWNER` (Besitz und Rechte der Datenordner setzen), `DAC_OVERRIDE` (Ordner anderer Benutzer
+  anlegen), `SETUID` und `SETGID` (die Dienste als eigener Benutzer starten) und `KILL` (Dienste beenden). Die Dienste
+  selbst laufen nicht als root.
 * **Werkzeuge (ab v0.7.1):** Das Sprachmodell bekommt standardmäßig nur, was ein Sprachassistent braucht: Websuche,
   Webseiten, Bilder, Gedächtnis, Erinnerungen, Skills und die NuOrb-Werkzeuge (Smart Home, Wetter, Name). Shell,
   Python, Dateien, Browser und Unteragenten sind aus. Einschalten im Admin-Panel unter **Werkzeuge**, mit Warnung:
