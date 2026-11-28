@@ -92,6 +92,21 @@ The NuOrb Android app and its "Hey NuOrb" wake-word models are not part of the s
 own licenses. The NuOrb server only passes wake-word files to the app if the operator puts them into
 `/opt/data/nuorb/wakeword/`.
 
+## 8. Weather data (built-in weather)
+
+NuOrb's built-in weather tool asks the weather services directly from **your** NuOrb server (your IP address), there is
+no central NuOrb service in between. Your place is stored only on your server (`/opt/data/nuorb/config/weather.json`),
+requests carry only coordinates rounded to about one kilometre and a neutral `User-Agent`, and answers are cached on
+your server (measurements and warnings 10 min, forecasts 60 min) to go easy on the services. Checked for
+NuOrb 0.7.x on 2026-11-28. This is a best-effort summary, not legal advice.
+
+| Source | Used for | License / terms | What NuOrb does about it |
+|---|---|---|---|
+| [Deutscher Wetterdienst](https://www.dwd.de) (DWD) open data | Germany: measurements of the nearest DWD station, MOSMIX forecast, official warnings | [CC BY 4.0](https://www.dwd.de/EN/service/legal_notice/legal_notice.html), source notice required ("Quelle: Deutscher Wetterdienst"). If an official warning is changed, the source notice must be removed. | Every spoken answer names the source ("laut Deutschem Wetterdienst" / "according to the German Weather Service"). Official warnings are passed on unchanged (DWD headline and validity), never rephrased. Notice "Quelle: Deutscher Wetterdienst" in the admin panel under Weather and under About. |
+| [Bright Sky](https://brightsky.dev) (`api.brightsky.dev`) | Access to the DWD data as JSON, no key | Code MIT. The data stays DWD data under the DWD terms. The public instance is "free-to-use for all purposes" and run by a volunteer. | Cache and a clear `User-Agent`. You can enter your own Bright Sky instance in the admin panel. |
+| [Open-Meteo](https://open-meteo.com) | Places outside Germany: current weather and forecast | Data [CC BY 4.0](https://open-meteo.com/en/licence) ("Weather data by Open-Meteo.com"). The free API is for **non-commercial use only** (personal home automation counts as non-commercial), fewer than 10 000 calls per day per IP. | Spoken answers name "Open-Meteo", link in the admin panel. For commercial use enter your own Open-Meteo API key in the admin panel. NuOrb then uses the customer API. |
+| [Open-Meteo Geocoding](https://open-meteo.com/en/docs/geocoding-api) with [GeoNames](https://www.geonames.org) | Finding a place by its name, once at setup (no postcode search) | GeoNames data CC BY 4.0 ("Location data based on GeoNames") | Notice in the admin panel next to the search. |
+
 ## Trademarks
 
 NuOrb is not affiliated with Nous Research, NVIDIA, Anthropic, Google, Home Assistant, ioBroker, GitHub or any other
