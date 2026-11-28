@@ -253,6 +253,31 @@ def ensure_smarthome() -> None:
         log(f"Smart home: {zugang} is readable by others - please chmod 600.")
 
 
+WEATHER_SKILL = Path("/opt/nuorb/app/skills/wetter/SKILL.md")
+
+
+def ensure_weather() -> None:
+    """Eingebautes Wetter: Skill + MCP-Eintrag „wetter“ (nur lesend, trust full) bei jedem Start sicherstellen.
+    Standard an (ohne eingerichteten Ort sagt das Werkzeug das ehrlich). Ein Schalter aus der Verwaltung
+    (enabled) bleibt erhalten. Ort und Schlüssel liegen in CONF/weather.json bzw. weather.env (600)."""
+    dest = DATA / "skills/nuorb/wetter/SKILL.md"
+    if WEATHER_SKILL.is_file() and (not dest.is_file() or dest.read_bytes() != WEATHER_SKILL.read_bytes()):
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(WEATHER_SKILL, dest)
+    os.environ.setdefault("NUORB_HOME", "/opt/nuorb/home")
+    sys.path.insert(0, "/opt/nuorb/admin")
+    import server as adm
+    data = adm.load_config_rt()
+    cur = adm.to_plain((data.get("mcp_servers") or {}).get("wetter") or {})
+    want = {"command": "/opt/nuorb/venv/bin/python", "args": ["-I", "/opt/nuorb/app/nuorb_weather_mcp.py"],
+            "env": {"HERMES_HOME": str(DATA)}, "enabled": bool(cur.get("enabled", True)),
+            "trust": "full", "timeout": 30, "tools": {"resources": False, "prompts": False}}
+    if {k: cur.get(k) for k in want} != want:
+        adm.cfg_set(data, "mcp_servers.wetter", {**cur, **want})
+        adm.atomic_write(adm.FILES["config"][0], adm.dump_rt(data))
+        log(f"MCP tool \"wetter\" (weather) registered, {'on' if want['enabled'] else 'off'}.")
+
+
 def migrate_ollama_provider() -> None:
     """Bis v0.3.0 hieß der Ollama-Eintrag „lan-ollama“; die NuOrb-Verwaltung nutzt „pc-ollama“ (eine Quelle der Wahrheit).
     Einmalig umbenennen, in config.yaml und in den gemerkten Gehirn-Einstellungen. Eigene Einträge bleiben unberührt."""
@@ -352,6 +377,10 @@ def main() -> None:
         ensure_smarthome()
     except Exception as exc:
         log(f"Smart home not set up: {exc}")
+    try:
+        ensure_weather()
+    except Exception as exc:
+        log(f"Weather not set up: {exc}")
     log(f"Ready. Home CA fingerprint: {jc.ca_fingerprint() or '(own certificate)'}")
 
 
