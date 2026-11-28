@@ -66,10 +66,6 @@ tr.muted td { color: var(--text-3); }
 .ver-bar .ver-label { font-family: "JetBrains Mono", monospace; }
 .ver-bar.newer { padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(255, 181, 71, .35); background: rgba(255, 181, 71, .08); color: #ffe2b8; }
 .btn.small { padding: 6px 12px; font-size: 12.5px; }
-.page-foot { position: sticky; bottom: 0; z-index: 5; margin: 28px -20px -64px; padding: 8px 20px; border-top: 1px solid var(--line);
-  background: color-mix(in srgb, var(--bg-0, #05080b) 88%, transparent); backdrop-filter: blur(8px);
-  color: var(--text-2); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
-.page-foot a { color: var(--cyan-soft); white-space: nowrap; }
 label.check { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 14px; }
 label.check input { width: auto; }
 .ver-cmd { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12.5px; }
@@ -77,5 +73,23 @@ label.check input { width: auto; }
 .ver-note { flex-basis: 100%; color: var(--amber, #ffb547); }
 .btn.small.primary { background: var(--cyan); color: #00141c; border-color: transparent; }
 .btn.ghost { background: transparent; border-color: var(--line-strong); font-weight: 500; }
-.page-foot a { color: var(--cyan); }
 
+/* Spendenkarte unten auf jeder Seite (nicht sticky): Text links, Knopf rechts, auf dem Handy untereinander */
+.donate { max-width: 760px; margin: 40px auto 8px; padding: 22px 24px; border: 1px solid var(--line); border-radius: 18px;
+  background: linear-gradient(160deg, rgba(255, 201, 77, .05), rgba(255, 255, 255, .015) 45%), var(--panel, rgba(10, 16, 22, .7));
+  display: flex; align-items: center; gap: 24px; }
+.donate-text { flex: 1 1 auto; min-width: 0; }
+.donate-kicker { font: 600 11.5px/1.2 Inter, system-ui, sans-serif; letter-spacing: .22em; text-transform: uppercase; color: #ffc94d; margin-bottom: 8px; }
+.donate-title { font: 600 27px/1.2 "Space Grotesk", Inter, sans-serif; letter-spacing: .01em; margin: 0 0 10px; color: var(--text); text-transform: none; }
+.donate p { margin: 0 0 8px; color: var(--text-2); font-size: 14px; line-height: 1.55; }
+.donate p.donate-more { margin: 0; color: var(--text-3); font-size: 13px; }
+.donate-action { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.donate-btn { display: inline-flex; align-items: center; justify-content: center; padding: 12px 22px; border-radius: 999px;
+  background: #ffc94d; color: #1d1400; font: 600 14.5px Inter, sans-serif; text-decoration: none; white-space: nowrap; }
+.donate-btn:hover, .donate-btn:focus-visible { background: #ffd56e; outline: 2px solid rgba(255, 201, 77, .5); outline-offset: 2px; }
+.donate-note { color: var(--text-3); font-size: 11.5px; text-align: center; }
+@media (max-width: 640px) {
+  .donate { flex-direction: column; align-items: stretch; padding: 18px; gap: 16px; }
+  .donate-action { align-items: stretch; }
+  .donate-btn { width: 100%; box-sizing: border-box; }
+}
