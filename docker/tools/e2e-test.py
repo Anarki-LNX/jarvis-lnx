@@ -273,6 +273,19 @@ def main() -> int:
     check("Antwort vom Gehirn", bool(answer) and not answer.startswith("FEHLER"),
           f"{time.time() - t0:.1f} s: {answer[:120]!r} (Ereignisse: {', '.join(dict.fromkeys(e for e in events if e))})")
 
+    # ---------------------------------------------------------------- Update-Prüfung (v0.7.3)
+    st, up = adm.req("GET", "/api/update")
+    check("Versionszeile: Servername und Prüfung eingeschaltet", st == 200 and "Server" in str(up.get("label")) and up.get("enabled") is True,
+          str(up)[:120])
+    st, up = adm.req("POST", "/api/update", {"check": True})
+    check("Auf Update prüfen (Mock-Release, fremder Link verworfen)", st == 200 and up.get("latest") == "v99.0.0" and up.get("url") is None
+          and not up.get("error"), str(up)[:160])
+    st, up = adm.req("POST", "/api/update", {"auto": False})
+    st2, up2 = adm.req("POST", "/api/update", {"auto": True})
+    check("Automatische Prüfung abschaltbar", st == 200 and up.get("auto") is False and up2.get("auto") is True)
+    st, up = adm.req("POST", "/api/update", {"check": True, "befehl": "rm -rf /"})
+    check("Update-Schnittstelle nimmt nur check und auto", st == 400)
+
     # ---------------------------------------------------------------- Werkzeuge und Sicherheitsregeln (S5/S6)
     st, tl = adm.req("GET", "/api/tools")
     check("Werkzeuge: enger Standard", st == 200 and tl.get("mode") == "narrow", str(tl)[:120])

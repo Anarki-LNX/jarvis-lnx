@@ -37,6 +37,12 @@
     <p><a id="licLink" target="_blank" rel="noopener" data-t="lic_link">Third-party components and licenses</a></p>
     <p class="muted"><span data-t="lic_path">In the container:</span> <span class="mono" id="licPath"></span></p>
   </section>
+  <section class="panel" id="pUpdate">
+    <h2 data-t="h_update">Updates</h2>
+    <label class="check"><input type="checkbox" id="updAuto"> <span data-t="upd_auto">Check for new versions automatically (at most every 6 hours)</span></label>
+    <p class="muted" data-t="upd_note">The check is a single request from this server to github.com (the newest NuOrb release, nothing else is sent apart from the usual connection data). Switched off here, only the button checks. NUORB_UPDATE_CHECK=0 in the .env switches it off completely.</p>
+    <p class="muted" id="updMsg"></p>
+  </section>
 </main>
 <script src="/static/i18n-en.js"></script>
 <script src="/static/docker/nuorb-lang.js"></script>

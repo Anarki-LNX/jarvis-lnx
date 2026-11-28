@@ -98,6 +98,8 @@ class H(BaseHTTPRequestHandler):
                 return self.js(200, {"default_generation_settings": {"n_ctx": 65536}, "build_info": "b0-mock"})
             if p in ("/v1/models", "/models"):
                 return self.js(200, {"object": "list", "data": [{"id": MODEL, "object": "model", "owned_by": "llamacpp"}]})
+        if p == "/mock/release":   # Update-Prüfung des Admin-Panels (NUORB_UPDATE_URL in .env.test)
+            return self.js(200, {"tag_name": "v99.0.0", "html_url": "http://127.0.0.1/kein-github", "published_at": "2026-12-01T00:00:00Z"})
         if p == "/mock/last-tools":
             return self.js(200, {"tools": LAST_TOOLS})
         if p == "/api/version":

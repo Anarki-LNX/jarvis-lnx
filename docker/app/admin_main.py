@@ -30,6 +30,7 @@ sys.path.insert(0, "/opt/nuorb/admin")
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import nuorb_common as jc  # noqa: E402
 import route_hooks  # noqa: E402
+import update_check as uc  # noqa: E402
 import server as adm  # noqa: E402  (nuorb-admin/server.py)
 import weather_admin  # noqa: E402  (Verwaltungsseite „Wetter“)
 
@@ -610,6 +611,28 @@ async def tools_api(request: Request):
     return {**new, "toolsets": jc.TOOLSETS[new["mode"]], "restarted": restart}
 
 
+# ------------------------------------------------------------------ Update-Prüfung (v0.7.3, Logik in update_check.py)
+async def update_api(request: Request):
+    """GET: Zustand (bei Bedarf Prüfung im Hintergrund). POST {"check": true}: sofort prüfen. POST {"auto": bool}."""
+    if request.method == "GET":
+        st = uc.state()
+        if uc.due():
+            asyncio.get_running_loop().create_task(uc.fetch())
+        return st
+    d = await adm.body(request)
+    if set(d) - {"check", "auto"} or ("auto" in d and not isinstance(d["auto"], bool)):
+        raise HTTPException(400, jc.tr("Erlaubt: check, auto (true/false).", "Allowed: check, auto (true/false)."))
+    if "auto" in d:
+        uc.set_auto(d["auto"])
+        adm.audit(adm.who(request), f"Automatic update check {'on' if d['auto'] else 'off'}")
+    if d.get("check"):
+        if not uc.enabled():
+            raise HTTPException(403, jc.tr("Update-Prüfung ist mit NUORB_UPDATE_CHECK=0 abgeschaltet.",
+                                           "The update check is switched off with NUORB_UPDATE_CHECK=0."))
+        await uc.fetch()
+    return uc.state()
+
+
 # ------------------------------------------------------------------ Seiten und Zusatz-Skript
 async def docker_page(request: Request):
     name = request.path_params["name"]
@@ -640,6 +663,7 @@ NEW = [
     APIRoute("/api/pairing/devices", pairing_devices, methods=["GET"]),
     APIRoute("/api/pairing/revoke", pairing_revoke, methods=["POST"]),
     *weather_admin.routes(),
+    APIRoute("/api/update", update_api, methods=["GET", "POST"]),
     APIRoute("/api/tools", tools_api, methods=["GET", "POST"]),
     APIRoute("/api/tools/rules", tools_rules, methods=["POST"]),
     APIRoute("/static/docker/{name}", docker_page, methods=["GET"]),

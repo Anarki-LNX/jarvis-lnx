@@ -8,6 +8,8 @@
     voice_note: "Speech is generated on this server. Both voices are CC0: free to use, also commercially.",
     h_lic: "Licenses", lic_own: "{brand}'s own code is under the MIT license. It builds on many open-source projects and models; each keeps its own license.",
     lic_link: "Third-party components and licenses", lic_path: "In the container:",
+    h_update: "Updates", upd_auto: "Check for new versions automatically (at most every 6 hours)",
+    upd_note: "The check is a single request from this server to github.com (the newest NuOrb release, nothing else is sent apart from the usual connection data). Switched off here, only the button checks. NUORB_UPDATE_CHECK=0 in the .env switches it off completely.",
     h_weather: "Weather data", th_source: "Source", th_notice: "Notice",
     weather_note: "The built-in weather asks these services directly from this server. Official warnings of the German Weather Service are passed on unchanged.",
   };
@@ -17,6 +19,8 @@
     voice_note: "Die Sprachausgabe entsteht auf diesem Server. Beide Stimmen sind CC0: frei nutzbar, auch kommerziell.",
     h_lic: "Lizenzen", lic_own: "Der eigene Code von {brand} steht unter der MIT-Lizenz. {brand} baut auf vielen Open-Source-Projekten und Modellen auf; jedes behält seine eigene Lizenz.",
     lic_link: "Komponenten von Dritten und ihre Lizenzen", lic_path: "Im Container:",
+    h_update: "Updates", upd_auto: "Automatisch nach neuen Versionen suchen (höchstens alle 6 Stunden)",
+    upd_note: "Die Prüfung ist ein einziger Abruf dieses Servers bei github.com (das neueste NuOrb-Release, außer den üblichen Verbindungsdaten wird nichts gesendet). Hier ausgeschaltet prüft nur noch der Knopf. NUORB_UPDATE_CHECK=0 in der .env schaltet sie ganz ab.",
     h_weather: "Wetterdaten", th_source: "Quelle", th_notice: "Hinweis",
     weather_note: "Das eingebaute Wetter fragt diese Dienste direkt von diesem Server aus ab. Amtliche Warnungen des Deutschen Wetterdienstes werden unverändert weitergegeben.",
   };
@@ -55,5 +59,14 @@
     }
     $("pWeather").hidden = !(d.weather || []).length;
     $("licLink").href = d.licenses_url; $("licPath").textContent = d.licenses_path;
+    I.api("/api/update").then((u) => {
+      const box = $("updAuto");
+      box.checked = !!u.auto; box.disabled = !u.enabled;
+      if (!u.enabled) $("updMsg").textContent = I.lang === "de" ? "Mit NUORB_UPDATE_CHECK=0 abgeschaltet." : "Switched off with NUORB_UPDATE_CHECK=0.";
+      box.addEventListener("change", async () => {
+        try { await I.api("/api/update", { auto: box.checked }); $("updMsg").textContent = I.lang === "de" ? "Gespeichert." : "Saved."; }
+        catch (e) { box.checked = !box.checked; $("updMsg").textContent = I.tr(String(e.message || e)); }
+      });
+    }).catch(() => { $("pUpdate").hidden = true; });
   }).catch(() => {});
 })();

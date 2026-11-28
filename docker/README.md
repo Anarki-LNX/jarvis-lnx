@@ -130,8 +130,9 @@ einmal neu koppeln.
   fremde Inhalte gelesen (Websuche, Webseite, Datei, Bild, ein hinzugefügter MCP-Server), braucht danach jede Aktion
   mit Wirkung eine Bestätigungskarte, für das ganze Gespräch. Shell, Python und Browser dürfen keine Adressen im
   Heimnetz oder im Container ansprechen, außer den eingetragenen (Gehirn, MCP, Smart Home).
-* **Keine Telemetrie**, keine Update-Checks. Nach außen geht nur: Claude (Gesprächstext, wenn gewählt) und die
-  einmaligen Modell-Downloads. onnxruntime (ab 1.32) würde von sich aus Nutzungsdaten an Microsoft senden; das Image
+* **Keine Telemetrie.** Nach außen geht nur: Claude (Gesprächstext, wenn gewählt), die einmaligen Modell-Downloads
+  und ab v0.7.3 die Update-Prüfung: ein Abruf bei github.com (neuestes NuOrb-Release), nur wenn das Admin-Panel offen
+  ist, höchstens alle 6 Stunden. Abschaltbar unter „Über“, ganz aus mit `NUORB_UPDATE_CHECK=0`. onnxruntime (ab 1.32) würde von sich aus Nutzungsdaten an Microsoft senden; das Image
   schaltet das für jeden Prozess ab (`ORT_DISABLE_TELEMETRY=1`). Nachprüfen, komplett offline:
   `tools/telemetry-check.sh ghcr.io/anarki-lnx/nuorb:latest`.
 * **Schlüssel** im Admin-Panel eingeben (oder einmalig per `.env`; danach dort löschen).
@@ -307,6 +308,10 @@ keeps the old data and takes over password, memory and paired devices. Browsers 
 memory, reminders, skills, NuOrb tools). Shell, Python, files, browser and sub-agents are off, also after an update.
 Switch them on under “Tools” in the admin panel if you need them. After the assistant has read outside content, every
 action with an effect needs a confirmation card, and shell, Python and browser cannot reach your home network.
+
+**Update check (from v0.7.3):** every admin page shows the server version with a button “Check for updates”. The panel
+asks github.com for the newest NuOrb release, at most every 6 hours and only while the admin panel is open. Switch the
+automatic check off under “About”, or completely with `NUORB_UPDATE_CHECK=0`.
 
 **Smart home (optional):** off by default. Enter Home Assistant / ioBroker access under “Smart Home” in the admin panel (or put
 `/opt/data/smarthome.env` in place and set `NUORB_SMARTHOME=1`). Reading needs no confirmation, switching always shows a

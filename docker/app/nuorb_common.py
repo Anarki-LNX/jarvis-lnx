@@ -167,6 +167,17 @@ def server_label() -> str:
     return f"{brand()} Server" + (f" v{ver}" if ver and ver != "dev" else (" (dev)" if ver else ""))
 
 
+def version() -> str:
+    """Version dieses Images ohne „v“ (NUORB_BUILD beim Bauen), z. B. „0.7.3“, sonst „dev“."""
+    return env("NUORB_BUILD").lstrip("v") or "dev"
+
+
+def version_tuple(v: str) -> tuple[int, int, int] | None:
+    """„v0.7.3“ oder „0.7.3“ -> (0, 7, 3). Alles andere (dev, test, Vorabversionen) -> None."""
+    m = re.fullmatch(r"v?(\d{1,4})\.(\d{1,4})\.(\d{1,4})", (v or "").strip())
+    return (int(m.group(1)), int(m.group(2)), int(m.group(3))) if m else None
+
+
 def tr(de: str, en: str) -> str:
     return de if ui_lang() == "de" else en
 

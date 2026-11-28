@@ -67,7 +67,53 @@ window.NuI18n = (function () {
         sw.append(b);
       }
     }
+    I.chrome();
     return t;
+  };
+
+  // Auf jeder Zusatzseite: Versionszeile mit „Auf Update prüfen“ (oben) und Spendenhinweis (unten, immer sichtbar)
+  const CT = {
+    de: { check: "Auf Update prüfen", checking: "Prüfe …", current: "Aktuell.", newer: "Update verfügbar: {v}", notes: "Versionshinweise",
+          failed: "Prüfung fehlgeschlagen.", foot: "NuOrb ist kostenlos und quelloffen. Wenn es dir gefällt, freue ich mich über einen Kaffee:" },
+    en: { check: "Check for updates", checking: "Checking …", current: "Up to date.", newer: "Update available: {v}", notes: "Release notes",
+          failed: "Check failed.", foot: "NuOrb is free and open source. If you like it, you can buy me a coffee:" },
+  };
+  function renderVer(bar, st, justChecked) {
+    const c = CT[I.lang] || CT.en;
+    bar.replaceChildren();
+    bar.classList.toggle("newer", !!st.newer);
+    const label = document.createElement("span"); label.className = "ver-label"; label.textContent = st.label || "";
+    bar.append(label);
+    if (st.enabled) {
+      const b = document.createElement("button"); b.type = "button"; b.className = "btn small"; b.textContent = c.check;
+      b.addEventListener("click", async () => {
+        b.disabled = true; b.textContent = c.checking;
+        try { renderVer(bar, await I.api("/api/update", { check: true }), true); }
+        catch (e) { b.disabled = false; b.textContent = c.check; }
+      });
+      bar.append(b);
+    }
+    const s = document.createElement("span"); s.className = "ver-status";
+    if (st.newer) {
+      const strong = document.createElement("strong"); strong.textContent = c.newer.replace("{v}", st.latest); s.append(strong);
+      if (st.url) { const a = document.createElement("a"); a.href = st.url; a.target = "_blank"; a.rel = "noopener noreferrer"; a.textContent = c.notes; s.append(" ", a); }
+    } else if (st.error) s.textContent = c.failed;
+    else if (justChecked) s.textContent = c.current;
+    if (s.childNodes.length) bar.append(s);
+  }
+  I.chrome = () => {
+    const main = document.querySelector("main");
+    if (!main || document.getElementById("verBar")) return;
+    const c = CT[I.lang] || CT.en;
+    const bar = document.createElement("div"); bar.className = "ver-bar"; bar.id = "verBar";
+    const top = main.querySelector(".top");
+    if (top) top.after(bar); else main.prepend(bar);
+    I.api("/api/update").then((st) => renderVer(bar, st)).catch(() => bar.remove());
+    const foot = document.createElement("footer"); foot.className = "page-foot";
+    const a = document.createElement("a"); a.href = "https://www.paypal.com/paypalme/HenryMeinekat"; a.target = "_blank";
+    a.rel = "noopener noreferrer"; a.textContent = "PayPal ☕";
+    foot.append(c.foot + " ", a);
+    main.append(foot);
   };
   return I;
 })();

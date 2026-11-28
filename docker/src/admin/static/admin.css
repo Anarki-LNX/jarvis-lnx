@@ -255,6 +255,13 @@ input[type=range] { width: 100%; accent-color: var(--cyan); }
 #oRes:not(:empty) { display: flex; flex-direction: column; gap: 8px; margin: -4px 0 12px; } #oRes .note .dot { margin-right: 6px; }
 
 /* Spendenhinweis am Seitenende */
-.page-foot { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--text-2); font-size: 12px;
-  line-height: 1.5; overflow-wrap: anywhere; }
+/* Spendenhinweis: immer sichtbar unten in der Hauptspalte (sticky), am Seitenende an seinem normalen Platz */
+.page-foot { position: sticky; bottom: 0; z-index: 5; margin: 28px calc(-1 * clamp(18px, 3.2vw, 44px)) -60px; padding: 8px clamp(18px, 3.2vw, 44px);
+  border-top: 1px solid var(--line); background: color-mix(in srgb, var(--bg-0, #05080b) 88%, transparent); backdrop-filter: blur(8px);
+  color: var(--text-2); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
 .page-foot a { color: var(--cyan, inherit); white-space: nowrap; }
+/* Versionszeile (Docker): Servername, Knopf „Auf Update prüfen“, Hinweis bei neuer Version */
+.ver-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin: -12px 0 18px; font-size: 12.5px; color: var(--text-2); }
+.ver-bar .ver-label { font-family: "JetBrains Mono", monospace; }
+.ver-bar.newer { padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(255, 181, 71, .35); background: rgba(255, 181, 71, .08); color: #ffe2b8; }
+.ver-bar .ver-status a { color: var(--cyan, inherit); }
