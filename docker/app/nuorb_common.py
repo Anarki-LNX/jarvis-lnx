@@ -32,6 +32,68 @@ APP = Path(__file__).resolve().parent
 DEVICES = CONF / "devices.json"
 PAIRING = CONF / "pairing.json"
 
+# ------------------------------------------------------------------ Werkzeuge von Hermes (S5/S6)
+# Enger Standard für die Plattform api_server (NuOrb-Oberfläche und App): was ein Sprachassistent braucht.
+# Alle aktiven MCP-Server kommen von Hermes automatisch dazu. „extended“ = alle Werkzeuge des API-Servers.
+TOOLS_FILE = CONF / "tools.json"
+TOOLSETS = {"narrow": ["web", "vision", "skills", "cronjob", "todo", "memory", "session_search"],
+            "extended": ["hermes-api-server"]}
+POLICY_CMD = "/opt/nuorb/venv/bin/python -I /opt/nuorb/app/nuorb_policy.py"
+POLICY_PRE = r"^(terminal|process_manage|execute_code|write_file|patch|cronjob_manage|delegate_task|skill_manage|memory|image_generate|browser_.*|mcp__.*)$"
+POLICY_POST = r"^(web_search|web_extract|read_file|search_files|vision_analyze|browser_.*|mcp__.*)$"
+
+
+def tools_state() -> dict:
+    """{"mode": "narrow"|"extended", "notice": bool}. Ohne Datei: enger Standard."""
+    try:
+        d = json.loads(TOOLS_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        d = {}
+    mode = d.get("mode") if d.get("mode") in TOOLSETS else "narrow"
+    return {"mode": mode, "notice": bool(d.get("notice"))}
+
+
+def apply_tools_policy(data, mode: str) -> bool:
+    """Werkzeug-Liste und Policy-Hooks in die Hermes-Konfiguration (ruamel-Daten aus load_config_rt) schreiben.
+    Eigene Hooks des Nutzers bleiben. Gibt True zurück, wenn sich etwas geändert hat."""
+    changed = False
+    pt = data.get("platform_toolsets")
+    if not isinstance(pt, dict):
+        data["platform_toolsets"] = pt = {}
+    if list(pt.get("api_server") or []) != TOOLSETS[mode]:
+        pt["api_server"] = list(TOOLSETS[mode])
+        changed = True
+    hooks = data.get("hooks")
+    if not isinstance(hooks, dict):
+        data["hooks"] = hooks = {}
+    for event, arg, matcher, extra in (("pre_tool_call", "pre", POLICY_PRE, {"fail_closed": True}),
+                                       ("post_tool_call", "post", POLICY_POST, {})):
+        want = {"matcher": matcher, "command": f"{POLICY_CMD} {arg}", "timeout": 10, **extra}
+        cur = [h for h in (hooks.get(event) or []) if isinstance(h, dict)]
+        others = [h for h in cur if "nuorb_policy.py" not in str(h.get("command", ""))]
+        mine = [h for h in cur if "nuorb_policy.py" in str(h.get("command", ""))]
+        if [dict(h) for h in mine] != [want]:
+            hooks[event] = [want] + others
+            changed = True
+    return changed
+
+
+def allow_policy_hooks(hermes_home: Path = DATA) -> None:
+    """Die beiden NuOrb-Hooks in Hermes' Hook-Allowlist eintragen (statt hooks_auto_accept für alle Hooks)."""
+    f = hermes_home / "shell-hooks-allowlist.json"
+    try:
+        d = json.loads(f.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        d = {}
+    approvals = [e for e in (d.get("approvals") or []) if isinstance(e, dict)]
+    want = [("pre_tool_call", f"{POLICY_CMD} pre"), ("post_tool_call", f"{POLICY_CMD} post")]
+    if all(any(e.get("event") == ev and e.get("command") == cmd for e in approvals) for ev, cmd in want):
+        return
+    approvals = [e for e in approvals if "nuorb_policy.py" not in str(e.get("command", ""))]
+    approvals += [{"event": ev, "command": cmd, "approved_at": now_iso(), "script_mtime_at_approval": None} for ev, cmd in want]
+    d["approvals"] = approvals
+    _write_json(f, d)
+
 PRODUCT = "nuorb"
 API_VERSION = 1
 CODE_TTL = 600            # Kopplungscode: 10 Minuten, einmalig

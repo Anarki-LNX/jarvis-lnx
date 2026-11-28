@@ -4,7 +4,8 @@
 Keine GPU, kein Netz. Start: python3 docker/tools/mock-llm.py [port]   (Standard 18434, nur 127.0.0.1)
 Werkzeug-Test: Enthält die Nutzerfrage [[tool:<endung> <json>]], ruft der Mock das angebotene Werkzeug auf, dessen Name
 auf <endung> endet (z. B. [[tool:smarthome_schalten__schalten {"name":"Küchenlicht","aktion":"aus"}]]); nach dem
-Werkzeug-Ergebnis antwortet er mit „Erledigt: <Ergebnis>“.
+Werkzeug-Ergebnis antwortet er mit „Erledigt: <Ergebnis>“. Mehrere Marker werden nacheinander aufgerufen, ein Werkzeug
+pro Ergebnis (für den Test „fremde Inhalte, dann Aktion“). GET /mock/last-tools zeigt die Werkzeuge der letzten Anfrage.
 """
 import re
 import json
@@ -29,23 +30,35 @@ def answer(msgs):
     return f"Testantwort vom Mock-Gehirn. Du hast gefragt: {str(c)[-80:]}"
 
 
+LAST_TOOLS: list[str] = []
+
+
 def tool_call(body):
-    """Werkzeugaufruf, wenn die letzte Nutzerfrage den Test-Marker trägt und noch kein Ergebnis da ist."""
+    """Werkzeugaufruf, solange die letzte Nutzerfrage noch Test-Marker ohne Ergebnis trägt (der Reihe nach)."""
     msgs = body.get("messages") or []
-    if msgs and msgs[-1].get("role") == "tool":
+    if body.get("tools"):   # Nebenanfragen von Hermes (Titel o. ä.) ohne Werkzeuge nicht mitzählen
+        LAST_TOOLS[:] = [t.get("function", {}).get("name", "") for t in body["tools"]]
+    i_user = max((i for i, m in enumerate(msgs) if m.get("role") == "user"), default=-1)
+    if i_user < 0:
         return None
-    last = next((m for m in reversed(msgs) if m.get("role") == "user"), {})
-    c = last.get("content")
+    c = msgs[i_user].get("content")
     if isinstance(c, list):
         c = " ".join(x.get("text", "") for x in c if isinstance(x, dict))
-    m = re.search(r"\[\[tool:(\S+) (\{.*?\})\]\]", str(c or ""))
-    if not m:
+    marker = re.findall(r"\[\[tool:(\S+) (\{.*?\})\]\]", str(c or ""))
+    done = sum(1 for m in msgs[i_user + 1:] if m.get("role") == "tool")
+    if done >= len(marker):
         return None
+    end, args = marker[done]
     names = [t.get("function", {}).get("name", "") for t in body.get("tools") or []]
-    name = next((n for n in names if n.endswith(m.group(1))), None)
-    if not name:
-        return {"missing": m.group(1), "names": names}
-    return {"name": name, "arguments": m.group(2)}
+    name = next((n for n in names if n.endswith(end)), None)
+    if name:
+        return {"name": name, "arguments": args}
+    if "tool_call" in names:   # Hermes' Tool Search: MCP-Werkzeuge stehen hinter der Brücke tool_call
+        listing = " ".join(str(t.get("function", {}).get("description", "")) for t in body.get("tools") or [])
+        m = re.search(r"\b(\w*" + re.escape(end) + r")\b", listing)
+        real = m.group(1) if m else ("mcp__" + end if "__" in end else end)
+        return {"name": "tool_call", "arguments": json.dumps({"calls": [{"name": real, "arguments": json.loads(args)}]})}
+    return {"missing": end, "names": names}
 
 
 def after_tool(msgs):
@@ -85,6 +98,8 @@ class H(BaseHTTPRequestHandler):
                 return self.js(200, {"default_generation_settings": {"n_ctx": 65536}, "build_info": "b0-mock"})
             if p in ("/v1/models", "/models"):
                 return self.js(200, {"object": "list", "data": [{"id": MODEL, "object": "model", "owned_by": "llamacpp"}]})
+        if p == "/mock/last-tools":
+            return self.js(200, {"tools": LAST_TOOLS})
         if p == "/api/version":
             return self.js(200, {"version": "0.0.0-mock"})
         if p == "/api/tags":

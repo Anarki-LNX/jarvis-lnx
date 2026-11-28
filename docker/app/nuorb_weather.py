@@ -113,9 +113,18 @@ def save_secret(name: str, value: str | None) -> None:
 
 
 # ------------------------------------------------------------------ HTTP und Zwischenspeicher
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Weiterleitungen nicht folgen (S5): eine eingetragene Adresse soll nicht auf ein anderes Ziel umlenken können."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D102
+        return None
+
+
+_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
 def _http_get(url: str, headers: dict[str, str]) -> Any:
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "application/json", **headers})
-    with urllib.request.urlopen(req, timeout=TIMEOUT) as r:  # noqa: S310 (feste https-Adressen oder Mock)
+    with _OPENER.open(req, timeout=TIMEOUT) as r:  # noqa: S310 (feste https-Adressen oder Mock)
         return json.loads(r.read().decode("utf-8"))
 
 

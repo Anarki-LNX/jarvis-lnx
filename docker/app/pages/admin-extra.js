@@ -1,4 +1,4 @@
-// NuOrb (Docker): ergänzt das Admin-Panel um „Einrichtung“, „Gerät koppeln“, „Wetter“ und „Über“ und blendet die Xiaomi-Handy-Seite aus.
+// NuOrb (Docker): ergänzt das Admin-Panel um „Einrichtung“, „Gerät koppeln“, „Wetter“, „Werkzeuge“ und „Über“ und blendet die Xiaomi-Handy-Seite aus.
 // Läuft nach admin.js; ändert nur die Navigation, die Seiten selbst liegen unter /static/docker/.
 (function () {
   // Sprache wie im Admin-Panel (i18n.js von NuOrb-Admin), falls vorhanden; sonst gleiche Regeln wie docker-i18n.js
@@ -7,7 +7,7 @@
                          try { return ok(localStorage.getItem("nuorb-admin-lang")); } catch (e) { return null; } };
   const browser = () => (String(navigator.language || "en").toLowerCase().startsWith("de") ? "de" : "en");
   let lang = stored() || browser();
-  const L = { de: { group: "Docker", setup: "Einrichtung", pair: "Gerät koppeln", weather: "Wetter", about: "Über" }, en: { group: "Docker", setup: "Setup", pair: "Pair device", weather: "Weather", about: "About" } };
+  const L = { de: { group: "Docker", setup: "Einrichtung", pair: "Gerät koppeln", weather: "Wetter", tools: "Werkzeuge", about: "Über" }, en: { group: "Docker", setup: "Setup", pair: "Pair device", weather: "Weather", tools: "Tools", about: "About" } };
 
   function addNav() {
     const nav = document.getElementById("nav");
@@ -15,11 +15,11 @@
     // Xiaomi-Handy und die Link-Kopplung von NuOrb-Admin gibt es im Image nicht; hier koppelt /static/docker/koppeln.html
     for (const v of ["handy", "koppeln"]) { const b = nav.querySelector(`button[data-view="${v}"]`); if (b) b.hidden = true; }
     // Mit i18n.js von NuOrb-Admin: deutsche Texte einsetzen, die Übersetzung (auch beim Umschalten ohne Neuladen) macht I18N
-    if (window.I18N && window.I18N_EN) { window.I18N_EN["Einrichtung"] ||= "Setup"; window.I18N_EN["Docker"] ||= "Docker"; window.I18N_EN["Über"] ||= "About"; window.I18N_EN["Wetter"] ||= "Weather"; }
+    if (window.I18N && window.I18N_EN) { window.I18N_EN["Einrichtung"] ||= "Setup"; window.I18N_EN["Docker"] ||= "Docker"; window.I18N_EN["Über"] ||= "About"; window.I18N_EN["Wetter"] ||= "Weather"; window.I18N_EN["Werkzeuge"] ||= "Tools"; }
     const t = window.I18N ? L.de : L[lang];
     const g = document.createElement("div"); g.className = "nav-group"; g.textContent = t.group; g.dataset.docker = "1";
     nav.appendChild(g);
-    for (const [href, label] of [["/static/docker/koppeln.html", t.pair], ["/static/docker/einrichtung.html", t.setup], ["/static/docker/wetter.html", t.weather], ["/static/docker/ueber.html", t.about]]) {
+    for (const [href, label] of [["/static/docker/koppeln.html", t.pair], ["/static/docker/einrichtung.html", t.setup], ["/static/docker/wetter.html", t.weather], ["/static/docker/werkzeuge.html", t.tools], ["/static/docker/ueber.html", t.about]]) {
       const b = document.createElement("button"); b.type = "button"; b.dataset.docker = "1";
       b.innerHTML = '<span class="ico" aria-hidden="true">◈</span>'; b.append(document.createTextNode(label));
       b.addEventListener("click", () => { location.href = href; });
@@ -34,9 +34,28 @@
       const s = await r.json();
       lang = (window.I18N && ok(window.I18N.lang)) || stored() || ok(s.ui_lang) || browser();
       addNav();
+      toolsNotice();
       if (!s.done && !sessionStorage.getItem("jl.setupSkipped")) location.href = "/static/docker/einrichtung.html";
       return true;
     } catch (e) { return false; }
+  }
+  // Hinweis nach dem Update auf v0.7.1: enger Werkzeug-Standard (S5/S6), bis die Seite „Werkzeuge“ geöffnet wurde
+  const NOTICE = {
+    de: { text: "Sicherheit: Seit v0.7.1 darf das Sprachmodell standardmäßig keine Shell, keine Dateien und keinen Browser mehr benutzen. Nach fremden Inhalten braucht jede Aktion eine Bestätigung.", link: "Werkzeuge ansehen" },
+    en: { text: "Security: since v0.7.1 the language model may no longer use the shell, files or the browser by default. After outside content, every action needs a confirmation.", link: "View tools" },
+  };
+  async function toolsNotice() {
+    const main = document.getElementById("main");
+    if (!main || document.getElementById("toolsNotice")) return;
+    try {
+      const r = await fetch("/api/tools", { cache: "no-store" });
+      if (!r.ok || !(await r.json()).notice) return;
+    } catch (e) { return; }
+    const n = NOTICE[(window.I18N && ok(window.I18N.lang)) || lang] || NOTICE.en;
+    const div = document.createElement("div"); div.className = "banner"; div.id = "toolsNotice"; div.setAttribute("role", "status");
+    const span = document.createElement("span"); span.textContent = n.text;
+    const a = document.createElement("a"); a.href = "/static/docker/werkzeuge.html"; a.textContent = n.link;
+    div.append(span, a); main.prepend(div);
   }
   // Direktaufruf der nativen Kopplungsseite (#koppeln) -> Kopplung mit Einmal-Code im Image
   const redirect = () => { if (location.hash === "#koppeln") location.replace("/static/docker/koppeln.html"); };

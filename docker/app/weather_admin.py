@@ -137,7 +137,7 @@ def _url(u: str) -> str:
     if not u:
         return ""
     p = urllib.parse.urlsplit(u)
-    if p.scheme not in ("http", "https") or not p.hostname or p.query or p.fragment or p.username:
+    if p.scheme not in ("http", "https") or not p.hostname or p.query or p.fragment or p.username or p.password:
         raise HTTPException(400, TR("Ungültige Adresse für Bright Sky.", "Invalid Bright Sky address."))
     return u
 

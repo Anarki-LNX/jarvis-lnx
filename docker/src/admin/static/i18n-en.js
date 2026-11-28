@@ -521,6 +521,7 @@ window.I18N_EN = {
  "Token": "Token",
  "Tool-Aufrufe funktionieren.": "Tool calls work.",
  "URL muss mit http:// oder https:// beginnen.": "The URL must start with http:// or https://.",
+ "Die URL darf keine Zugangsdaten enthalten.": "The URL must not contain credentials.",
  "Umschalten fehlgeschlagen, alte Einstellung wiederhergestellt.": "Switching failed; the previous setting was restored.",
  "Umschalten wirkt ab der nächsten Frage, ohne Neustart und ohne PC-Last. Auch am Smartphone umschaltbar (Einstellungen oder Sprachbefehl).": "Switching takes effect with the next question, with no restart and no load on the PC. You can also switch on the phone (settings or voice command).",
  "Unbekannt.": "Unknown.",

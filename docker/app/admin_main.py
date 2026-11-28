@@ -534,6 +534,32 @@ async def api_assistant(request: Request):
     return assistant_update(await adm.body(request), adm.who(request))
 
 
+# ------------------------------------------------------------------ Werkzeuge von Hermes (S5/S6)
+async def tools_api(request: Request):
+    """Enger Standard oder erweiterte Werkzeuge. Schreibt platform_toolsets und die Policy-Hooks, startet Hermes neu."""
+    st = jc.tools_state()
+    if request.method == "GET":
+        return {**st, "toolsets": jc.TOOLSETS[st["mode"]], "brand": jc.brand(), "ui_lang": jc.ui_lang_setting()}
+    d = await adm.body(request)
+    if set(d) - {"mode", "notice_seen"} or ("mode" in d and d["mode"] not in jc.TOOLSETS):
+        raise HTTPException(400, jc.tr("Erlaubt: mode (narrow oder extended), notice_seen.", "Allowed: mode (narrow or extended), notice_seen."))
+    new = {**st, "notice": False if d.get("notice_seen") else st["notice"]}
+    restart = False
+    if "mode" in d and d["mode"] != st["mode"]:
+        new["mode"] = d["mode"]
+        data = adm.load_config_rt()
+        if jc.apply_tools_policy(data, new["mode"]):
+            adm.atomic_write(adm.FILES["config"][0], adm.dump_rt(data))
+            restart = True
+        jc.allow_policy_hooks()
+        adm.audit(adm.who(request), f"Hermes tools: {st['mode']} -> {new['mode']}")
+    jc._write_json(jc.TOOLS_FILE, {**new, "changed": jc.now_iso()})
+    if restart and (slot := svc_dir("hermes")):
+        p = await asyncio.create_subprocess_exec("s6-svc", "-r", str(slot), stderr=asyncio.subprocess.PIPE)
+        await p.communicate()
+    return {**new, "toolsets": jc.TOOLSETS[new["mode"]], "restarted": restart}
+
+
 # ------------------------------------------------------------------ Seiten und Zusatz-Skript
 async def docker_page(request: Request):
     name = request.path_params["name"]
@@ -564,6 +590,7 @@ NEW = [
     APIRoute("/api/pairing/devices", pairing_devices, methods=["GET"]),
     APIRoute("/api/pairing/revoke", pairing_revoke, methods=["POST"]),
     *weather_admin.routes(),
+    APIRoute("/api/tools", tools_api, methods=["GET", "POST"]),
     APIRoute("/static/docker/{name}", docker_page, methods=["GET"]),
     APIRoute("/", index_plus, methods=["GET"]),
 ]

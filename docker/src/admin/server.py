@@ -2467,8 +2467,11 @@ async def mcp_save(request: Request):
     entry = {}
     if d.get("url"):
         url = str(d["url"]).strip()
-        if not re.match(r"^https?://", url):
+        u = urllib.parse.urlsplit(url)
+        if u.scheme not in ("http", "https") or not u.hostname or re.search(r"\s", url):
             raise HTTPException(400, "URL muss mit http:// oder https:// beginnen.")
+        if u.username or u.password:   # Zugangsdaten gehören in die Kopfzeilen des MCP-Eintrags, nicht in die URL
+            raise HTTPException(400, "Die URL darf keine Zugangsdaten enthalten.")
         entry["url"] = url
     elif d.get("command"):
         entry["command"] = str(d["command"]).strip()

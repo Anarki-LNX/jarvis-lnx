@@ -206,6 +206,25 @@ def ensure_mcp() -> None:
         log("MCP tool \"nuorb\" (name, onboarding) registered.")
 
 
+def ensure_policy(existing: bool) -> None:
+    """Werkzeuge von Hermes und Sicherheitsregeln (S5/S6) bei jedem Start sicherstellen.
+    Enger Standard, solange im Admin-Panel nicht „Erweiterte Werkzeuge“ eingeschaltet ist. Eine Installation von vor
+    v0.7.1 (keine tools.json) bekommt einen Hinweis im Admin-Panel, was abgeschaltet wurde."""
+    os.environ.setdefault("NUORB_HOME", "/opt/nuorb/home")
+    sys.path.insert(0, "/opt/nuorb/admin")
+    import server as adm
+    if not jc.TOOLS_FILE.exists():
+        jc._write_json(jc.TOOLS_FILE, {"mode": "narrow", "notice": existing, "since": jc.now_iso()})
+        if existing:
+            log("Hermes tools: narrow default (shell, files, browser off). Switch: admin panel, Tools.")
+    mode = jc.tools_state()["mode"]
+    data = adm.load_config_rt()
+    if jc.apply_tools_policy(data, mode):
+        adm.atomic_write(adm.FILES["config"][0], adm.dump_rt(data))
+        log(f"Hermes tools and safety hooks set ({mode}).")
+    jc.allow_policy_hooks()
+
+
 SMARTHOME = Path("/opt/nuorb/smarthome")
 
 
@@ -362,7 +381,8 @@ def main() -> None:
         migrate_ollama_provider()
     except Exception as exc:
         log(f"Ollama entry not migrated: {exc}")
-    if not MARK.exists():
+    existing = MARK.exists()
+    if not existing:
         first_config()
     try:
         migrate_voices()
@@ -384,6 +404,10 @@ def main() -> None:
         ensure_weather()
     except Exception as exc:
         log(f"Weather not set up: {exc}")
+    try:
+        ensure_policy(existing)   # nach allen MCP-Einträgen
+    except Exception as exc:
+        log(f"Tool safety rules not set: {exc}")
     log(f"Ready. Home CA fingerprint: {jc.ca_fingerprint() or '(own certificate)'}")
 
 

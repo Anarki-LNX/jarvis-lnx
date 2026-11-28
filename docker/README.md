@@ -114,8 +114,16 @@ einmal neu koppeln.
   Fritzbox-VPN). Zugriffe sind nur aus privaten Netzen und Tailscale (100.64.0.0/10) erlaubt.
 * **Kopplung:** Ohne gekoppeltes Gerät liefert der Server nichts außer der Kopplungsseite. Auf dem Server liegen nur
   Hashes der Gerätetoken.
-* **Bestätigungskarten:** Vor gefährlichen Aktionen fragt NuOrb nach (`approvals.mode: manual`). Der Agent hat ein
-  Terminal *im Container*; der Container ist seine Sandbox.
+* **Bestätigungskarten:** Vor gefährlichen Aktionen fragt NuOrb nach (`approvals.mode: manual`).
+* **Werkzeuge (ab v0.7.1):** Das Sprachmodell bekommt standardmäßig nur, was ein Sprachassistent braucht: Websuche,
+  Webseiten, Bilder, Gedächtnis, Erinnerungen, Skills und die NuOrb-Werkzeuge (Smart Home, Wetter, Name). Shell,
+  Python, Dateien, Browser und Unteragenten sind aus. Einschalten im Admin-Panel unter **Werkzeuge**, mit Warnung:
+  Eine Webseite kann versteckte Anweisungen enthalten, und mit Shell- und Dateizugriff könnte das Modell dann
+  Passwörter und Schlüssel dieses Servers lesen.
+* **Regeln außerhalb des Modells:** Ein Hook (`app/nuorb_policy.py`) prüft jeden Werkzeugaufruf. Hat der Assistent
+  fremde Inhalte gelesen (Websuche, Webseite, Datei, Bild, ein hinzugefügter MCP-Server), braucht danach jede Aktion
+  mit Wirkung eine Bestätigungskarte, für das ganze Gespräch. Shell, Python und Browser dürfen keine Adressen im
+  Heimnetz oder im Container ansprechen, außer den eingetragenen (Gehirn, MCP, Smart Home).
 * **Keine Telemetrie**, keine Update-Checks. Nach außen geht nur: Claude (Gesprächstext, wenn gewählt) und die
   einmaligen Modell-Downloads. onnxruntime (ab 1.32) würde von sich aus Nutzungsdaten an Microsoft senden; das Image
   schaltet das für jeden Prozess ab (`ORT_DISABLE_TELEMETRY=1`). Nachprüfen, komplett offline:
@@ -288,6 +296,11 @@ Claude API, or both with automatic fallback.
 **Upgrading from v0.6.x or older:** from v0.7.0 on, volumes, paths, environment variables and services are all named
 NuOrb. The migration script attached to release v0.7.0 moves an existing installation over. It makes a backup first,
 keeps the old data and takes over password, memory and paired devices. Browsers have to pair once more.
+
+**Tools (from v0.7.1):** the language model gets only what a voice assistant needs (web search, web pages, images,
+memory, reminders, skills, NuOrb tools). Shell, Python, files, browser and sub-agents are off, also after an update.
+Switch them on under “Tools” in the admin panel if you need them. After the assistant has read outside content, every
+action with an effect needs a confirmation card, and shell, Python and browser cannot reach your home network.
 
 **Smart home (optional):** off by default. Enter Home Assistant / ioBroker access under “Smart Home” in the admin panel (or put
 `/opt/data/smarthome.env` in place and set `NUORB_SMARTHOME=1`). Reading needs no confirmation, switching always shows a
