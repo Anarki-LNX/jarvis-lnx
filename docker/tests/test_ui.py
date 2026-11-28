@@ -70,6 +70,27 @@ class Csrf(unittest.TestCase):
         self.durch(anfrage(Origin="https://appassets.androidplatform.net", Authorization="Bearer x"))
 
 
+class Groessengrenze(unittest.TestCase):
+    """Härtung 2: übergroße Anfragen werden vor dem Lesen abgelehnt (413), Sprachaufnahmen dürfen größer sein."""
+
+    def post(self, path, size):
+        c = TestClient(ui.app, base_url=BASE, client=("192.168.1.60", 50000))
+        return c.post(path, content=b"x" * size, headers={"Content-Type": J})
+
+    def test_json_ueber_einem_mb(self):
+        self.assertEqual(self.post("/api/ask", ui.MAX_BODY + 1).status_code, 413)
+
+    def test_json_darunter_nicht_413(self):
+        self.assertNotEqual(self.post("/api/ask", 1000).status_code, 413)
+
+    def test_kaputtes_json_ist_400_nicht_500(self):
+        self.assertEqual(self.post("/api/ask", 10).status_code, 400)
+
+    def test_audio_darf_groesser_sein(self):
+        self.assertNotEqual(self.post("/api/stt", ui.MAX_BODY + 1).status_code, 413)
+        self.assertEqual(self.post("/api/stt", ui.MAX_AUDIO + 70000).status_code, 413)
+
+
 class Kopplungspflicht(unittest.TestCase):
     def setUp(self):
         self.vorher = ui.pairing_required

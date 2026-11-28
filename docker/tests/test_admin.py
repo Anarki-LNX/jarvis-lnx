@@ -108,6 +108,31 @@ class Anmeldung(unittest.TestCase):
         self.assertEqual(c.get("/api/backups").status_code, 401)
 
 
+class Sitzungsdauer(unittest.TestCase):
+    """Härtung 2: höchste Lebensdauer einer Sitzung und Obergrenze gleichzeitiger Sitzungen."""
+
+    def test_sitzung_endet_nach_hoechstdauer_trotz_nutzung(self):
+        tok = adm.new_session("192.168.1.50")
+        key = adm.hashlib.sha256(tok.encode()).hexdigest()
+        adm.SESSIONS[key]["start"] -= adm.SESSION_MAX_DAYS * 86400 + 60
+        req = type("R", (), {"cookies": {"nuorb_sess": tok}})()
+        self.assertIsNone(adm.session_of(req))
+        self.assertNotIn(key, adm.SESSIONS)
+
+    def test_gleitende_verlaengerung_nicht_ueber_die_hoechstdauer(self):
+        tok = adm.new_session("192.168.1.50")
+        key = adm.hashlib.sha256(tok.encode()).hexdigest()
+        adm.SESSIONS[key]["start"] -= adm.SESSION_MAX_DAYS * 86400 - 3600   # noch eine Stunde
+        req = type("R", (), {"cookies": {"nuorb_sess": tok}})()
+        self.assertIsNotNone(adm.session_of(req))
+        self.assertLessEqual(adm.SESSIONS[key]["exp"], adm.SESSIONS[key]["start"] + adm.SESSION_MAX_DAYS * 86400)
+
+    def test_hoechstens_max_sessions_gleichzeitig(self):
+        for _ in range(adm.MAX_SESSIONS + 5):
+            adm.new_session("192.168.1.50")
+        self.assertLessEqual(len(adm.SESSIONS), adm.MAX_SESSIONS)
+
+
 class ParalleleAnmeldung(unittest.TestCase):
     """P1.1: Die Passwortprüfung blockiert den Server nicht, und parallele Fehlversuche kommen nicht an der Sperre vorbei."""
 

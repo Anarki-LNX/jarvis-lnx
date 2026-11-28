@@ -144,6 +144,7 @@ PORT = int(os.environ.get("UI_PORT", "8443"))
 MODE = "live" if os.environ.get("NUORB_MODE", "demo").strip().lower() == "live" else "demo"
 CERT_DIR = Path(os.environ.get("UI_CERT_DIR", str(BASE / "certs")))
 MAX_AUDIO = 20 * 1024 * 1024
+MAX_BODY = 1024 * 1024          # alle anderen Anfragen (JSON): 1 MB
 ALLOWED_NETS = [ipaddress.ip_network(n) for n in os.environ.get(
     "UI_ALLOWED_NETS", "127.0.0.0/8,::1/128,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12").split(",")]
 # Schutz vor fremden Webseiten (CSRF): schreibende /api/*-Anfragen nur von der eigenen Oberflaeche. Browser schicken bei
@@ -343,6 +344,12 @@ app = FastAPI(title="NuOrb UI", docs_url=None, redoc_url=None, openapi_url=None,
 _status_cache: dict = {"t": 0.0, "data": None}
 
 
+@app.exception_handler(json.JSONDecodeError)
+async def bad_json(request: Request, exc: json.JSONDecodeError):
+    """Kaputtes JSON im Anfragekörper ist ein Fehler des Aufrufers (400), kein Serverfehler."""
+    return JSONResponse({"detail": "Ungültiges JSON."}, status_code=400)
+
+
 @app.middleware("http")
 async def lan_only(request: Request, call_next):
     try:
@@ -357,6 +364,13 @@ async def lan_only(request: Request, call_next):
     if not host_ok(request):
         print(f"[host] {request.client.host if request.client else '?'}: Host {request.headers.get('host', '')[:80]!r} abgelehnt", flush=True)
         return JSONResponse({"detail": "Unbekannter Hostname. Eigene Namen in NUORB_ALLOWED_HOSTS eintragen."}, status_code=421)
+    # Größe vor dem Lesen begrenzen (Content-Length): Sprachaufnahmen bis MAX_AUDIO, alles andere bis MAX_BODY
+    try:
+        length = int(request.headers.get("content-length") or 0)
+    except ValueError:
+        length = 0
+    if length > (MAX_AUDIO + 65536 if request.url.path == "/api/stt" else MAX_BODY):
+        return JSONResponse({"detail": "Anfrage zu groß."}, status_code=413)
     # Kopplungspflicht (wie im Docker-Image). Auf nuorb vorerst aus (NUORB_REQUIRE_PAIRING=0): Kiosk und LAN-Browser
     # haben keinen Token. Eingeschaltet brauchen alle /api/* ausser info/pair einen Geraete-Token.
     path = request.url.path

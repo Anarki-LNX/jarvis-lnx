@@ -72,7 +72,9 @@ PHONE_USER = os.environ.get("PHONE_USER", "nuorb-ctl")
 PHONE_KEY = Path(os.environ.get("PHONE_KEY", str(BASE / "keys/handy_ed25519")))
 HOST = os.environ.get("ADMIN_HOST", "0.0.0.0")
 PORT = int(os.environ.get("ADMIN_PORT", "8444"))
-SESSION_HOURS = 12
+SESSION_HOURS = 12        # gleitend: so lange ohne Nutzung gültig
+SESSION_MAX_DAYS = 7      # höchstens so lange ab Anmeldung, auch bei ständiger Nutzung (gestohlenes Cookie läuft aus)
+MAX_SESSIONS = 20         # gleichzeitige Sitzungen; die älteste fällt weg
 UNITS = {  # Anzeige-Name -> systemd-Unit (Whitelist, identisch im root-Helfer)
     "hermes": "hermes-gateway.service",
     "stt": "nuorb-stt-router.service",
@@ -325,8 +327,10 @@ def rate_limited(ip: str) -> int:
 
 def new_session(ip: str) -> str:
     tok = secrets.token_urlsafe(32)
+    for k in sorted(SESSIONS, key=lambda k: SESSIONS[k].get("start", 0))[:max(0, len(SESSIONS) - MAX_SESSIONS + 1)]:
+        SESSIONS.pop(k, None)
     SESSIONS[hashlib.sha256(tok.encode()).hexdigest()] = {"exp": time.time() + SESSION_HOURS * 3600, "ip": ip,
-                                                           "created": now_iso()}
+                                                           "created": now_iso(), "start": time.time()}
     save_sessions()
     return tok
 
@@ -339,7 +343,11 @@ def session_of(request: Request) -> dict | None:
     s = SESSIONS.get(key)
     if not s or s["exp"] < time.time():
         return None
-    s["exp"] = max(s["exp"], time.time() + SESSION_HOURS * 3600 - 600)  # gleitend
+    start = s.setdefault("start", time.time())   # Sitzungen von vor v0.7.2: Höchstdauer ab jetzt
+    if time.time() - start > SESSION_MAX_DAYS * 86400:
+        SESSIONS.pop(key, None)
+        return None
+    s["exp"] = min(max(s["exp"], time.time() + SESSION_HOURS * 3600 - 600), start + SESSION_MAX_DAYS * 86400)  # gleitend
     return s
 
 
