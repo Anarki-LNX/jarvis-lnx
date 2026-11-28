@@ -143,6 +143,25 @@ CERT_DIR = Path(os.environ.get("UI_CERT_DIR", str(BASE / "certs")))
 MAX_AUDIO = 20 * 1024 * 1024
 ALLOWED_NETS = [ipaddress.ip_network(n) for n in os.environ.get(
     "UI_ALLOWED_NETS", "127.0.0.0/8,::1/128,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12").split(",")]
+# Schutz vor fremden Webseiten (CSRF): schreibende /api/*-Anfragen nur von der eigenen Oberflaeche. Browser schicken bei
+# Anfragen von fremden Seiten immer Origin bzw. Sec-Fetch-Site mit. Ohne beides (App, Kiosk-Proxy, curl) bleibt alles wie
+# bisher. Zusaetzlich erlaubte Herkuenfte: UI_ALLOWED_ORIGINS, Komma-Liste wie https://nuorb.example:8443
+UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+EXTRA_ORIGINS = {o.strip().rstrip("/").lower() for o in os.environ.get("UI_ALLOWED_ORIGINS", "").split(",") if o.strip()}
+
+
+def origin_ok(request: Request) -> bool:
+    if request.headers.get("authorization"):
+        return True  # eine fremde Seite kann diesen Kopf ohne CORS-Freigabe nicht setzen (die App schickt Bearer)
+    origin = (request.headers.get("origin") or "").strip().rstrip("/").lower()
+    site = (request.headers.get("sec-fetch-site") or "").strip().lower()
+    if not origin:
+        return site in ("", "same-origin", "none")
+    if origin in EXTRA_ORIGINS:
+        return True
+    if origin == "null" or site not in ("", "same-origin", "none"):
+        return False
+    return origin == f"{request.url.scheme}://{(request.headers.get('host') or '').strip().lower()}"
 
 PERSONA = (
     "Du sprichst ueber die NuOrb-Sprachoberflaeche auf dem Handy des Nutzers. "
@@ -297,6 +316,11 @@ async def lan_only(request: Request, call_next):
     # Kopplungspflicht (wie im Docker-Image). Auf nuorb vorerst aus (NUORB_REQUIRE_PAIRING=0): Kiosk und LAN-Browser
     # haben keinen Token. Eingeschaltet brauchen alle /api/* ausser info/pair einen Geraete-Token.
     path = request.url.path
+    if path.startswith("/api/") and request.method in UNSAFE_METHODS and not origin_ok(request):
+        cip = request.client.host if request.client else "?"
+        print(f"[csrf] {cip}: {request.method} {path} abgelehnt (Origin {request.headers.get('origin', '-')[:80]!r}, "
+              f"Sec-Fetch-Site {request.headers.get('sec-fetch-site', '-')[:20]!r})", flush=True)
+        return JSONResponse({"detail": "Anfrage abgelehnt: nur von der eigenen Oberfläche."}, status_code=403)
     if pairing_required() and path.startswith("/api/") and path not in PAIR_PUBLIC and device_for_request(request) is None:
         return JSONResponse({"detail": "pairing_required"}, status_code=401)
     if not pairing_required() and path.startswith("/api/") and device_token(request):
