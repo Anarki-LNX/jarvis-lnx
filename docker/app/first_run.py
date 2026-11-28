@@ -269,8 +269,11 @@ def ensure_weather() -> None:
     import server as adm
     data = adm.load_config_rt()
     cur = adm.to_plain((data.get("mcp_servers") or {}).get("wetter") or {})
+    env = {"HERMES_HOME": str(DATA)}
+    if os.environ.get("NUORB_WEATHER_MOCK", "").startswith("http://127.0.0.1:"):   # nur Tests (docker/tools/weather-e2e.py)
+        env["NUORB_WEATHER_MOCK"] = os.environ["NUORB_WEATHER_MOCK"]
     want = {"command": "/opt/nuorb/venv/bin/python", "args": ["-I", "/opt/nuorb/app/nuorb_weather_mcp.py"],
-            "env": {"HERMES_HOME": str(DATA)}, "enabled": bool(cur.get("enabled", True)),
+            "env": env, "enabled": bool(cur.get("enabled", True)),
             "trust": "full", "timeout": 30, "tools": {"resources": False, "prompts": False}}
     if {k: cur.get(k) for k in want} != want:
         adm.cfg_set(data, "mcp_servers.wetter", {**cur, **want})

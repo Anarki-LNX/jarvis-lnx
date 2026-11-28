@@ -45,7 +45,7 @@ NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 WXM_URL = "https://pro.weatherxm.com/api/v1"
 # Für Tests und e2e: alle Adressen auf einen lokalen Mock umbiegen (nie in der CI ins Internet)
 _MOCK = os.environ.get("NUORB_WEATHER_MOCK", "").rstrip("/")
-if _MOCK:
+if _MOCK.startswith("http://127.0.0.1:"):   # nur Loopback, nie eine fremde Adresse
     BRIGHTSKY_URL, OPENMETEO_URL, OPENMETEO_PAID_URL = f"{_MOCK}/brightsky", f"{_MOCK}/openmeteo", f"{_MOCK}/openmeteo"
     GEOCODE_URL, NOMINATIM_URL, WXM_URL = f"{_MOCK}/geocode", f"{_MOCK}/nominatim", f"{_MOCK}/wxm"
 

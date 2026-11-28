@@ -36,3 +36,5 @@ done
 CODE=$(docker exec nuorb-test cat /opt/data/nuorb/admin/setup-code.txt | tr -d '[:space:]')
 PW=$(python3 -c 'import secrets; print("Ci-" + secrets.token_urlsafe(18))')
 E2E_PASSWORD="$PW" python3 tools/e2e-test.py --ui https://127.0.0.1:19443 --admin https://127.0.0.1:19444 --setup-code "$CODE"
+# Wetter nur gegen den lokalen Wetter-Mock (keine echten Abfragen)
+E2E_PASSWORD="$PW" python3 tools/weather-e2e.py --ui https://127.0.0.1:19443 --admin https://127.0.0.1:19444
