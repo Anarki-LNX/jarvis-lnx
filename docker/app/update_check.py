@@ -75,7 +75,7 @@ def helper() -> dict:
     if st.get("state") not in ("running", "done", "failed", "rolled_back", "refused"):
         st = {}
     return {"variant": h["variant"], "auto_rollback": h.get("auto_rollback") is not False,
-            "status": {k: str(st.get(k, ""))[:300] for k in ("state", "release", "time", "message")} if st else None}
+            "status": {k: str(st.get(k, ""))[:300] for k in ("state", "release", "time", "message", "verified")} if st else None}
 
 
 def request_update(release: str) -> dict:

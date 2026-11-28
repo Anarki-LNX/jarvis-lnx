@@ -30,13 +30,13 @@ C="$DIR/control"; REQ="$C/request/request.json"; ST="$C/status"
 MIN_GAP="${NUORB_UPDATE_MIN_GAP:-600}"
 HEALTH_WAIT="${NUORB_UPDATE_HEALTH_WAIT:-300}"
 DOCKER="${NUORB_DOCKER:-docker}"
-REL="" ID=""
+REL="" ID="" VERIFIED=""
 
 json_escape() { printf '%s' "$1" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g' | cut -c1-300; }
 status() {   # status STATE MESSAGE
   local tmp="$ST/.status.$$"
-  printf '{"state":"%s","release":"%s","id":"%s","time":"%s","message":"%s"}\n' \
-    "$1" "$REL" "$ID" "$(date -u +%FT%TZ)" "$(json_escape "$2")" > "$tmp" && mv -f "$tmp" "$ST/status.json"
+  printf '{"state":"%s","release":"%s","id":"%s","time":"%s","verified":"%s","message":"%s"}\n' \
+    "$1" "$REL" "$ID" "$(date -u +%FT%TZ)" "$VERIFIED" "$(json_escape "$2")" > "$tmp" && mv -f "$tmp" "$ST/status.json"
 }
 log() { printf '%s %s\n' "$(date '+%F %T')" "$1" >> "$ST/update.log"; }
 refuse() { log "refused: $1"; status refused "$1"; exit 0; }
@@ -73,9 +73,11 @@ curl -fsSL --retry 3 "$DL/download/$REL/install.sh" -o "$tmp/install.sh" || refu
 want=$(awk '$2 == "install.sh" || $2 == "*install.sh" {print $1; exit}' "$tmp/SHA256SUMS")
 got=$(sha256sum "$tmp/install.sh" | cut -d' ' -f1)
 [ -n "$want" ] && [ "$want" = "$got" ] || refuse "install.sh does not match SHA256SUMS of $REL"
+VERIFIED="checksum"
 if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
   gh attestation verify "$tmp/SHA256SUMS" --repo "$REPO" >/dev/null 2>&1 || refuse "SHA256SUMS of $REL has no valid attestation"
   log "attestation of $REL ok"
+  VERIFIED="checksum+attestation"
 elif [ "${NUORB_REQUIRE_ATTESTATION:-}" = 1 ]; then
   refuse "NUORB_REQUIRE_ATTESTATION=1 needs the GitHub CLI, logged in"
 fi

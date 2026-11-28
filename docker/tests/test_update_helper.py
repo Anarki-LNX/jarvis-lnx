@@ -65,6 +65,7 @@ class UpdateHilfe(unittest.TestCase):
         self.anfordern({"action": "update", "release": "v0.7.4", "id": "a" * 32})
         st = self.lauf()
         self.assertEqual(st["state"], "done", st)
+        self.assertEqual(st["verified"], "checksum")   # gh nicht angemeldet: nur die Prüfsumme
         self.assertEqual(self.aufrufe(), [f"--dir {self.d} --name nuorbtest --release v0.7.4 --yes --no-firewall"])
 
     def test_gleiche_anforderung_nur_einmal(self):
@@ -114,6 +115,18 @@ class UpdateHilfe(unittest.TestCase):
     def test_attestierung_als_pflicht_ohne_gh(self):
         self.anfordern({"action": "update", "release": "v0.7.4", "id": "2" * 32})
         self.assertEqual(self.lauf(NUORB_REQUIRE_ATTESTATION="1")["state"], "refused")
+        self.assertEqual(self.aufrufe(), [])
+
+    def test_mit_angemeldetem_gh_auch_herkunft_geprueft(self):
+        (self.t / "bin" / "gh").write_text("#!/bin/sh\nexit 0\n")   # angemeldet, Attestierung gültig
+        self.anfordern({"action": "update", "release": "v0.7.4", "id": "6" * 32})
+        st = self.lauf()
+        self.assertEqual((st["state"], st["verified"]), ("done", "checksum+attestation"))
+
+    def test_mit_angemeldetem_gh_und_falscher_herkunft_abgelehnt(self):
+        (self.t / "bin" / "gh").write_text('#!/bin/sh\n[ "$1" = auth ] && exit 0\nexit 1\n')
+        self.anfordern({"action": "update", "release": "v0.7.4", "id": "7" * 32})
+        self.assertEqual(self.lauf()["state"], "refused")
         self.assertEqual(self.aufrufe(), [])
 
     def test_ungesund_dann_automatisch_zurueck(self):

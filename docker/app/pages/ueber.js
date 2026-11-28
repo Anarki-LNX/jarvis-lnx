@@ -63,6 +63,18 @@
       const box = $("updAuto");
       box.checked = !!u.auto; box.disabled = !u.enabled;
       if (!u.enabled) $("updMsg").textContent = I.lang === "de" ? "Mit NUORB_UPDATE_CHECK=0 abgeschaltet." : "Switched off with NUORB_UPDATE_CHECK=0.";
+      // Update-Hilfe und Prüfung des letzten Updates in einem Satz
+      const de = I.lang === "de", hs = u.helper && u.helper.status;
+      let line;
+      if (!u.helper) line = de ? "Updates aus dem Panel: nicht eingerichtet. Bei einer neuen Version zeigt das Panel den Befehl zum Kopieren."
+                               : "Updates from the panel: not set up. For a new version the panel shows the command to copy.";
+      else if (hs && hs.release && hs.verified) {
+        const how = hs.verified === "checksum+attestation" ? (de ? "Prüfsumme und Herkunft geprüft" : "checksum and origin verified")
+                                                            : (de ? "Prüfsumme geprüft" : "checksum verified");
+        line = (de ? `Letztes Update aus dem Panel (${hs.release}): ` : `Last update from the panel (${hs.release}): `) + how + ".";
+      } else line = de ? "Updates aus dem Panel: eingerichtet. Jede Version wird gegen ihre Prüfsumme geprüft, die Herkunft zusätzlich, wenn auf dem Rechner die GitHub-CLI angemeldet ist."
+                       : "Updates from the panel: set up. Every version is checked against its checksum, its origin as well when the GitHub CLI is logged in on the machine.";
+      $("updHelper").textContent = line;
       box.addEventListener("change", async () => {
         try { await I.api("/api/update", { auto: box.checked }); $("updMsg").textContent = I.lang === "de" ? "Gespeichert." : "Saved."; }
         catch (e) { box.checked = !box.checked; $("updMsg").textContent = I.tr(String(e.message || e)); }
