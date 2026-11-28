@@ -1,3 +1,4 @@
+# shellcheck shell=sh
 # NuOrb-Server: gemeinsame Umgebung aller NuOrb-Dienste im Container (wird von den s6-run-Skripten eingelesen).
 export HOME=/opt/nuorb/home NUORB_HOME=/opt/nuorb/home
 export HERMES_HOME=/opt/data HERMES_BIN=/opt/hermes/bin/hermes
