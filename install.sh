@@ -341,9 +341,10 @@ backup_before_update() {   # Einstellungen, Compose-Dateien und das Daten-Volume
      && "${DOCKER[@]}" volume inspect "${VOL_PREFIX}_data" >/dev/null 2>&1; then
     local was_running; was_running=$(dc ps -q nuorb 2>/dev/null | head -1 || true)
     [ -n "$was_running" ] && dc stop nuorb >/dev/null 2>&1
-    # mit dem vorhandenen NuOrb-Image (kein zusätzlicher Download), danach gehört die Datei wieder dem Nutzer
+    # mit dem vorhandenen NuOrb-Image (kein zusätzlicher Download), danach gehört die Datei wieder dem Nutzer.
+    # Ohne cache/ und installs/: Zwischenspeicher und Laufzeiten von Hermes, die Hermes selbst wieder anlegt (sonst GB je Sicherung)
     if "${DOCKER[@]}" run --rm --network none --user 0 --entrypoint sh -v "${VOL_PREFIX}_data:/d:ro" -v "$b:/b" "$img" \
-         -c "tar czf /b/data.tar.gz -C /d . && chown $(id -u):$(id -g) /b/data.tar.gz && chmod 600 /b/data.tar.gz" >/dev/null 2>&1; then
+         -c "tar czf /b/data.tar.gz --exclude=./cache --exclude=./installs -C /d . && chown $(id -u):$(id -g) /b/data.tar.gz && chmod 600 /b/data.tar.gz" >/dev/null 2>&1; then
       ok "$(t "Data volume saved" "Daten-Volume gesichert") ($(du -h "$b/data.tar.gz" | cut -f1))"
     else
       rm -f "$b/data.tar.gz"
@@ -376,7 +377,7 @@ rollback() {   # die Sicherung vor dem letzten Update wiederherstellen
     "${DOCKER[@]}" image inspect "$img" >/dev/null 2>&1 || dc pull --quiet nuorb \
       || fail "$(t "The image of the old version is not available." "Das Image der alten Version ist nicht verfügbar.")"
     "${DOCKER[@]}" run --rm --network none --user 0 --entrypoint sh -v "${VOL_PREFIX}_data:/d" -v "$b:/b:ro" "$img" \
-      -c 'find /d -mindepth 1 -delete && tar xzf /b/data.tar.gz -C /d' \
+      -c 'find /d -mindepth 1 -maxdepth 1 ! -name cache ! -name installs -exec rm -rf {} + && tar xzf /b/data.tar.gz -C /d' \
       || fail "$(t "Restoring the data failed. The backup is still in $b." "Wiederherstellen der Daten fehlgeschlagen. Die Sicherung liegt weiter in $b.")"
     ok "$(t "Data restored" "Daten wiederhergestellt")"
   fi
