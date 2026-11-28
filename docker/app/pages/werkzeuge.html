@@ -17,10 +17,10 @@
   <section class="panel">
     <h2 data-t="h_mode">Tools of the assistant</h2>
     <div class="choices" role="radiogroup">
-      <label class="choice" id="cNarrow"><input type="radio" name="mode" value="narrow"><b data-t="narrow">Standard (recommended)</b>
-        <span class="muted" data-t="narrow_d">Web search, web pages, images, memory, reminders, skills and all {brand} tools (smart home, weather, name). No shell, no files, no browser.</span></label>
-      <label class="choice" id="cExtended"><input type="radio" name="mode" value="extended"><b data-t="extended">Extended</b>
-        <span class="muted" data-t="extended_d">Additionally shell commands, Python, reading and writing files, the browser and sub-agents.</span></label>
+      <label class="choice" id="cNarrow"><input type="radio" name="mode" value="narrow"><span class="c-title" data-t="narrow">Standard (recommended)</span>
+        <span class="c-sub muted" data-t="narrow_d">Web search, web pages, images, memory, reminders, skills and all {brand} tools (smart home, weather, name). No shell, no files, no browser.</span></label>
+      <label class="choice" id="cExtended"><input type="radio" name="mode" value="extended"><span class="c-title" data-t="extended">Extended</span>
+        <span class="c-sub muted" data-t="extended_d">Additionally shell commands, Python, reading and writing files, the browser and sub-agents.</span></label>
     </div>
     <p class="warn" id="warn" hidden data-t="warn">Extended tools are a risk. A web page or a document can contain hidden instructions. With shell and file access the model can then read the passwords and keys of this server or reach devices in your home network. Only switch this on if you need it and know the risk.</p>
     <p><button class="btn primary" id="save" type="button" data-t="save">Save</button> <span id="msg" class="muted"></span></p>

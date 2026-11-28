@@ -44,9 +44,11 @@
     de: { text: "Sicherheit: Seit v0.7.1 darf das Sprachmodell standardmäßig keine Shell, keine Dateien und keinen Browser mehr benutzen. Nach fremden Inhalten braucht jede Aktion eine Bestätigung.", link: "Werkzeuge ansehen" },
     en: { text: "Security: since v0.7.1 the language model may no longer use the shell, files or the browser by default. After outside content, every action needs a confirmation.", link: "View tools" },
   };
+  let noticeStarted = false;   // check() läuft mehrfach parallel (direkt und über den MutationObserver)
   async function toolsNotice() {
     const main = document.getElementById("main");
-    if (!main || document.getElementById("toolsNotice")) return;
+    if (!main || noticeStarted || document.getElementById("toolsNotice")) return;
+    noticeStarted = true;
     try {
       const r = await fetch("/api/tools", { cache: "no-store" });
       if (!r.ok || !(await r.json()).notice) return;

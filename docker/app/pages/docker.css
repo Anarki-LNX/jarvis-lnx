@@ -49,3 +49,9 @@ th { color: var(--text-3); font-weight: 500; font-size: 12px; }
 .fwcmd { white-space: pre-wrap; word-break: break-all; font-size: .85em; padding: .6em .8em; border-radius: 8px;
   background: rgba(127,127,127,.12); user-select: all; margin: .3em 0 1em; }
 h3 { font-size: 15px; margin: 14px 0 6px; }
+/* Wahlkarten mit Titel über Beschreibung (Werkzeuge), Knopf nur für Tastatur und Screenreader */
+.choice .c-title { display: block; font-weight: 600; margin-bottom: 4px; }
+.choice .c-sub { display: block; }
+.choice:has(.c-title) input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.choice:has(.c-title) { position: relative; }
+.choice:has(input:focus-visible) { outline: 2px solid var(--cyan); outline-offset: 2px; }
