@@ -197,8 +197,9 @@ def ensure_mcp() -> None:
     data = adm.load_config_rt()
     want = {"command": "/opt/nuorb/venv/bin/python", "args": ["-I", "/opt/nuorb/app/nuorb_mcp.py"],
             "env": {"ADMIN_URL": os.environ.get("ADMIN_URL", "https://127.0.0.1:8444"),
-                    "ADMIN_TOKEN_FILE": str(jc.CONF / "internal.token")},
+                    "ADMIN_TOKEN_FILE": str(jc.CONF / "mcp.token")},   # enges Token, nur /internal/assistant
             "trust": "full", "timeout": 15, "tools": {"resources": False, "prompts": False}}
+    adm.ensure_internal_token()   # legt auch mcp.token an, bevor Hermes den MCP-Server startet
     cur = adm.to_plain((data.get("mcp_servers") or {}).get("nuorb") or {})
     if {k: cur.get(k) for k in want} != want:
         adm.cfg_set(data, "mcp_servers.nuorb", want)

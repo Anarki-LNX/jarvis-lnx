@@ -173,6 +173,34 @@ class ParalleleAnmeldung(unittest.TestCase):
         self.assertLess(dauer, 0.5, f"billiger Endpunkt brauchte {dauer:.2f} s während 30 Passwortprüfungen")
 
 
+class InterneTokens(unittest.TestCase):
+    """v0.7.2: Das MCP-Token des Sprachmodells darf nur /internal/assistant, das volle interne Token alles."""
+
+    def setUp(self):
+        adm.ensure_internal_token()
+        self.voll = adm.INTERNAL_TOKEN_FILE.read_text().strip()
+        self.mcp = adm.MCP_TOKEN_FILE.read_text().strip()
+
+    def test_tokens_verschieden_und_nur_fuer_den_besitzer(self):
+        self.assertNotEqual(self.voll, self.mcp)
+        self.assertEqual(adm.MCP_TOKEN_FILE.stat().st_mode & 0o077, 0)
+
+    def test_mcp_token_nur_fuer_assistant(self):
+        self.assertTrue(adm.internal_token_ok(self.mcp, "/internal/assistant"))
+        for path in ("/internal/brain", "/internal/ui", "/internal/irgendwas", ""):
+            self.assertFalse(adm.internal_token_ok(self.mcp, path), path)
+
+    def test_volles_token_fuer_alles(self):
+        for path in ("/internal/assistant", "/internal/brain", "/internal/ui"):
+            self.assertTrue(adm.internal_token_ok(self.voll, path))
+        self.assertFalse(adm.internal_token_ok("falsch", "/internal/assistant"))
+
+    def test_mcp_token_kommt_nicht_an_den_gehirn_schalter(self):
+        c = TestClient(adm.app, base_url="https://127.0.0.1:8444", client=("127.0.0.1", 1))
+        r = c.post("/internal/brain", json={"mode": "remote"}, headers={"X-NuOrb-Internal": self.mcp})
+        self.assertEqual(r.status_code, 403)
+
+
 class CsrfUndNetz(unittest.TestCase):
     def test_ohne_eigenen_header_abgelehnt(self):
         c = TestClient(adm.app, base_url=BASE, client=("192.168.1.90", 1))

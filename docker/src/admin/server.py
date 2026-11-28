@@ -408,7 +408,7 @@ async def guard(request: Request, call_next):
             return JSONResponse({"detail": "Anfrage abgelehnt (CSRF-Schutz)."}, status_code=403)
     if path.startswith("/internal/"):
         # Server-zu-Server (nuorb-ui): nur Loopback + eigenes Token, keine Session/CSRF, nur Gehirn-Modus
-        if ip not in ("127.0.0.1", "::1") or not internal_token_ok(request.headers.get("x-nuorb-internal", "")):
+        if ip not in ("127.0.0.1", "::1") or not internal_token_ok(request.headers.get("x-nuorb-internal", ""), path):
             return JSONResponse({"detail": "Nicht erlaubt."}, status_code=403)
         return await call_next(request)
     public = path in PUBLIC or path.startswith("/static/") or path.startswith("/ui/")
@@ -1682,20 +1682,30 @@ async def brain_save(request: Request):
 
 # ------------------------------------------------------------------ Interne Schnittstelle fuer nuorb-ui (Smartphone-Schalter)
 INTERNAL_TOKEN_FILE = UI_SETTINGS.parent / "internal.token"
+# Eigenes, enges Token für Werkzeuge des Sprachmodells (MCP „nuorb“ läuft im Hermes-Prozess): nur diese Pfade.
+# Das volle interne Token (Gehirn umschalten, Oberfläche einstellen) bleibt bei Oberfläche und Admin-Panel.
+MCP_TOKEN_FILE = UI_SETTINGS.parent / "mcp.token"
+MCP_PATHS = {"/internal/assistant"}
 
 
 def ensure_internal_token() -> None:
-    if not INTERNAL_TOKEN_FILE.exists():
-        INTERNAL_TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
-        atomic_write(INTERNAL_TOKEN_FILE, secrets.token_hex(32) + "\n", 0o600)
+    for f in (INTERNAL_TOKEN_FILE, MCP_TOKEN_FILE):
+        if not f.exists():
+            f.parent.mkdir(parents=True, exist_ok=True)
+            atomic_write(f, secrets.token_hex(32) + "\n", 0o600)
 
 
-def internal_token_ok(given: str) -> bool:
+def _token_matches(f: Path, given: str) -> bool:
     try:
-        tok = INTERNAL_TOKEN_FILE.read_text().strip()
+        tok = f.read_text().strip()
     except FileNotFoundError:
         return False
     return bool(tok) and bool(given) and hmac.compare_digest(given.strip(), tok)
+
+
+def internal_token_ok(given: str, path: str = "") -> bool:
+    """Volles internes Token: alle /internal/-Pfade. MCP-Token: nur MCP_PATHS."""
+    return _token_matches(INTERNAL_TOKEN_FILE, given) or (path in MCP_PATHS and _token_matches(MCP_TOKEN_FILE, given))
 
 
 BRAIN_LOCK = asyncio.Lock()
