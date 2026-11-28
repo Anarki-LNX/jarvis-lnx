@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Mini-Mock für Wettertests: tut so, als wäre es Bright Sky (DWD), Open-Meteo und die Open-Meteo-Ortssuche.
 Keine echten Abfragen. NuOrb nutzt ihn mit NUORB_WEATHER_MOCK=http://127.0.0.1:<port> (nur Tests/e2e).
-Start: python3 docker/tools/mock-weather.py [port]   (Standard 18435, nur 127.0.0.1)
+Start: python3 docker/tools/mock-weather.py [port]   (Standard 18440, nur 127.0.0.1)
 Jede Anfrage wird als eine Zeile JSON auf stdout protokolliert (Pfad, Query, User-Agent).
 """
 from __future__ import annotations
@@ -12,7 +12,7 @@ import sys
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 18435
+PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 18440
 UTC = dt.timezone.utc
 
 

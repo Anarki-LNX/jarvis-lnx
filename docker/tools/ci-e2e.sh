@@ -20,7 +20,7 @@ cleanup() {
 trap cleanup EXIT
 
 python3 tools/mock-llm.py 18434 > .work/ci-mock.log 2>&1 & MOCK=$!
-python3 tools/mock-weather.py 18435 > .work/ci-weather.log 2>&1 & WMOCK=$!
+python3 tools/mock-weather.py 18440 > .work/ci-weather.log 2>&1 & WMOCK=$!
 # Image direkt mit docker build bauen: Neuere Compose-Versionen bauen sonst über buildx bake, und das verlangt
 # für "network: host" aus compose.test.yaml eine eigene Freigabe. Das Ergebnis ist dasselbe Image.
 docker build -t nuorb:test --build-arg NUORB_BUILD="${NUORB_BUILD:-ci}" .

@@ -78,7 +78,7 @@ def main() -> int:
     ap.add_argument("--ui", default="https://127.0.0.1:19443")
     ap.add_argument("--admin", default="https://127.0.0.1:19444")
     ap.add_argument("--container", default="nuorb-test")
-    ap.add_argument("--weather-port", type=int, default=18435)
+    ap.add_argument("--weather-port", type=int, default=18440)
     ap.add_argument("--mock-port", type=int, default=18437)
     ap.add_argument("--password", default=os.environ.get("E2E_PASSWORD", ""))
     a = ap.parse_args()
