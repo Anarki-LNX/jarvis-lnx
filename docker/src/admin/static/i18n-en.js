@@ -603,6 +603,7 @@ window.I18N_EN = {
  "Zeitüberschreitung nach {0} s": "Timed out after {0} s",
  "Zertifikats-Fingerabdruck (SHA-256 der Heim-CA)": "Certificate fingerprint (SHA-256 of the home CA)",
  "Zu viele Fehlversuche. Bitte {0} s warten.": "Too many failed attempts. Please wait {0} s.",
+ "Bitte warten, die vorige Anmeldung läuft noch.": "Please wait, the previous login is still running.",
  "Zu viele Versuche. Bitte {0} s warten.": "Too many attempts. Please wait {0} s.",
  "Zuerst das lokale Modell auf dem PC; antwortet es nicht, übernimmt Claude.": "Tries the local model on the PC first; if it doesn't respond, Claude takes over.",
  "Zugang hinterlegt": "Access configured",

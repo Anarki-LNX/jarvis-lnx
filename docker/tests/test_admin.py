@@ -107,6 +107,46 @@ class Anmeldung(unittest.TestCase):
         self.assertEqual(c.get("/api/backups").status_code, 401)
 
 
+class ParalleleAnmeldung(unittest.TestCase):
+    """P1.1: Die Passwortprüfung blockiert den Server nicht, und parallele Fehlversuche kommen nicht an der Sperre vorbei."""
+
+    def lauf(self, ips):
+        import asyncio
+        import time
+
+        import httpx
+        einrichten()
+
+        async def go():
+            hdr = {"X-NuOrb": "1", "Origin": BASE}
+
+            async def falsch(ip, i):
+                tr = httpx.ASGITransport(app=adm.app, client=(ip, 50000))
+                async with httpx.AsyncClient(transport=tr, base_url=BASE, headers=hdr) as c:
+                    return (await c.post("/api/auth/login", json={"password": f"falsch-{i}"})).status_code
+
+            async def billig():
+                tr = httpx.ASGITransport(app=adm.app, client=("192.168.1.199", 50000))
+                async with httpx.AsyncClient(transport=tr, base_url=BASE, headers=hdr) as c:
+                    t0 = time.perf_counter()
+                    await asyncio.sleep(0.05)
+                    r = await c.get("/api/auth/state")
+                    return r.status_code, time.perf_counter() - t0 - 0.05
+            return await asyncio.gather(*[falsch(ip, i) for i, ip in enumerate(ips)], billig())
+        *codes, (st, dauer) = asyncio.run(go())
+        return codes, st, dauer
+
+    def test_parallele_fehlversuche_einer_adresse(self):
+        codes, _, _ = self.lauf(["192.168.1.120"] * 30)
+        self.assertLessEqual(codes.count(403), 5, codes)
+        self.assertEqual(codes.count(403) + codes.count(429), 30, codes)
+
+    def test_server_bleibt_bei_vielen_adressen_ansprechbar(self):
+        codes, st, dauer = self.lauf([f"192.168.2.{i}" for i in range(1, 31)])
+        self.assertEqual(st, 200)
+        self.assertLess(dauer, 0.5, f"billiger Endpunkt brauchte {dauer:.2f} s während 30 Passwortprüfungen")
+
+
 class CsrfUndNetz(unittest.TestCase):
     def test_ohne_eigenen_header_abgelehnt(self):
         c = TestClient(adm.app, base_url=BASE, client=("192.168.1.90", 1))

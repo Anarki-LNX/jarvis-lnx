@@ -280,6 +280,32 @@ def pw_problem(pw: str) -> str | None:
     return None
 
 
+# Passwortprüfung (scrypt, ~100 ms und 32 MB) nicht im Event-Loop: in einem Thread, höchstens zwei gleichzeitig,
+# pro Adresse nur eine. Der Versuch zählt schon VOR dem Hash, sonst kämen viele parallele Anfragen an der Sperre vorbei.
+PW_SLOTS = asyncio.Semaphore(2)
+PW_BUSY: set[str] = set()
+
+
+async def pw_attempt(ip: str, pw: str) -> bool:
+    """True = Passwort stimmt. Zählt den Versuch vorab als Fehlversuch und nimmt ihn bei Erfolg zurück."""
+    if ip in PW_BUSY:
+        raise HTTPException(429, "Bitte warten, die vorige Anmeldung läuft noch.")
+    if (w := rate_limited(ip)) > 0:
+        raise HTTPException(429, f"Zu viele Fehlversuche. Bitte {w} s warten.")
+    PW_BUSY.add(ip)
+    stamp = time.time()
+    FAILS.setdefault(ip, []).append(stamp)
+    try:
+        async with PW_SLOTS:
+            ok = await asyncio.to_thread(check_pw, pw)
+    finally:
+        PW_BUSY.discard(ip)
+    if ok:
+        with contextlib.suppress(ValueError):
+            FAILS.get(ip, []).remove(stamp)
+    return ok
+
+
 def rate_limited(ip: str) -> int:
     now = time.time()
     arr = [t for t in FAILS.get(ip, []) if now - t < 900]
@@ -430,8 +456,7 @@ async def auth_login(request: Request):
         raise HTTPException(429, f"Zu viele Fehlversuche. Bitte {w} s warten.")
     if not auth_configured():
         raise HTTPException(409, "Noch kein Passwort gesetzt.")
-    if not check_pw(str(d.get("password", ""))):
-        FAILS.setdefault(ip, []).append(time.time())
+    if not await pw_attempt(ip, str(d.get("password", ""))):
         audit(ip, "login: falsches Passwort")
         await asyncio.sleep(0.8)
         raise HTTPException(403, "Passwort falsch.")
@@ -455,7 +480,7 @@ async def auth_logout(request: Request):
 @app.post("/api/auth/password")
 async def auth_password(request: Request):
     d = await body(request)
-    if not check_pw(str(d.get("old", ""))):
+    if not await pw_attempt(who(request), str(d.get("old", ""))):
         raise HTTPException(403, "Das bisherige Passwort stimmt nicht.")
     pw = str(d.get("new", ""))
     if (p := pw_problem(pw)):
