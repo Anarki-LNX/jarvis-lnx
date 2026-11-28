@@ -25,10 +25,13 @@
   background: #ffc94d; color: #1d1400; font: 600 15.5px Inter, system-ui, sans-serif; text-decoration: none; white-space: nowrap;
   box-shadow: 0 0 0 1px rgba(255, 201, 77, .5), 0 8px 30px rgba(255, 201, 77, .28); transition: transform .15s ease, box-shadow .15s ease; }
 .donate-btn:hover, .donate-btn:focus-visible { transform: translateY(-1px); background: #ffd56e;
-  box-shadow: 0 0 0 1px rgba(255, 213, 110, .7), 0 10px 36px rgba(255, 201, 77, .38); outline: none; }
+  box-shadow: 0 0 0 1px rgba(255, 213, 110, .7), 0 10px 36px rgba(255, 201, 77, .38); }
+/* Tastatur: deutlicher Ring, auf Gelb gut sichtbar */
+.donate-btn:focus-visible, .donate-star:focus-visible { outline: 2px solid var(--cyan, #38d9ff); outline-offset: 3px; }
 .donate-note { color: var(--text-3, #6f8790); font-size: 11.5px; line-height: 1.45; text-align: center; }
 .donate-star { color: var(--cyan-soft, #8eeaff); font-size: 13px; text-decoration: none; }
 .donate-star:hover, .donate-star:focus-visible { text-decoration: underline; }
+.donate-star { align-self: center; border-radius: 6px; }
 @media (max-width: 680px) {
   .donate { flex-direction: column; align-items: stretch; padding: 22px 18px; gap: 20px; }
   .donate-title { font-size: 26px; }
