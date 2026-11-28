@@ -64,31 +64,13 @@ def dekodiere_audio(daten: bytes) -> np.ndarray:
     return np.frombuffer(p.stdout, dtype=np.float32)
 
 
-def _db(x: float) -> str:
-    return f"{20 * np.log10(max(x, 1e-6)):.0f}"
-
-
-def audio_kennzahlen(samples: np.ndarray, n_bytes: int) -> str:
-    """Diagnose ohne Inhalte: Dauer, Pegel (dBFS), Anteil lauter 20-ms-Rahmen, Pegel am Anfang/Ende."""
-    if samples.size == 0:
-        return f"Audio 0.00 s, {n_bytes // 1024} KB, keine Samples"
-    rahmen = samples[: samples.size // 320 * 320].reshape(-1, 320)
-    rms_r = np.sqrt((rahmen ** 2).mean(axis=1)) if rahmen.size else np.zeros(1)
-    laut = (rms_r > 10 ** (-45 / 20)).mean() * 100
-    rand = lambda a: float(np.sqrt((a ** 2).mean())) if a.size else 0.0
-    return (f"Audio {samples.size / 16000:.2f} s, {n_bytes // 1024} KB, "
-            f"RMS {_db(rand(samples))} dBFS, Spitze {_db(float(np.abs(samples).max()))} dBFS, "
-            f"laut {laut:.0f} %, Anfang {_db(rand(samples[:8000]))} / Ende {_db(rand(samples[-8000:]))} dBFS")
-
-
-def lokal_erkennen(daten: bytes) -> tuple:
+def lokal_erkennen(daten: bytes) -> str:
     samples = dekodiere_audio(daten)
-    info = audio_kennzahlen(samples, len(daten))
     with LOCK:
         s = RECOGNIZER.create_stream()
         s.accept_waveform(16000, samples)
         RECOGNIZER.decode_stream(s)
-        return s.result.text.strip(), info
+        return s.result.text.strip()
 
 
 _pc_cache = {"t": 0.0, "ok": False}
@@ -163,7 +145,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             felder = parse_multipart(ctype, roh)
             fmt = (felder.get("response_format") or b"json").decode()
-            text, weg, info = None, "cpu", ""
+            text, weg = None, "cpu"
             if pc_erreichbar():
                 try:
                     text, weg = pc_erkennen(roh, ctype), "pc"
@@ -171,13 +153,10 @@ class Handler(BaseHTTPRequestHandler):
                     print(f"PC-Fehler, nehme CPU: {e}", flush=True)
                     _pc_cache.update(t=time.monotonic(), ok=False)
             if text is None:
-                text, info = lokal_erkennen(felder["file"])
+                text = lokal_erkennen(felder["file"])
         except Exception as e:
-            print(f"Fehler: {type(e).__name__}: {e}", flush=True)
             return self._antwort(500, {"error": {"message": f"{type(e).__name__}: {e}"}})
-        # Diagnose (seit 2026-11-27, mit Freigabe des Nutzers): nur Kennzahlen und Textlaenge, nie Audio oder Text
-        print(f"transkribiert via {weg} in {time.perf_counter()-t0:.2f} s | {info} | "
-              f"Text {len(text)} Z.{' LEER' if not text else ''}", flush=True)
+        print(f"transkribiert via {weg} in {time.perf_counter()-t0:.2f} s", flush=True)
         if fmt == "text":
             return self._antwort(200, text, "text/plain")
         self._antwort(200, {"text": text})
