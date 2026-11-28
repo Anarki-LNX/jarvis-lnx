@@ -120,7 +120,7 @@ function needRestart(unit) {
   $("[data-now]", b).onclick = (e) => busy(e.target, async () => { await restartUnit(unit, true); b.hidden = true; });
 }
 async function restartUnit(id, skipConfirm = false) {
-  if (!skipConfirm && !await confirmBox("Dienst neu starten?", `Der Dienst wird kurz unterbrochen. ${id === "hermes" ? "Laufende Gespräche mit NuOrb werden abgebrochen." : ""}`, "Neu starten")) return;
+  if (!skipConfirm && !await confirmBox("Dienst neu starten?", `Der Dienst wird kurz unterbrochen. ${id === "hermes" ? "Laufende Gespräche mit NUORB werden abgebrochen." : ""}`, "Neu starten")) return;
   const r = await api(`/api/services/${id}/restart`, { method: "POST", body: {} });
   if (r.self) { toast("Verwaltung startet neu. Die Seite lädt gleich neu."); setTimeout(() => location.reload(), 5000); return; }
   if (r.ok) toast("Neu gestartet."); else toast(r.pending ? "Neustart läuft noch. Status unter Dienste." : "Neustart fehlgeschlagen.", r.pending ? "ok" : "err");
@@ -129,14 +129,14 @@ async function restartUnit(id, skipConfirm = false) {
 /* ------------------------------------------------------------ Bereiche */
 const VIEWS = [
   { id: "uebersicht", group: "System", label: "Übersicht", icon: "home", title: "Übersicht", lead: "Zustand von Gehirn, Diensten und Smartphones auf einen Blick.", render: viewOverview },
-  { id: "modell", group: "Gehirn", label: "Modell & Fallback", icon: "brain", title: "Modell & Fallback", lead: "Welches Sprachmodell NuOrb nutzt und worauf es ausweicht, wenn der PC aus ist.", render: viewModel },
-  { id: "persona", group: "Gehirn", label: "Persönlichkeit", icon: "soul", title: "Persönlichkeit", lead: "Wer NuOrb ist und wie er spricht.", render: viewPersona },
-  { id: "gedaechtnis", group: "Gehirn", label: "Gedächtnis", icon: "mem", title: "Gedächtnis", lead: "Was NuOrb sich dauerhaft merkt: über sich, die Umgebung und dich.", render: viewMemory },
-  { id: "skills", group: "Fähigkeiten", label: "Skills", icon: "skill", title: "Skills", lead: "Anleitungen, die NuOrb bei Bedarf lädt. Aktivieren, deaktivieren, neue eintragen.", render: viewSkills },
-  { id: "zeitplaene", group: "Fähigkeiten", label: "Zeitpläne", icon: "clock", title: "Zeitpläne", lead: "Aufgaben, die NuOrb regelmäßig selbst erledigt.", render: viewJobs },
-  { id: "mcp", group: "Fähigkeiten", label: "MCP-Server", icon: "plug", title: "MCP-Server", lead: "Externe Werkzeuge, mit denen sich NuOrb verbindet.", render: viewMcp },
+  { id: "modell", group: "Gehirn", label: "Modell & Fallback", icon: "brain", title: "Modell & Fallback", lead: "Welches Sprachmodell NUORB nutzt und worauf es ausweicht, wenn der PC aus ist.", render: viewModel },
+  { id: "persona", group: "Gehirn", label: "Persönlichkeit", icon: "soul", title: "Persönlichkeit", lead: "Wer NUORB ist und wie er spricht.", render: viewPersona },
+  { id: "gedaechtnis", group: "Gehirn", label: "Gedächtnis", icon: "mem", title: "Gedächtnis", lead: "Was NUORB sich dauerhaft merkt: über sich, die Umgebung und dich.", render: viewMemory },
+  { id: "skills", group: "Fähigkeiten", label: "Skills", icon: "skill", title: "Skills", lead: "Anleitungen, die NUORB bei Bedarf lädt. Aktivieren, deaktivieren, neue eintragen.", render: viewSkills },
+  { id: "zeitplaene", group: "Fähigkeiten", label: "Zeitpläne", icon: "clock", title: "Zeitpläne", lead: "Aufgaben, die NUORB regelmäßig selbst erledigt.", render: viewJobs },
+  { id: "mcp", group: "Fähigkeiten", label: "MCP-Server", icon: "plug", title: "MCP-Server", lead: "Externe Werkzeuge, mit denen sich NUORB verbindet.", render: viewMcp },
   { id: "smarthome", group: "Fähigkeiten", label: "Smart Home", icon: "bulb", title: "Smart Home", lead: "Home Assistant und ioBroker anbinden: Zugang, Test, an/aus.", render: viewSmartHome },
-  { id: "regeln", group: "Sicherheit", label: "Bestätigungen", icon: "shield", title: "Bestätigungsregeln", lead: "Wann NuOrb vor gefährlichen Aktionen fragen muss.", render: viewApprovals },
+  { id: "regeln", group: "Sicherheit", label: "Bestätigungen", icon: "shield", title: "Bestätigungsregeln", lead: "Wann NUORB vor gefährlichen Aktionen fragen muss.", render: viewApprovals },
   { id: "schluessel", group: "Sicherheit", label: "Schlüssel", icon: "key", title: "Schlüssel & Variablen", lead: "API-Schlüssel werden nie angezeigt, nur ob sie gesetzt sind. Überschreiben ist jederzeit möglich.", render: viewEnv },
   { id: "sprache", group: "Geräte", label: "Sprache", icon: "wave", title: "Sprache", lead: "Stimme, Sprechtempo und Spracherkennung.", render: viewVoice },
   { id: "koppeln", group: "Geräte", label: "Smartphones koppeln", icon: "phone", title: "Smartphones koppeln", lead: "NuOrb-App auf einem oder mehreren Smartphones per QR-Code verbinden.", render: viewPair },
@@ -223,7 +223,7 @@ async function viewOverview(view) {
       <div class="rows"><div class="row"><div class="grow"><div class="title" data-noi18n>${esc(s.brain.server || "")}</div><div class="meta mono">${esc(s.brain.url || "-")}</div></div>${dot(s.brain.online)}</div></div>
       <p class="hint small">Geladene Modelle und Grafikspeicher zeigt nur Ollama an.</p></div>` : `<div class="panel ${s.phone ? "span-5" : "span-7"}"><div class="panel-head"><h3>Geladene Modelle (VRAM auf dem PC)</h3>${s.gpu_label ? `<span class="tag">${esc(s.gpu_label)}</span>` : ""}</div>
       <div class="rows">${loaded || `<div class="empty">${s.brain.online ? "Kein Modell geladen. Die erste Frage lädt es (~4 s)." : "PC/Ollama nicht erreichbar."}</div>`}</div>
-      <p class="hint small">Tipp: Für Spiele am PC das Modell entladen; NuOrb lädt es bei der nächsten Frage selbst wieder.</p></div>`}
+      <p class="hint small">Tipp: Für Spiele am PC das Modell entladen; NUORB lädt es bei der nächsten Frage selbst wieder.</p></div>`}
     <div class="panel ${s.phone ? "span-4" : "span-5"}"><h3>Server</h3>
       <div class="kpi"><span class="label">Arbeitsspeicher ${fmtBytes(memUsed)} / ${fmtBytes(sys.mem_total)}</span><div class="bar"><i data-w="${memUsed / sys.mem_total * 100}"></i></div></div><br>
       <div class="kpi"><span class="label">Speicher ${fmtBytes(diskUsed)} / ${fmtBytes(sys.disk_total)}</span><div class="bar" ${diskUsed / sys.disk_total > .85 ? "data-warn" : ""}><i data-w="${diskUsed / sys.disk_total * 100}"></i></div></div><br>
@@ -245,7 +245,7 @@ async function viewModel(view) {
   const cur = br.local_model || m.model.default || "";
   const opts = [...new Set([cur, ...m.ollama].filter(Boolean))].map((n) => `<option ${n === cur ? "selected" : ""} value="${esc(n)}">${esc(n)}${m.sizes[n] ? ` (${fmtBytes(m.sizes[n])})` : ""}</option>`).join("");
   const modes = [
-    ["local", "Lokal", "Nur das lokale Modell auf deinem PC. Keine Cloud. Ist der PC aus, meldet NuOrb „Gehirn offline“."],
+    ["local", "Lokal", "Nur das lokale Modell auf deinem PC. Keine Cloud. Ist der PC aus, meldet NUORB „Gehirn offline“."],
     ["auto", "Automatisch", "Zuerst das lokale Modell auf dem PC; antwortet es nicht, übernimmt Claude."],
     ["remote", "Remote", "Nur Claude. Der PC und seine Grafikkarte werden geschont."]];
   const claudeCards = (name, sel) => Object.entries(br.models).map(([id, c]) => `<label class="choice small-choice">
@@ -285,7 +285,7 @@ async function viewModel(view) {
       <div class="note warn">Modelle, die nicht in den Grafikspeicher passen, machen den PC träge.</div><br>
       <button class="btn primary" id="saveModel">Speichern …</button></div>
     <div class="panel span-5"><h3>Projekt-Claude</h3>
-      <p class="hint">Claude Code für Programmier-Aufträge („NuOrb, frag Claude …“). Kosten fallen nur bei Nutzung an.</p>
+      <p class="hint">Claude Code für Programmier-Aufträge („NUORB, frag Claude …“). Kosten fallen nur bei Nutzung an.</p>
       ${br.projekt ? `<div class="choices one">${claudeCards("pclaude", br.projekt)}</div><br><button class="btn primary" id="pcSave">Übernehmen …</button>` : `<div class="note">Projekt-Claude ist nicht eingerichtet.</div>`}</div>`);
   const upd = () => { const md = $("input[name=bmode]:checked", view)?.value; $("#pickRemote").hidden = md !== "remote"; $("#pickFallback").hidden = md !== "auto"; $("#privacyNote").hidden = md === "local"; };
   $$("input[name=bmode]", view).forEach((r) => r.onchange = upd); upd();
@@ -334,7 +334,7 @@ async function viewModel(view) {
 async function viewPersona(view) {
   const p = await api("/api/persona");
   setHTML(view, `
-    <div class="panel span-7"><div class="panel-head"><h3>SOUL.md: Identität von Hermes/NuOrb</h3><span class="counter" id="soulCount"></span></div>
+    <div class="panel span-7"><div class="panel-head"><h3>SOUL.md: Identität von Hermes/NUORB</h3><span class="counter" id="soulCount"></span></div>
       <p class="hint">Steht an erster Stelle im System-Prompt und gilt überall (Smartphone, Zeitpläne, Chat).</p>
       <textarea id="soul" class="mono" rows="18" spellcheck="true">${esc(p.soul)}</textarea><br><br>
       <button class="btn primary" id="saveSoul">Speichern …</button></div>
@@ -368,7 +368,7 @@ async function viewMemory(view) {
       <div class="list-edit" id="list-${key}">${m[key].map((e) => memItem(e)).join("")}</div><br>
       <div class="inline"><button class="btn ghost small" data-add="${key}">+ Eintrag</button><span class="grow"></span><button class="btn primary small" data-save="${key}">Speichern …</button></div></div>`;
   const memItem = (t = "") => `<div class="item"><textarea rows="2">${esc(t)}</textarea><button class="icon-btn" data-del title="Entfernen">✕</button></div>`;
-  setHTML(view, block("memory", "Notizen von NuOrb (MEMORY.md)", "Fakten zur Umgebung, Abläufe, Gelerntes.") + block("user", "Über dich (USER.md)", "Vorlieben, Gewohnheiten, wie du angesprochen werden willst."));
+  setHTML(view, block("memory", "Notizen von NUORB (MEMORY.md)", "Fakten zur Umgebung, Abläufe, Gelerntes.") + block("user", "Über dich (USER.md)", "Vorlieben, Gewohnheiten, wie du angesprochen werden willst."));
   for (const key of ["memory", "user"]) {
     const list = $(`#list-${key}`), lim = m.limits[key];
     const upd = () => { const n = $$("textarea", list).reduce((a, t) => a + t.value.trim().length, 0) + Math.max(0, $$("textarea", list).length - 1) * 3; const c = $(`#cnt-${key}`); c.textContent = `${n} / ${lim} Zeichen`; c.toggleAttribute("data-over", n > lim); };
@@ -406,7 +406,7 @@ async function viewSkills(view) {
     $$("[data-probe]", $("#sgrid")).forEach((b) => b.onclick = () => {
       const sk = d.items.find((x) => x.name === b.dataset.probe), LBL = { wetter: "Wetter", heizung: "Heizung", raeume: "Räume", klima: "Klima", energie: "Strom" };
       openModal({ title: `Test: ${sk.name}`, buttons: [{ label: "Schließen", onClick: closeModal }],
-        bodyHTML: `<p class="muted small">Nur lesend: fragt die aktuellen Werte ab und zeigt den Satz, den NuOrb sprechen würde.</p>
+        bodyHTML: `<p class="muted small">Nur lesend: fragt die aktuellen Werte ab und zeigt den Satz, den NUORB sprechen würde.</p>
           <div class="inline">${sk.probe.map((t) => `<button class="btn small ghost" data-topic="${esc(t)}">${esc(LBL[t] || t)}</button>`).join("")}</div><div id="probeOut"><br><div class="empty">Thema wählen.</div></div>` });
       $$("[data-topic]", $("#modalBody")).forEach((t) => t.onclick = () => busy(t, async () => {
         const r = await api("/api/skills/probe", { method: "POST", body: { name: sk.name, topic: t.dataset.topic } });
@@ -431,7 +431,7 @@ async function skillEditor(dir, cats) {
   openModal({ file: "Neuer Skill", title: "Skill eintragen", bodyHTML: `
       <div class="grid2"><label class="field"><span>Name (Kurzname)</span><input id="skName" class="mono" placeholder="z. B. einkaufsliste"></label>
       <label class="field"><span>Kategorie</span><input id="skCat" class="mono" list="skCats" value="nuorb"><datalist id="skCats">${cats.map((c) => `<option value="${esc(c)}">`).join("")}</datalist></label></div>
-      <label class="field"><span>Beschreibung: Wann soll NuOrb den Skill nutzen?</span><input id="skDesc" placeholder="z. B. Einkaufsliste führen: hinzufügen, vorlesen, leeren."><small>Daran erkennt NuOrb, wann der Skill passt. Max. 300 Zeichen.</small></label>
+      <label class="field"><span>Beschreibung: Wann soll NUORB den Skill nutzen?</span><input id="skDesc" placeholder="z. B. Einkaufsliste führen: hinzufügen, vorlesen, leeren."><small>Daran erkennt NUORB, wann der Skill passt. Max. 300 Zeichen.</small></label>
       <label class="field"><span>Anleitung (Markdown)</span><textarea id="skBody" rows="12" placeholder="## Wann nutzen&#10;…&#10;&#10;## Ablauf&#10;1. …"></textarea></label>`,
     buttons: [{ label: "Abbrechen", cls: "ghost", onClick: closeModal }, { label: "Weiter zur Vorschau", cls: "primary", onClick: () => {
       const b = { name: $("#skName").value, category: $("#skCat").value, description: $("#skDesc").value, body: $("#skBody").value };
@@ -455,7 +455,7 @@ async function viewJobs(view) {
     <div class="panel span-5"><h3>Neuer Zeitplan</h3>
       <label class="field"><span>Name</span><input id="jName" placeholder="z. B. Morgenbriefing"></label>
       <label class="field"><span>Zeitplan</span><input id="jSched" class="mono" placeholder="0 7 * * 1-5  ·  every 2h  ·  30m"><small>Cron-Ausdruck (Min Std Tag Monat Wochentag), „every 2h“ oder einmalig „30m“.</small></label>
-      <label class="field"><span>Auftrag an NuOrb</span><textarea id="jPrompt" rows="5" placeholder="Fasse mir das Wetter und meine Termine für heute zusammen."></textarea></label>
+      <label class="field"><span>Auftrag an NUORB</span><textarea id="jPrompt" rows="5" placeholder="Fasse mir das Wetter und meine Termine für heute zusammen."></textarea></label>
       <div class="note small">Zeitpläne laufen ohne Rückfrage: gefährliche Befehle werden dort automatisch abgelehnt (siehe Bestätigungen).</div><br>
       <button class="btn primary" id="jCreate">Anlegen</button></div>`);
   $$("[data-job]", view).forEach((b) => b.onclick = () => busy(b, async () => {
@@ -578,7 +578,7 @@ async function viewVoice(view) {
       <label class="field"><span>Sprechtempo <b id="vLsOut"></b></span><input id="vLs" type="range" min="0.7" max="1.3" step="0.05" value="${esc(ls)}"><small>Kleiner = schneller (length_scale).</small></label>
       <div class="row"><div class="grow"><div class="title">Bei Sprachfragen nachdenken</div><div class="desc">Aus = schnelle Antworten (~2 s). An = gründlicher, aber deutlich langsamer.</div></div>${sw("reason", !!s.reasoning_voice, 'id="vReason"')}</div>
       <div class="row"><div class="grow"><div class="title">Wecken mit „${esc(u.wake_phrase || I18N.wake)}“</div><div class="desc">Das Mikro läuft dann ständig mit, aber nichts wird aufgezeichnet oder gesendet, bevor „${esc(u.wake_phrase || I18N.wake)}“ erkannt ist (nur kurzer Puffer im Arbeitsspeicher des Smartphones).</div></div>${sw("wake", !!s.wake_word, 'id="vWake"')}</div>
-      <div class="row"><div class="grow"><div class="title">Nach Antwort weiter zuhören</div><div class="desc">NuOrb fragt nach jeder Antwort kurz nach und hört einige Sekunden ohne „${esc(u.wake_phrase || I18N.wake)}“ zu. Beenden mit „Nein danke“, „Das war’s“ oder „Gute Nacht“.</div></div>${sw("followup", s.follow_up ?? true, 'id="vFollow"')}</div>
+      <div class="row"><div class="grow"><div class="title">Nach Antwort weiter zuhören</div><div class="desc">NUORB fragt nach jeder Antwort kurz nach und hört einige Sekunden ohne „${esc(u.wake_phrase || I18N.wake)}“ zu. Beenden mit „Nein danke“, „Das war’s“ oder „Gute Nacht“.</div></div>${sw("followup", s.follow_up ?? true, 'id="vFollow"')}</div>
       <label class="field"><span>Wartezeit auf Antwort (Sekunden)</span><input id="vFollowT" type="number" min="4" max="30" step="1" value="${esc(s.follow_up_timeout_s ?? 8)}"><small>4 bis 30 Sekunden, Standard 8.</small></label>
       <label class="field"><span>Betriebsmodus</span><select id="vMode"><option value="live">Live (echtes Gehirn)</option><option value="demo">Demo (ohne Sprachmodell)</option></select></label>
       <div class="inline"><button class="btn ghost" id="vTest">▶ Probehören</button><span class="grow"></span><button class="btn primary" id="vSave">Speichern …</button></div>
@@ -669,12 +669,12 @@ async function viewPhone(view) {
         <button class="btn ghost" data-ph="bildschirm" data-v="aus">Bildschirm aus</button><span class="grow"></span><button class="btn danger" id="phReboot">Kiosk-Gerät neu starten</button></div><br>
       <div class="grid2"><label class="field"><span>Helligkeit <b id="brOut">${esc(s.helligkeit_prozent ?? "-")}</b> %</span><input type="range" id="phBr" min="5" max="100" step="5" value="${esc(s.helligkeit_prozent ?? 60)}"></label>
         <label class="field"><span>Lautstärke <b id="voOut">${esc(s.lautstaerke_prozent ?? "-")}</b> %</span><input type="range" id="phVo" min="0" max="100" step="5" value="${esc(s.lautstaerke_prozent ?? 70)}"></label></div>
-      <p class="hint small">Neustart dauert bis zur fertigen NuOrb-Oberfläche etwa 100 Sekunden.</p>
+      <p class="hint small">Neustart dauert bis zur fertigen NUORB-Oberfläche etwa 100 Sekunden.</p>
       ${p.pubkey ? `<details><summary class="small muted">Technik: eingeschränkter SSH-Schlüssel der Verwaltung</summary><pre class="code mono">${esc(p.pubkey)}</pre>
         <p class="hint small">Auf dem Kiosk-Gerät nur mit command=-Restriktion (status, reboot, kiosk-reload, helligkeit, lautstaerke, bildschirm) hinterlegt.</p></details>` : ""}</div>`);
   const act = (action, body = {}) => api(`/api/phone/${action}`, { method: "POST", body }).then(() => toast("Erledigt."));
   $$("[data-ph]", view).forEach((b) => b.onclick = () => busy(b, () => act(b.dataset.ph, { value: b.dataset.v })));
-  $("#phReboot").onclick = async () => { if (await confirmBox("Kiosk-Gerät neu starten?", "Das Kiosk-Gerät startet neu. NuOrb ist am Kiosk-Gerät etwa 100 Sekunden nicht erreichbar.", "Neu starten", true)) busy($("#phReboot"), () => act("reboot", { confirm: "NEUSTART" })); };
+  $("#phReboot").onclick = async () => { if (await confirmBox("Kiosk-Gerät neu starten?", "Das Kiosk-Gerät startet neu. NUORB ist am Kiosk-Gerät etwa 100 Sekunden nicht erreichbar.", "Neu starten", true)) busy($("#phReboot"), () => act("reboot", { confirm: "NEUSTART" })); };
   const slider = (id, outId, action) => { let t; $(id).oninput = (e) => { $(outId).textContent = e.target.value; clearTimeout(t); t = setTimeout(() => act(action, { value: +e.target.value }).catch((er) => toast(er.message, "err")), 400); }; };
   slider("#phBr", "#brOut", "helligkeit"); slider("#phVo", "#voOut", "lautstaerke");
 }

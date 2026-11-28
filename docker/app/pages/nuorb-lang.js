@@ -16,7 +16,7 @@ window.NuI18n = (function () {
     s = String(s ?? "");
     const EN = window.I18N_EN;
     if (I.lang !== "en" || !EN || !s) return s;
-    const marke = (t) => String(t).replace(/\bNuOrb\b/g, I.brand);
+    const marke = (t) => String(t).replace(/\bNUORB\b/g, I.brand);
     if (EN[s] !== undefined) return marke(EN[s]);
     if (!muster) {
       muster = Object.keys(EN).filter((k) => /\{\d\}/.test(k)).map((k) => {

@@ -1,4 +1,4 @@
-/* NuOrb – Oberflaechenlogik: Zustaende, Push-to-Talk, Hermes-Run-Stream, satzweise TTS, Approvals. */
+/* NUORB – Oberflaechenlogik: Zustaende, Push-to-Talk, Hermes-Run-Stream, satzweise TTS, Approvals. */
 (function () {
   "use strict";
   // Oberflaechentexte ueber t(deText, vars): Deutsch unveraendert, Englisch aus i18n-en.js (siehe i18n.js)
@@ -35,11 +35,10 @@
   };
   const opts = { voice: store.get("voice", true), calm: store.get("calm", false), earcons: store.get("earcons", true), micviz: store.get("micviz", true),
     follow: true, followTimeout: 8 }; // follow/followTimeout kommen aus ui.json (follow_up, follow_up_timeout_s) ueber /api/status
-  // Android-App NuOrb (Sitzung android-app): WebView laedt den Server direkt, Bruecke window.NuOrbAndroid
-  // (ab App 1.3.3; aeltere Fassungen: window.NuOrbAndroid, dasselbe Objekt).
+  // Android-App NuOrb (Sitzung android-app): WebView laedt den Server direkt, Bruecke window.NuOrbAndroid.
   // Vertrag: Wake lokal (getWake/setWake, Ereignis „nuorb-wake“), Zustand an native (state), kein /api/wake, kein Vollbild.
-  const ANDROID = !!(window.NuOrbAndroid || window.NuOrbAndroid) || new URLSearchParams(location.search).get("client") === "android"; // qp kommt erst weiter unten
-  const NATIVE = window.NuOrbAndroid || window.NuOrbAndroid || null;
+  const ANDROID = !!window.NuOrbAndroid || new URLSearchParams(location.search).get("client") === "android"; // qp kommt erst weiter unten
+  const NATIVE = window.NuOrbAndroid || null;
   let lastNative = "";
   function nativeState() {
     if (!NATIVE || typeof NATIVE.state !== "function") return;
@@ -406,7 +405,7 @@
     vadStart();
     if (rec.pendingStop) { rec.pendingStop = false; stopRec(); }
   }
-  // Sprachpausen-Erkennung (nur Freihand: Tippen, F14, „Hey NuOrb“): Ende nach VAD.SIL ms Stille, sobald gesprochen wurde;
+  // Sprachpausen-Erkennung (nur Freihand: Tippen, F14, „Hey NUORB“): Ende nach VAD.SIL ms Stille, sobald gesprochen wurde;
   // ohne Sprache nach VAD.NONE ms Abbruch. Schwelle relativ zum gemessenen Grundrauschen. Halten = wie bisher bis Loslassen.
   const VAD = { FRAME: 50, SIL: 1000, NONE: 7000, MIN_SPEECH: 3, CAL: 250 };
   function vadStart() {
@@ -515,7 +514,7 @@
   els.ptt.addEventListener("contextmenu", (e) => e.preventDefault());
 
   // ------------------------------------------------------------------ Gespraechsmodus
-  // Nach einer Antwort auf eine gesprochene Frage (Tippen, Halten, F14, „Hey NuOrb“) fragt NuOrb kurz nach und hoert
+  // Nach einer Antwort auf eine gesprochene Frage (Tippen, Halten, F14, „Hey NUORB“) fragt NUORB kurz nach und hoert
   // ohne Wake-Word wieder zu (opts.followTimeout s bis zum Sprachbeginn). Ende: Abschiedssatz, Stille, 20 Runden, 5 min.
   // Nie waehrend offener Karte (Karten bleiben Tippen-only), nie waehrend Sprachausgabe (kein Echo ins Mikro).
   const CONV_ASK = [t("Noch etwas?"), t("Kann ich noch etwas für dich tun?"), t("Sonst noch was?"), t("Noch eine Frage?")];
@@ -533,7 +532,7 @@
     CONV.active = false; clearTimeout(CONV.timer); clog(`Gespräch endet (${why}, ${CONV.rounds} Runden)`);
     if (say) speech.say(t("Okay, ich bin da, wenn du mich brauchst."));
     if (!S.busy && !speech.active) restingState();
-    if (WAKE.on) { els.stateSub.textContent = t("Sag „Hey NuOrb“"); }
+    if (WAKE.on) { els.stateSub.textContent = t("Sag „Hey NUORB“"); }
   }
   function convCheck() {
     clearTimeout(CONV.timer);
@@ -859,7 +858,7 @@
     const cmd = String(ev.command || ev.preview || "");
     const raw = String(ev.description || ev.reason || "").trim();
     const mcp = cmd.match(/MCP tool '([\w.-]+)' on (?:UNTRUSTED )?server '([\w.-]+)'/i) || raw.match(/run '([\w.-]+)'.*?Server '([\w.-]+)'/i);
-    let title = t("NuOrb möchte etwas ausführen"), desc, facts = [], code = cmd, yes = t("Ja, ausführen"), say = t("Ich brauche deine Bestätigung.");
+    let title = t("NUORB möchte etwas ausführen"), desc, facts = [], code = cmd, yes = t("Ja, ausführen"), say = t("Ich brauche deine Bestätigung.");
     if (mcp) {
       const [, tool, server] = mcp, k = KNOWN[server + ":" + tool];
       const det = mcpDetails(cmd);
@@ -1020,7 +1019,7 @@
     $("offlineBox").hidden = !off;
     if (!off) return;
     const btn = $("offlineWifi");
-    if (w && !w.enabled) { $("offlineText").textContent = t("WLAN ist aus. Für Sprache und Antworten braucht NuOrb WLAN."); btn.textContent = t("WLAN einschalten"); btn.hidden = false; btn.dataset.act = "wifi"; }
+    if (w && !w.enabled) { $("offlineText").textContent = t("WLAN ist aus. Für Sprache und Antworten braucht NUORB WLAN."); btn.textContent = t("WLAN einschalten"); btn.hidden = false; btn.dataset.act = "wifi"; }
     else if (w && !w.connected) { $("offlineText").textContent = t("WLAN ist an, aber noch nicht verbunden. Suche Netz …"); btn.hidden = true; }
     else { $("offlineText").textContent = t("Der Server ist nicht erreichbar. Gerät und Uhr funktionieren weiter."); btn.textContent = t("Erneut versuchen"); btn.hidden = false; btn.dataset.act = "retry"; }
   }
@@ -1045,8 +1044,8 @@
     closeSheet("setBackdrop");
     confirmLocal({
       title: reboot ? t("Smartphone neu starten?") : t("Smartphone ausschalten?"),
-      desc: reboot ? t("NuOrb ist etwa zwei Minuten weg und startet danach von selbst.") : t("Zum Einschalten danach die Ein-Taste lange drücken."),
-      facts: [[t("Ziel"), t("NuOrb-Smartphone (Xiaomi, NixOS)")], [t("Befehl"), reboot ? t("Neustart in 3 s") : t("Ausschalten in 3 s")]],
+      desc: reboot ? t("NUORB ist etwa zwei Minuten weg und startet danach von selbst.") : t("Zum Einschalten danach die Ein-Taste lange drücken."),
+      facts: [[t("Ziel"), t("NUORB-Smartphone (Xiaomi, NixOS)")], [t("Befehl"), reboot ? t("Neustart in 3 s") : t("Ausschalten in 3 s")]],
       yes: reboot ? t("Ja, neu starten") : t("Ja, ausschalten"),
       say: reboot ? t("Soll ich das Smartphone wirklich neu starten?") : t("Soll ich das Smartphone wirklich ausschalten?"),
       run: async () => {
@@ -1061,7 +1060,7 @@
   function wifiAction(on) {
     if (on) return devCall("wifi", { on: true }).then(() => { card("sys", t("WLAN eingeschaltet.")); }).catch((e) => card("err", String(e.message || e)));
     confirmLocal({
-      title: t("WLAN ausschalten?"), desc: t("Ohne WLAN kann NuOrb nicht sprechen und nicht antworten. Zum Wiedereinschalten erscheint ein großer Knopf."),
+      title: t("WLAN ausschalten?"), desc: t("Ohne WLAN kann NUORB nicht sprechen und nicht antworten. Zum Wiedereinschalten erscheint ein großer Knopf."),
       facts: [[t("Ziel"), t("WLAN des Smartphones")], [t("Wieder an"), t("Knopf „WLAN einschalten“ oder Gerät-Panel")]],
       yes: t("Ja, ausschalten"), say: t("Soll ich das WLAN wirklich ausschalten? Dann bin ich offline."),
       run: async () => { try { await devCall("wifi", { on: false }); card("sys", t("WLAN ausgeschaltet.")); } catch (e) { card("err", String(e.message || e)); } },
@@ -1253,7 +1252,7 @@
     setAssistantName(m[1]).then((n) => {
       ONB.awaiting = false;
       if (USERNAME_RE.test(text)) { S.busy = false; ask(text, false, true); return; } // Nutzername merkt sich Hermes (Gedaechtnis)
-      speech.say(t("Alles klar, ab jetzt heiße ich {n}.", { n }) + (wakeAvailable() ? " " + t("Wecken kannst du mich weiterhin mit „Hey NuOrb“.") : ""));
+      speech.say(t("Alles klar, ab jetzt heiße ich {n}.", { n }) + (wakeAvailable() ? " " + t("Wecken kannst du mich weiterhin mit „Hey NUORB“.") : ""));
     }).catch((e) => card("err", String(e.message || e)));
     return true;
   }
@@ -1261,7 +1260,7 @@
     ONB.started = true; ONB.awaiting = true;
     const n = window.I18N ? I18N.name : "NuOrb";
     const txt = t("Hallo! Mein Schöpfer hat mich {n} getauft. Falls dir das zu kompliziert ist, sag mir einfach, wie du mich nennen möchtest.", { n })
-      + (wakeAvailable() ? " " + t("Wecken kannst du mich mit „Hey NuOrb“.") : "") + " " + t("Und wie darf ich dich nennen?");
+      + (wakeAvailable() ? " " + t("Wecken kannst du mich mit „Hey NUORB“.") : "") + " " + t("Und wie darf ich dich nennen?");
     card("ai", txt); view("talk");
     if (opts.follow) { CONV.active = true; CONV.rounds = 0; CONV.lastAt = Date.now(); CONV.prompted = true; }
     speech.say(txt);
@@ -1343,7 +1342,7 @@
   $("sbDev").addEventListener("click", openDev);
   $("setClose").addEventListener("click", () => closeSheet("setBackdrop"));
   $("setBackdrop").addEventListener("click", (e) => { if (e.target.id === "setBackdrop") closeSheet("setBackdrop"); });
-  // ------------------------------------------------------------------ „Hey NuOrb“ (Wake-Word-Dienst von handy-linux)
+  // ------------------------------------------------------------------ „Hey NUORB“ (Wake-Word-Dienst von handy-linux)
   // Schalter: ui.json wake_word (nuorb-admin). Die UI spiegelt ihn an den Dienst (/wake/aktiv) und hoert auf /wake/events.
   // Ein Wake-Ereignis wirkt wie Tippen: Freihand-Aufnahme mit Pausen-Erkennung. Datenschutz liegt beim Dienst (nur RAM-Puffer).
   const WAKE = { on: null, es: null, svc: null, synced: 0, retry: null };
@@ -1396,7 +1395,7 @@
     es.addEventListener("wake", (e) => { let d = {}; try { d = JSON.parse(e.data); } catch (x) { /* egal */ } onWake(d); });
     es.onerror = () => { if (es.readyState === 2) { WAKE.es = null; WAKE.svc = false; renderWake(); clearTimeout(WAKE.retry); WAKE.retry = setTimeout(() => { if (WAKE.on) wakeConnect(); }, 30000); } };
   }
-  // Sprachbefehl „Schalte Hey NuOrb ein/aus“, „Hey NuOrb aus“, „Weckwort an“. Einschalten nur mit Karte (Mikro hoert dann staendig).
+  // Sprachbefehl „Schalte Hey NUORB ein/aus“, „Hey NUORB aus“, „Weckwort an“. Einschalten nur mit Karte (Mikro hoert dann staendig).
   const WAKE_SELF = String(window.I18N ? I18N.wake : "Hey NuOrb").toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
   const WAKE_NAME = "(?:" + WAKE_SELF + "|hey\\s+nuorb|wake\\s*-?\\s*word|weckwort|weckfunktion|aufwecken)";
   const WAKE_RE1 = new RegExp(`\\b${WAKE_NAME}\\s+(an|ein|aus|ab|einschalten|anschalten|ausschalten|abschalten|aktivieren|deaktivieren)\\s*$`);
@@ -1410,20 +1409,20 @@
     if (!wakeAvailable()) { speech.say(t("Ein Weckwort gibt es hier noch nicht. Tipp einfach auf den Knopf, um mit mir zu sprechen.")); return true; }
     const go = async () => {
       if (ANDROID) {
-        if (!NATIVE || !NATIVE.setWake) { card("err", t("„Hey NuOrb“ gibt es hier nur in der NuOrb-App.")); return; }
+        if (!NATIVE || !NATIVE.setWake) { card("err", t("„Hey NUORB“ gibt es hier nur in der NUORB-App.")); return; }
         try { if (NATIVE.setWake(on) === false) throw new Error("abgelehnt"); } catch (e) { card("err", t("Umschalten fehlgeschlagen.")); return; }
-        WAKE.on = on; renderWake(); speech.say(on ? t("Erledigt. Sag einfach Hey NuOrb, wenn du mich brauchst.") : t("Hey NuOrb ist aus. Zum Sprechen tippen.")); return;
+        WAKE.on = on; renderWake(); speech.say(on ? t("Erledigt. Sag einfach Hey NUORB, wenn du mich brauchst.") : t("Hey NUORB ist aus. Zum Sprechen tippen.")); return;
       }
       const r = await fetch("/api/wake", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ an: on }) });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) { card("err", d.detail || t("Umschalten fehlgeschlagen.")); return; }
-      wakeApply(on); speech.say(on ? t("Erledigt. Sag einfach Hey NuOrb, wenn du mich brauchst.") : t("Hey NuOrb ist aus. Zum Sprechen tippen."));
+      wakeApply(on); speech.say(on ? t("Erledigt. Sag einfach Hey NUORB, wenn du mich brauchst.") : t("Hey NUORB ist aus. Zum Sprechen tippen."));
     };
     if (!on) { go(); return true; }
-    if (WAKE.on) { speech.say(t("Hey NuOrb ist schon an.")); return true; }
-    confirmLocal({ title: t("„Hey NuOrb“ einschalten?"), desc: t("Das Mikro hört dann ständig mit. Nichts wird gespeichert oder gesendet, bevor „Hey NuOrb“ erkannt ist."),
-      facts: [[t("Ziel"), t("Wake-Word auf dem Smartphone")], [t("Aus"), t("„Hey NuOrb aus“ oder Gerät-Panel")]], yes: t("Ja, einschalten"),
-      say: t("Soll ich Hey NuOrb einschalten? Dann höre ich ständig mit."), run: go });
+    if (WAKE.on) { speech.say(t("Hey NUORB ist schon an.")); return true; }
+    confirmLocal({ title: t("„Hey NUORB“ einschalten?"), desc: t("Das Mikro hört dann ständig mit. Nichts wird gespeichert oder gesendet, bevor „Hey NUORB“ erkannt ist."),
+      facts: [[t("Ziel"), t("Wake-Word auf dem Smartphone")], [t("Aus"), t("„Hey NUORB aus“ oder Gerät-Panel")]], yes: t("Ja, einschalten"),
+      say: t("Soll ich Hey NUORB einschalten? Dann höre ich ständig mit."), run: go });
     return true;
   }
   // Wetter immer von der eigenen Station (deterministisch, ohne Modell): /api/wetter -> fertiger Sprechsatz
@@ -1501,7 +1500,7 @@
       const r = await fetch("/api/setting", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ follow_up: an }) });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.detail || t("Fehler {s}", { s: r.status }));
-      opts.follow = an; if (!an) convEnd("ausgeschaltet"); toast(an ? t("NuOrb hört nach jeder Antwort kurz weiter zu.") : t("Nach der Antwort: wieder Tippen oder „Hey NuOrb“."));
+      opts.follow = an; if (!an) convEnd("ausgeschaltet"); toast(an ? t("NUORB hört nach jeder Antwort kurz weiter zu.") : t("Nach der Antwort: wieder Tippen oder „Hey NUORB“."));
     } catch (e) { el.checked = !an; toast(String(e.message || e)); }
   });
   // NuOrb-App: native Einstellungen (Entkoppeln, Neu koppeln, Sprache, Updates) – Bruecke einstellungen(), seit App 1.0
@@ -1520,7 +1519,7 @@
   $("optWake").addEventListener("change", async () => {
     const el = $("optWake"), an = el.checked;
     if (ANDROID) {
-      try { if (!NATIVE || !NATIVE.setWake) throw new Error(t("Nur in der NuOrb-App.")); if (NATIVE.setWake(an) === false) throw new Error(t("Umschalten fehlgeschlagen.")); WAKE.on = an; renderWake(); toast(an ? t("„Hey NuOrb“ ist an.") : t("„Hey NuOrb“ ist aus.")); }
+      try { if (!NATIVE || !NATIVE.setWake) throw new Error(t("Nur in der NUORB-App.")); if (NATIVE.setWake(an) === false) throw new Error(t("Umschalten fehlgeschlagen.")); WAKE.on = an; renderWake(); toast(an ? t("„Hey NUORB“ ist an.") : t("„Hey NUORB“ ist aus.")); }
       catch (e) { el.checked = !an; toast(String(e.message || e)); }
       return;
     }
@@ -1528,7 +1527,7 @@
       const r = await fetch("/api/wake", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ an }) });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.detail || t("Fehler {s}", { s: r.status }));
-      wakeApply(an); toast(an ? t("„Hey NuOrb“ ist an.") : t("„Hey NuOrb“ ist aus."));
+      wakeApply(an); toast(an ? t("„Hey NUORB“ ist an.") : t("„Hey NUORB“ ist aus."));
     } catch (e) { el.checked = !an; toast(String(e.message || e)); }
   });
 
@@ -1616,5 +1615,5 @@
     loadBrain(); setInterval(loadBrain, 60000);
     // Geraetedienst erst nach dem ersten Status fragen: bei features.geraet === false gar nicht (kein 404 im Image)
     first.finally(() => { pollDevice(); setInterval(() => { if (DEV.available !== false) pollDevice(); }, 5000); }); }
-  window.NuOrb = { S, ask, speech, demo };
+  window.NUORB = { S, ask, speech, demo };
 })();

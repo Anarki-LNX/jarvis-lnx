@@ -1,4 +1,4 @@
-/* NuOrb – Oberflaechenlogik: Zustaende, Push-to-Talk, Hermes-Run-Stream, satzweise TTS, Approvals. */
+/* NUORB – Oberflaechenlogik: Zustaende, Push-to-Talk, Hermes-Run-Stream, satzweise TTS, Approvals. */
 (function () {
   "use strict";
   const $ = (id) => document.getElementById(id);
@@ -370,7 +370,7 @@
     vadStart();
     if (rec.pendingStop) { rec.pendingStop = false; stopRec(); }
   }
-  // Sprachpausen-Erkennung (nur Freihand: Tippen, F14, „Hey NuOrb“): Ende nach VAD.SIL ms Stille, sobald gesprochen wurde;
+  // Sprachpausen-Erkennung (nur Freihand: Tippen, F14, „Hey NUORB“): Ende nach VAD.SIL ms Stille, sobald gesprochen wurde;
   // ohne Sprache nach VAD.NONE ms Abbruch. Schwelle relativ zum gemessenen Grundrauschen. Halten = wie bisher bis Loslassen.
   const VAD = { FRAME: 50, SIL: 1000, NONE: 7000, MIN_SPEECH: 3, CAL: 250 };
   function vadStart() {
@@ -690,7 +690,7 @@
     const cmd = String(ev.command || ev.preview || "");
     const raw = String(ev.description || ev.reason || "").trim();
     const mcp = cmd.match(/MCP tool '([\w.-]+)' on (?:UNTRUSTED )?server '([\w.-]+)'/i) || raw.match(/run '([\w.-]+)'.*?Server '([\w.-]+)'/i);
-    let title = "NuOrb möchte etwas ausführen", desc, facts = [], code = cmd, yes = "Ja, ausführen", say = "Ich brauche deine Bestätigung.";
+    let title = "NUORB möchte etwas ausführen", desc, facts = [], code = cmd, yes = "Ja, ausführen", say = "Ich brauche deine Bestätigung.";
     if (mcp) {
       const [, tool, server] = mcp, k = KNOWN[server + ":" + tool];
       const det = mcpDetails(cmd);
@@ -847,7 +847,7 @@
     $("offlineBox").hidden = !off;
     if (!off) return;
     const btn = $("offlineWifi");
-    if (w && !w.enabled) { $("offlineText").textContent = "WLAN ist aus. Für Sprache und Antworten braucht NuOrb WLAN."; btn.textContent = "WLAN einschalten"; btn.hidden = false; btn.dataset.act = "wifi"; }
+    if (w && !w.enabled) { $("offlineText").textContent = "WLAN ist aus. Für Sprache und Antworten braucht NUORB WLAN."; btn.textContent = "WLAN einschalten"; btn.hidden = false; btn.dataset.act = "wifi"; }
     else if (w && !w.connected) { $("offlineText").textContent = "WLAN ist an, aber noch nicht verbunden. Suche Netz …"; btn.hidden = true; }
     else { $("offlineText").textContent = "nuorb ist nicht erreichbar. Gerät und Uhr funktionieren weiter."; btn.textContent = "Erneut versuchen"; btn.hidden = false; btn.dataset.act = "retry"; }
   }
@@ -872,8 +872,8 @@
     closeSheet("setBackdrop");
     confirmLocal({
       title: reboot ? "Handy neu starten?" : "Handy ausschalten?",
-      desc: reboot ? "NuOrb ist etwa zwei Minuten weg und startet danach von selbst." : "Zum Einschalten danach die Ein-Taste lange drücken.",
-      facts: [["Ziel", "NuOrb-Handy (Xiaomi, NixOS)"], ["Befehl", reboot ? "Neustart in 3 s" : "Ausschalten in 3 s"]],
+      desc: reboot ? "NUORB ist etwa zwei Minuten weg und startet danach von selbst." : "Zum Einschalten danach die Ein-Taste lange drücken.",
+      facts: [["Ziel", "NUORB-Handy (Xiaomi, NixOS)"], ["Befehl", reboot ? "Neustart in 3 s" : "Ausschalten in 3 s"]],
       yes: reboot ? "Ja, neu starten" : "Ja, ausschalten",
       say: reboot ? "Soll ich das Handy wirklich neu starten?" : "Soll ich das Handy wirklich ausschalten?",
       run: async () => {
@@ -888,7 +888,7 @@
   function wifiAction(on) {
     if (on) return devCall("wifi", { on: true }).then(() => { card("sys", "WLAN eingeschaltet."); }).catch((e) => card("err", String(e.message || e)));
     confirmLocal({
-      title: "WLAN ausschalten?", desc: "Ohne WLAN kann NuOrb nicht sprechen und nicht antworten. Zum Wiedereinschalten erscheint ein großer Knopf.",
+      title: "WLAN ausschalten?", desc: "Ohne WLAN kann NUORB nicht sprechen und nicht antworten. Zum Wiedereinschalten erscheint ein großer Knopf.",
       facts: [["Ziel", "WLAN des Handys"], ["Wieder an", "Knopf „WLAN einschalten“ oder Gerät-Panel"]],
       yes: "Ja, ausschalten", say: "Soll ich das WLAN wirklich ausschalten? Dann bin ich offline.",
       run: async () => { try { await devCall("wifi", { on: false }); card("sys", "WLAN ausgeschaltet."); } catch (e) { card("err", String(e.message || e)); } },
@@ -1182,5 +1182,5 @@
   else { pollStatus(); setInterval(() => { if (!S.demo) pollStatus(); }, 5000); loadWidgets(); setInterval(loadWidgets, 60000);
     loadBrain(); setInterval(loadBrain, 60000);
     pollDevice(); setInterval(() => { if (DEV.available !== false) pollDevice(); }, 5000); }
-  window.NuOrb = { S, ask, speech, demo };
+  window.NUORB = { S, ask, speech, demo };
 })();

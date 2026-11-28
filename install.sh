@@ -99,11 +99,7 @@ case "$UI_PORT$ADMIN_PORT" in *[!0-9]*|"") fail "--ports UI,ADMIN" ;; esac
 case "$NAME" in *[!a-z0-9_-]*|"") fail "--name: a-z 0-9 _ -" ;; esac
 [ -n "$LANG_SEL" ] && case "$LANG_SEL" in de|en) ;; *) fail "--lang de|en" ;; esac
 DIR="${DIR/#\~/$HOME}"
-VOL_PREFIX=$([ "$NAME" = nuorb ] && echo nuorb || echo "$NAME")   # bis v0.3.x angelegte Volumes weiter nutzen
-OLD_PROJECT="nuorb"
-# Testhaken (nur für automatische Tests): alte Installation und Volume-Namen umlenken
-[ -n "${NUORB_VOL_PREFIX:-}" ] && VOL_PREFIX="$NUORB_VOL_PREFIX"
-[ -n "${NUORB_OLD_PROJECT:-}" ] && OLD_PROJECT="$NUORB_OLD_PROJECT"
+VOL_PREFIX="$NAME"   # Volumes <name>_data, <name>_models
 
 # ------------------------------------------------------------------ system detection
 OS_ID="" OS_LIKE="" OS_NAME=""
@@ -249,22 +245,6 @@ fetch_files() {
     } > "$DIR/compose.override.yaml"
     ok "compose.override.yaml ($NAME)"
   else rm -f "$DIR/compose.override.yaml"; fi
-}
-
-# ------------------------------------------------------------------ old installation (project nuorb, up to v0.3.x)
-migrate_old() {
-  [ "$NAME" = nuorb ] || [ "$OLD_PROJECT" != nuorb ] || return 0
-  local old wd
-  old=$("${DOCKER[@]}" ps -a --filter "label=com.docker.compose.project=$OLD_PROJECT" --format '{{.Names}}' | head -1 || true)
-  [ -n "$old" ] || return 0
-  wd=$("${DOCKER[@]}" inspect "$old" --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' 2>/dev/null || true)
-  step "$(t "Older installation found ($old)" "Ältere Installation gefunden ($old)")"
-  ok "$(t "Its data is kept: the new version uses the same volumes." "Die Daten bleiben: Die neue Version nutzt dieselben Volumes.")"
-  if [ ! -f "$DIR/.env" ] && [ -n "$wd" ] && [ -r "$wd/.env" ]; then
-    cp "$wd/.env" "$DIR/.env" && ok "$(t "Settings taken over from" "Einstellungen übernommen aus") $wd/.env"
-  fi
-  confirm "$(t "Stop the old container now (data stays)?" "Alten Container jetzt stoppen (Daten bleiben)?")" y || fail "$(t "Both cannot run at the same time (same ports)." "Beide können nicht gleichzeitig laufen (gleiche Ports).")"
-  "${DOCKER[@]}" compose -p "$OLD_PROJECT" down && ok "$(t "Old container stopped (without deleting data)." "Alter Container gestoppt (ohne Daten zu löschen).")"
 }
 
 # ------------------------------------------------------------------ settings (.env)
@@ -543,7 +523,6 @@ printf '%sNuOrb%s · %s\n' "$B" "$N" "$(t "self-hosted voice assistant · instal
 check_docker
 [ "$UNINSTALL" = 1 ] && uninstall
 fetch_files
-migrate_old
 configure
 check_ports
 firewall

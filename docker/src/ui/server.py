@@ -164,7 +164,7 @@ def origin_ok(request: Request) -> bool:
     return origin == f"{request.url.scheme}://{(request.headers.get('host') or '').strip().lower()}"
 
 PERSONA = (
-    "Du sprichst ueber die NuOrb-Sprachoberflaeche auf dem Handy des Nutzers. "
+    "Du sprichst ueber die NUORB-Sprachoberflaeche auf dem Handy des Nutzers. "
     "Antworte immer auf Deutsch und duze den Nutzer, knapp, natuerlich und gesprochen: meist ein bis drei Saetze, "
     "kein Markdown, keine Tabellen, keine Aufzaehlungszeichen, keine Emojis, keine URLs vorlesen. "
     "Uhrzeiten exakt nennen, in der Form 'zwoelf Uhr siebenundzwanzig'. Ton: ruhig, kompetent, mit einer "
@@ -227,10 +227,10 @@ def cur_persona() -> str:
     p = cfg().get("persona")
     p = p.strip()[:4000] if isinstance(p, str) and p.strip() else PERSONA
     uc = ui_cfg()
-    if uc["assistant_name"] != "NuOrb":  # Name nur einsetzen, wenn geaendert (sonst bleibt der Prompt-Cache gleich)
-        wake = uc["wake_phrase"] or "Hey " + (uc["brand"].capitalize() if uc["brand"].isupper() else uc["brand"])
-        p = p.replace("Hey NuOrb", wake).replace("NuOrb", uc["assistant_name"])
-        p = f"Du heisst {uc['assistant_name']}; so spricht dich der Nutzer an. " + p
+    # Platzhalter NUORB im Prompt immer durch den Namen ersetzen (Standard NuOrb)
+    wake = uc["wake_phrase"] or "Hey " + (uc["brand"].capitalize() if uc["brand"].isupper() else uc["brand"])
+    p = p.replace("Hey NUORB", wake).replace("NUORB", uc["assistant_name"])
+    p = f"Du heisst {uc['assistant_name']}; so spricht dich der Nutzer an. " + p
     if smarthome_enabled():  # nur dann – sonst bleibt der Prompt (und sein Cache) unveraendert
         p += " " + SMARTHOME_PERSONA
     return p
@@ -728,7 +728,6 @@ PAIRING_FILE = CONF_DIR / "pairing.json"
 CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 PAIR_PUBLIC = {"/api/info", "/api/pair"}
 DEVICE_COOKIE = "nuorb_device"
-DEVICE_COOKIE_OLD = "nuorb_device"  # NuOrb-App < 1.3.3 und Docker-Image setzen noch diesen Namen
 _pair_fails: dict[str, list[float]] = {}
 _seen_cache: dict[str, float] = {}
 _tokdiag: dict[str, float] = {}
@@ -776,7 +775,7 @@ def device_token(request: Request) -> str:
     auth = request.headers.get("authorization", "")
     if auth.lower().startswith("bearer "):
         return auth[7:].strip()
-    return request.cookies.get(DEVICE_COOKIE, "") or request.cookies.get(DEVICE_COOKIE_OLD, "")
+    return request.cookies.get(DEVICE_COOKIE, "")
 
 
 # ACHTUNG: Name und Aufruf ueber das Modul-Global stabil lassen – das Docker-Image ersetzt device_for_request
@@ -858,8 +857,7 @@ async def api_pair(request: Request):
     resp = JSONResponse({"token": token, "device_id": did, "name": server_name(), "api": 1,
                          "lang": "en" if uc["ui_lang"] == "en" else "de"})
     if body.get("cookie") is True:
-        for ck in (DEVICE_COOKIE, DEVICE_COOKIE_OLD):
-            resp.set_cookie(ck, token, max_age=10 * 365 * 86400, httponly=True, secure=True, samesite="strict", path="/")
+        resp.set_cookie(DEVICE_COOKIE, token, max_age=10 * 365 * 86400, httponly=True, secure=True, samesite="strict", path="/")
     return resp
 
 
@@ -873,7 +871,6 @@ async def api_unpair(request: Request):
         print(f"[pair] Geraet entkoppelt: {did}", flush=True)
     resp = JSONResponse({"ok": True, "removed": bool(did)})
     resp.delete_cookie(DEVICE_COOKIE, path="/")
-    resp.delete_cookie(DEVICE_COOKIE_OLD, path="/")
     return resp
 
 
@@ -1239,13 +1236,11 @@ async def tts(request: Request):
 
 # --------------------------------------------------------------------------- Statisch
 @app.get("/nuorb-ca.crt")
-@app.get("/nuorb-ca.crt")
 async def ca_cert(request: Request):
     p = CERT_DIR / "nuorb-ca.crt"
     if not p.exists():
         raise HTTPException(404)
-    name = "nuorb-ca.crt" if request.url.path.startswith("/nuorb") else "nuorb-ca.crt"
-    return FileResponse(p, media_type="application/x-x509-ca-cert", filename=name)
+    return FileResponse(p, media_type="application/x-x509-ca-cert", filename="nuorb-ca.crt")
 
 
 # Build-Kennung = Hash ueber die ausgelieferten Dateien. index.html bekommt sie als data-build und als ?v= an
@@ -1315,7 +1310,7 @@ async def index():
     html = re.sub(r'((?:src|href)="(?:app|orb|i18n|i18n-en)\.js|href="(?:style|orb|tokens)\.css)"', rf'\1?v={b}"', html)
     html = html.replace('<html lang="de">', f'<html lang="de" data-build="{b}">', 1)
     uc = ui_cfg()
-    html = html.replace("<title>NuOrb</title>", f"<title>{uc['brand']}</title>", 1)
+    html = html.replace("<title>NUORB</title>", f"<title>{uc['brand']}</title>", 1)
     cfg_js = json.dumps(uc, ensure_ascii=False).replace("</", "<\\/")
     html = html.replace('<script src="i18n.js', f'<script>window.NUORB_CFG={cfg_js};</script>\n<script src="i18n.js', 1)
     return Response(html, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-cache, no-store"})

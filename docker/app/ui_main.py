@@ -35,7 +35,7 @@ import server as ui  # noqa: E402  (nuorb-ui/server.py)
 app = ui.app
 COOKIE = "nuorb_device"
 # Neue Namen der NuOrb-App ab 1.3.3; die alten bleiben gültig (Play-Version 1.3.2 kennt nur sie)
-COOKIES = ("nuorb_device", COOKIE)
+COOKIES = (COOKIE,)
 PAGES = jc.APP / "pages"
 
 # Generisch: Haus-, Geräte- und Cloud-Weiche sind über Feature-Flags der NuOrb-Oberfläche aus (nuorb-env:
@@ -137,7 +137,7 @@ def _set_cookie(resp: Response, token: str) -> None:
 NETS = jc.allowed_nets()
 PUBLIC_API = {"/api/info", "/api/pair"}
 # Für die Kopplungsseite nötig (ohne Inhalt über den Nutzer)
-PUBLIC_PAGES = {"/pair", "/pair.js", "/nuorb-ca.crt", "/nuorb-ca.crt", "/tokens.css", "/icon.svg", "/favicon.ico"}
+PUBLIC_PAGES = {"/pair", "/pair.js", "/nuorb-ca.crt", "/tokens.css", "/icon.svg", "/favicon.ico"}
 
 
 @app.middleware("http")
@@ -247,7 +247,8 @@ async def index_plus(request: Request):
 
 SETUP_DONE = jc.CONF / "setup-done.json"
 WAKE_DIR = jc.J / "wakeword"
-WAKE_FILES = {"melspectrogram.tflite", "embedding_model.tflite", "hey_nuorb_v0.1.tflite"}
+# Dateinamen wie in der NuOrb-App (WakeModelle.kt), die App prüft sie per SHA-256
+WAKE_FILES = {"frei_melspectrogram.tflite", "frei_embedding_model.tflite", "hey_nuorb_de.tflite", "hey_nuorb_en.tflite"}
 NO_BRAIN = {"de": "{brand} hat noch kein Gehirn. Bitte im Admin-Panel unter „Einrichtung“ Ollama oder einen Claude-Schlüssel eintragen.",
             "en": "{brand} has no brain yet. Please set up Ollama or a Claude key under “Setup” in the admin panel."}
 
@@ -290,7 +291,7 @@ async def assistant(request: Request):
 
 
 async def ca_alias(request: Request):
-    """/nuorb-ca.crt: neuer Name der Heim-CA für die NuOrb-App (alt /nuorb-ca.crt bleibt)."""
+    """/nuorb-ca.crt: Heim-CA für die NuOrb-App und Browser (nur mit eigenem Zertifikat, NUORB_TLS=selfsigned)."""
     p = jc.CERTS / "nuorb-ca.crt"
     if jc.tls_mode() != "selfsigned" or not p.is_file():
         raise HTTPException(404)
@@ -314,7 +315,7 @@ app.router.routes[0:0] = NEW  # zuerst passend gewinnt -> vor den Originalen und
 
 
 def mdns_start() -> None:
-    """mDNS-Ankündigung _nuorb._tcp und _nuorb._tcp (nur sinnvoll mit network_mode: host; im Bridge-Netz kommt Multicast nicht ins LAN)."""
+    """mDNS-Ankündigung _nuorb._tcp (nur sinnvoll mit network_mode: host; im Bridge-Netz kommt Multicast nicht ins LAN)."""
     if jc.env("NUORB_MDNS", "0") != "1":
         return
     try:
@@ -324,7 +325,7 @@ def mdns_start() -> None:
         name = jc.server_name()
         zc = Zeroconf()
         props = {"v": "1", "api": str(jc.API_VERSION), "name": name, "fp": jc.ca_fingerprint()}
-        for typ in ("_nuorb._tcp", "_nuorb._tcp"):   # neuer Typ ab App 1.3.3, alter bleibt für 1.3.2
+        for typ in ("_nuorb._tcp",):
             info = ServiceInfo(f"{typ}.local.", f"{name}.{typ}.local.", port=port, properties=props,
                                server=f"{socket.gethostname()}.local.")
             zc.register_service(info, allow_name_change=True)

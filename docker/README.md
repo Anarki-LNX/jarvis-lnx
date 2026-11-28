@@ -89,21 +89,12 @@ docker compose pull && docker compose up -d        # neues Image, Daten bleiben
 docker run --rm -v nuorb_data:/d -v "$PWD":/b debian tar czf /b/nuorb-data.tgz -C /d .   # Sicherung
 ```
 
-### Umstieg von einer älteren Installation (bis v0.3.x)
+### Umstieg von einer älteren Installation (bis v0.6.x)
 
-Seit v0.4.0 heißen Compose-Projekt, Dienst und Container `nuorb` (vorher `nuorb` / `nuorb` /
-`nuorb-nuorb-1`), das Image seit v0.3.0 `ghcr.io/anarki-lnx/nuorb`. Die Daten bleiben erhalten: Die neue
-`compose.yaml` nutzt die bisherigen Volumes `nuorb_data` und `nuorb_models` unter festem Namen.
-
-```bash
-cd nuorb/docker                                  # Ordner mit deiner .env
-docker compose -p nuorb down                # alten Container stoppen, OHNE -v, sonst sind die Daten weg
-git pull                                         # neue compose.yaml (oder die Datei aus dem Repo holen)
-docker compose pull && docker compose up -d      # startet „nuorb“ mit denselben Daten
-```
-
-Passwort, Schlüssel, Gedächtnis, Zertifikate und gekoppelte Geräte bleiben, die App muss nicht neu gekoppelt werden.
-Docker meldet beim ersten Start einmalig, dass die Volumes von einem anderen Projekt angelegt wurden; das ist erwartet.
+Ab v0.7.0 tragen Volumes, Pfade, Umgebungsvariablen und Dienste durchgehend den Namen NuOrb. Bestehende Installationen
+zieht das Umzugsskript aus dem Release v0.7.0 um. Es legt vorher eine Sicherung an, lässt die alten Daten liegen und
+übernimmt Passwort, Gedächtnis und gekoppelte Geräte. Die Schritte stehen in den Release-Notes. Browser müssen danach
+einmal neu koppeln.
 
 ## Was wo liegt
 
@@ -169,9 +160,9 @@ Sprache **Deutsch oder Englisch** wählst du in der Einrichtung (Oberfläche: `U
 angebotene Stimmen ohne diese Freigabe (Alan, Ryan, Amy, Kerstin low, Thorsten high) stellt das Update automatisch um
 und löscht ihre Dateien; Details in `THIRD_PARTY_LICENSES.md`. 
 
-Optionales Weckwort in der App: Die openWakeWord-Dateien (`melspectrogram.tflite`, `embedding_model.tflite`,
-`hey_nuorb_v0.1.tflite`) können im Volume unter `nuorb/wakeword/` liegen; die App fragt sonst selbst beim
-offiziellen Projekt an.
+Weckwort „Hey NuOrb“: Die App bringt ihre Modelle selbst mit. Optional kann der Server sie liefern, wenn die Dateien
+(`frei_melspectrogram.tflite`, `frei_embedding_model.tflite`, `hey_nuorb_de.tflite`, `hey_nuorb_en.tflite`) im Volume
+unter `nuorb/wakeword/` liegen. Die App prüft jede Datei per Prüfsumme.
 
 ## Smart Home (optional)
 
@@ -273,9 +264,9 @@ Claude API, or both with automatic fallback.
 5. Open `https://<server-ip>:8444`, enter the code, set a password, follow the setup (language, brain), then
    “Pair device” → scan the QR code with the NuOrb app or enter the code at `https://<server-ip>:8443`.
 
-**Upgrading from v0.3.x or older:** since v0.4.0 project, service and container are called `nuorb`. Run
-`docker compose -p nuorb down` (without `-v`!), take the new `compose.yaml`, then `docker compose pull && docker compose up -d`.
-The new file keeps using the volumes `nuorb_data` / `nuorb_models`, so password, data and paired devices stay.
+**Upgrading from v0.6.x or older:** from v0.7.0 on, volumes, paths, environment variables and services are all named
+NuOrb. The migration script attached to release v0.7.0 moves an existing installation over. It makes a backup first,
+keeps the old data and takes over password, memory and paired devices. Browsers have to pair once more.
 
 **Smart home (optional):** off by default. Enter Home Assistant / ioBroker access under “Smart Home” in the admin panel (or put
 `/opt/data/smarthome.env` in place and set `NUORB_SMARTHOME=1`). Reading needs no confirmation, switching always shows a

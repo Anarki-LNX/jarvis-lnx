@@ -1,6 +1,6 @@
 // Admin – Sprache und Marke (vor admin.js geladen). Muster wie nuorb-ui: Schluessel = deutscher Originaltext,
 // Englisch aus I18N_EN (i18n-en.js). Schluessel mit {0}, {1} … sind Muster fuer Texte mit eingesetzten Werten
-// (auch Servermeldungen). Danach wird die Marke ersetzt: Platzhalter NuOrb -> Name des Assistenten, „Hey NuOrb“ -> Weckwort.
+// (auch Servermeldungen). Danach wird die Marke ersetzt: Platzhalter NUORB -> Name des Assistenten, „Hey NUORB“ -> Weckwort.
 // Uebersetzt wird automatisch alles, was im DOM landet (MutationObserver): Textknoten und title/placeholder/
 // aria-label/alt. Ausgenommen: Eingabefelder, <pre>/<code>, Diffs und alles unter [data-noi18n].
 // Sprache: eigene Wahl (localStorage) > Server-Einstellung ui_lang (de|en) > Browser-Sprache.
@@ -25,7 +25,7 @@
   const name = () => cfg.assistant_name || cfg.brand;
   const cap = (b) => (b === b.toUpperCase() ? b.charAt(0) + b.slice(1).toLowerCase() : b);
   const wake = () => cfg.wake_phrase || "Hey " + cap(name());
-  const brandify = (s) => String(s).replace(/Hey,? NuOrb/g, wake()).replace(/\bNuOrb\b/g, name());
+  const brandify = (s) => String(s).replace(/Hey,? NUORB/g, wake()).replace(/\bNUORB\b/g, name());
   const norm = (s) => String(s).replace(/\s+/g, " ").trim();
   const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 

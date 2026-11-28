@@ -17,7 +17,7 @@ let
     set -u
     export PATH=${lib.makeBinPath (with pkgs; [ coreutils gnugrep gawk procps util-linux networkmanager iproute2 iw systemd wireplumber nix ])}
     BL=$(ls -d /sys/class/backlight/* 2>/dev/null | head -1)
-    alsNuOrb() { runuser -u nuorb -- env XDG_RUNTIME_DIR=/run/user/1000 "$@"; }
+    alsNuorb() { runuser -u nuorb -- env XDG_RUNTIME_DIR=/run/user/1000 "$@"; }
     zahl() { case "$1" in ""|*[!0-9]*) return 1;; esac; [ "$1" -le 100 ]; }
     json_str() { [ -n "$1" ] && printf '"%s"' "$(printf '%s' "$1" | tr -d '"\\')" || printf null; }
     json_num() { case "$1" in ""|*[!0-9.-]*) printf null;; *) printf '%s' "$1";; esac; }
@@ -35,7 +35,7 @@ let
         up=$(cut -d. -f1 /proc/uptime)
         if ps -eo comm | grep -q epiphany; then kiosk=true; else kiosk=false; fi
         hell=""; [ -n "$BL" ] && hell=$(( $(cat $BL/brightness) * 100 / $(cat $BL/max_brightness) ))
-        vol=$(alsNuOrb wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{printf "%d", $2*100}')
+        vol=$(alsNuorb wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{printf "%d", $2*100}')
         gen=$(readlink /nix/var/nix/profiles/system | grep -o '[0-9]*' | tail -1)
         printf '{"akku_prozent":%s,"laedt":%s,"akku_temp":%s,"wlan_ssid":%s,"wlan_signal_dbm":%s,"ip":%s,"uptime_s":%s,"kiosk_laeuft":%s,"helligkeit_prozent":%s,"lautstaerke_prozent":%s,"nixos_generation":%s}\n' \
           "$(json_num "$cap")" "$laedt" "$(json_num "$t")" "$(json_str "$ssid")" "$(json_num "$dbm")" \
@@ -59,7 +59,7 @@ let
         ;;
       lautstaerke)
         zahl "''${2:-}" || { echo '{"ok":false,"fehler":"Wert 0-100"}'; exit 2; }
-        alsNuOrb wpctl set-volume @DEFAULT_AUDIO_SINK@ "$2%" && echo "{\"ok\":true,\"lautstaerke_prozent\":$2}"
+        alsNuorb wpctl set-volume @DEFAULT_AUDIO_SINK@ "$2%" && echo "{\"ok\":true,\"lautstaerke_prozent\":$2}"
         ;;
       bildschirm)
         [ -n "$BL" ] || { echo '{"ok":false,"fehler":"kein Backlight"}'; exit 1; }

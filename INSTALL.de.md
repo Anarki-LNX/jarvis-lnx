@@ -207,7 +207,7 @@ der `compose.yaml` die Zeile `image:` auf `anarkilnx/nuorb:${NUORB_VERSION:-late
 - **Sicherung:** `docker run --rm -v nuorb_data:/d -v "$PWD":/b debian tar czf /b/nuorb-data.tgz -C /d .`
 - **Deinstallation:** `curl -fsSL …/install.sh | bash -s -- --uninstall`: fragt vorher; Daten werden nur gelöscht,
   wenn du `LÖSCHEN` eintippst.
-- **Von v0.3.x oder älter** (Container `nuorb-nuorb-1`): einfach den Installationsbefehl ausführen, er findet
+- **Von v0.3.x oder älter** (Container `nuorb`): einfach den Installationsbefehl ausführen, er findet
   die alte Installation, übernimmt ihre Einstellungen und behält die Daten. Von Hand: `docker compose -p nuorb down`
   (**ohne** `-v`), dann die neue `compose.yaml` und `docker compose up -d`.
 

@@ -1,4 +1,4 @@
-/* NuOrb-Orb: CSS-Fallback + Zustandsfarben. Braucht tokens.css. Markup:
+/* NUORB-Orb: CSS-Fallback + Zustandsfarben. Braucht tokens.css. Markup:
    <div data-orb="css" data-state="idle"> … <div class="orb-wrap"><div class="orb-css">…</div><canvas id="orb"></canvas></div> */
 /* Letzter Fallback ohne WebGL/Canvas: CSS-Orb. Sichtbar, bis der Canvas-Selbsttest bestanden ist. */
 .orb-css { position: absolute; inset: 0; --c: 56, 217, 255; --lvl: 0; }

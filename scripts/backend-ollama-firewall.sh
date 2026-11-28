@@ -17,7 +17,6 @@
 #             sudo ufw allow 11434/tcp
 set -euo pipefail
 
-NUORB_SERVER_IP=${NUORB_SERVER_IP}
 
 [ "$(id -u)" -eq 0 ] || { echo "Bitte mit sudo ausführen."; exit 1; }
 

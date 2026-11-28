@@ -6,7 +6,7 @@
 set -euo pipefail
 D="${1:-$HOME/nuorb-ui/certs}"; mkdir -p "$D"; D="$(cd "$D" && pwd)"
 CA="$(cd "${CA_DIR:-$D}" && pwd)"; cd "$D"; umask 077
-IP="${NUORB_SERVER_IP:-${NUORB_SERVER_IP:?set NUORB_SERVER_IP or NUORB_SERVER_IP (address of this LXC)}}"
+IP="${NUORB_SERVER_IP:?set NUORB_SERVER_IP (address of this LXC)}"
 if [ ! -f "$CA/nuorb-ca.key" ]; then
   openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 3650 \
     -keyout "$CA/nuorb-ca.key" -out "$CA/nuorb-ca.crt" -subj "/CN=NuOrb Heim-CA/O=Xiaomi Rebirth" \

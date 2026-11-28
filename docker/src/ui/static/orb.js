@@ -18,7 +18,7 @@
  * OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
  * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-/* NuOrb-Orb: ein Fragment-Shader auf einem quadratischen Canvas (WebGL1, highp wenn vorhanden).
+/* NUORB-Orb: ein Fragment-Shader auf einem quadratischen Canvas (WebGL1, highp wenn vorhanden).
  * Wichtig: mediump ist auf Adreno/freedreno echtes fp16 (max ~65504) – die Simplex-Noise laeuft dort ueber
  * und liefert NaN -> unsichtbarer Orb. Deshalb highp, Selbsttest per readPixels und Fallback-Kette
  * WebGL -> Canvas 2D -> CSS-Orb ([data-orb]).

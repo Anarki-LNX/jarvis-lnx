@@ -1,4 +1,4 @@
-"""NuOrb-Verwaltung: Einstellungs-Web-UI für Hermes/NuOrb (HTTPS :8444, nur LAN, Login).
+"""NUORB-Verwaltung: Einstellungs-Web-UI für Hermes/NUORB (HTTPS :8444, nur LAN, Login).
 
 Grundsaetze
 - Jede Dateiaenderung läuft über denselben Weg: Vorschau (Diff) -> Bestätigung -> Sicherung -> atomar schreiben
@@ -65,7 +65,7 @@ UNITS = {  # Anzeige-Name -> systemd-Unit (Whitelist, identisch im root-Helfer)
     "admin": "nuorb-admin.service",
 }
 UNIT_LABELS = {"hermes": "Hermes-Gateway (Gehirn-Anbindung)", "stt": "Spracherkennung (Parakeet)",
-               "ui": "NuOrb-Oberfläche (Handy)", "admin": "Verwaltung (diese Seite)"}
+               "ui": "NUORB-Oberfläche (Handy)", "admin": "Verwaltung (diese Seite)"}
 ALLOWED_NETS = [ipaddress.ip_network(n) for n in os.environ.get(
     "ADMIN_ALLOWED_NETS", "127.0.0.0/8,::1/128,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12").split(",")]
 
@@ -283,7 +283,7 @@ def new_session(ip: str) -> str:
 
 
 def session_of(request: Request) -> dict | None:
-    tok = request.cookies.get("ja_sess", "")
+    tok = request.cookies.get("nuorb_sess", "")
     if not tok:
         return None
     key = hashlib.sha256(tok.encode()).hexdigest()
@@ -295,7 +295,7 @@ def session_of(request: Request) -> dict | None:
 
 
 def set_cookie(resp: Response, tok: str) -> None:
-    resp.set_cookie("ja_sess", tok, max_age=SESSION_HOURS * 3600, httponly=True, secure=True, samesite="strict", path="/")
+    resp.set_cookie("nuorb_sess", tok, max_age=SESSION_HOURS * 3600, httponly=True, secure=True, samesite="strict", path="/")
 
 
 # ------------------------------------------------------------------ App + Middleware
@@ -413,11 +413,11 @@ async def auth_login(request: Request):
 
 @app.post("/api/auth/logout")
 async def auth_logout(request: Request):
-    tok = request.cookies.get("ja_sess", "")
+    tok = request.cookies.get("nuorb_sess", "")
     SESSIONS.pop(hashlib.sha256(tok.encode()).hexdigest(), None)
     save_sessions()
     resp = JSONResponse({"ok": True})
-    resp.delete_cookie("ja_sess", path="/")
+    resp.delete_cookie("nuorb_sess", path="/")
     return resp
 
 
@@ -444,7 +444,7 @@ async def auth_logout_all(request: Request):
     save_sessions()
     audit(who(request), "alle Sitzungen abgemeldet")
     resp = JSONResponse({"ok": True})
-    resp.delete_cookie("ja_sess", path="/")
+    resp.delete_cookie("nuorb_sess", path="/")
     return resp
 
 
@@ -1348,7 +1348,7 @@ async def skills_save(request: Request):
         raise HTTPException(400, "Die Beschreibung ist zu lang (max. 300 Zeichen).")
     if any(s["name"] == name for s in scan_skills()):
         raise HTTPException(409, f"Es gibt schon einen Skill namens {name}.")
-    fm = dict(name=name, description=desc, version="1.0.0", author="NuOrb-Verwaltung")
+    fm = dict(name=name, description=desc, version="1.0.0", author="NUORB-Verwaltung")
     buf = io.StringIO()
     YAML().dump(fm, buf)
     text = f"---\n{buf.getvalue()}---\n\n# {d.get('title') or name}\n\n{body_text}\n"
@@ -1401,7 +1401,7 @@ async def approvals_save(request: Request):
         ch["approvals.deny"] = pats or None
     danger = ""
     if ch.get("approvals.mode") == "off" or "approve" in (ch.get("approvals.cron_mode"), ch.get("approvals.unattended_mode")):
-        danger = "Achtung: Damit führt NuOrb gefährliche Befehle (z. B. Löschen) ohne Rückfrage aus."
+        danger = "Achtung: Damit führt NUORB gefährliche Befehle (z. B. Löschen) ohne Rückfrage aus."
     return config_preview(ch, "Bestätigungsregeln ändern", danger=danger)
 
 
@@ -1832,7 +1832,7 @@ async def export(request: Request):
                 z.writestr(f"nuorb-export/skills/{s['dir']}/SKILL.md",
                            read_text(HERMES_HOME / "skills" / s["dir"] / "SKILL.md"))
         z.writestr("nuorb-export/LIESMICH.txt",
-                   "Export der NuOrb-Verwaltung vom " + now_iso() + ".\nSchlüssel/Passwörter sind NICHT enthalten.\n")
+                   "Export der NUORB-Verwaltung vom " + now_iso() + ".\nSchlüssel/Passwörter sind NICHT enthalten.\n")
     audit(who(request), "Export heruntergeladen")
     fn = f"nuorb-export-{datetime.now():%Y%m%d-%H%M}.zip"
     return Response(buf.getvalue(), media_type="application/zip",

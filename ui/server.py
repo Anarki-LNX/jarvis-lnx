@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""XIAOMI REBIRTH / NuOrb – Web-Oberflaeche (Server).
+"""XIAOMI REBIRTH / NUORB – Web-Oberflaeche (Server).
 
 Laeuft auf nuorb (LXC 100) als Benutzer nuorb, HTTPS auf Port 8443, nur LAN.
 Liefert die statische App aus und ist der einzige Weg des Browsers zu:
@@ -52,7 +52,7 @@ ALLOWED_NETS = [ipaddress.ip_network(n) for n in os.environ.get(
     "UI_ALLOWED_NETS", "127.0.0.0/8,::1/128,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12").split(",")]
 
 PERSONA = (
-    "Du sprichst ueber die NuOrb-Sprachoberflaeche auf dem Handy des Nutzers. "
+    "Du sprichst ueber die NUORB-Sprachoberflaeche auf dem Handy des Nutzers. "
     "Antworte immer auf Deutsch und duze den Nutzer, knapp, natuerlich und gesprochen: meist ein bis drei Saetze, "
     "kein Markdown, keine Tabellen, keine Aufzaehlungszeichen, keine Emojis, keine URLs vorlesen. "
     "Uhrzeiten exakt nennen, in der Form 'zwoelf Uhr siebenundzwanzig'. Ton: ruhig, kompetent, mit einer "
@@ -150,7 +150,7 @@ async def lifespan(_app):
     await client.aclose()
 
 
-app = FastAPI(title="NuOrb UI", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
+app = FastAPI(title="NUORB UI", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
 _status_cache: dict = {"t": 0.0, "data": None}
 
 
