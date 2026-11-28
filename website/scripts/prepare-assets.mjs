@@ -1,6 +1,6 @@
 // Bereitet Assets für den Build vor – ohne Kopien im Git:
-//  - Orb (echte Produkt-Animation) aus ../ui/static/orb.{js,css}
-//  - Schriften + Lizenzen aus ../ui/static/fonts
+//  - Orb (echte Produkt-Animation) aus ../docker/src/ui/static/orb.{js,css}
+//  - Schriften + Lizenzen aus ../docker/src/ui/static/fonts
 //  - Screenshots aus NUORB_MEDIA_DIR/screenshots (aktuelle Oberfläche; die Repo-Bilder in docs/screenshots zeigen noch den alten Namen)
 //  - Demo-Videos aus NUORB_MEDIA_DIR (Standard: ../../Xiaomi/marketing/website/media) → public/media + src/data/media.json
 // Fehlende Medien brechen den Build nicht ab; die Demo zeigt dann einen ehrlichen Hinweis statt eines Videos.
