@@ -1513,7 +1513,31 @@
     let v = ""; try { v = typeof NATIVE.appVersion === "function" ? String(NATIVE.appVersion() || "").replace(/[^\w.\- ]/g, "").slice(0, 20) : ""; } catch (e) { /* egal */ }
     $("appVersion").textContent = v ? t("Installiert: {v}", { v }) : "";
     $("appUpdates").hidden = false;
-    $("appUpdates").addEventListener("click", () => { try { NATIVE.updatesSuchen(); } catch (e) { toast(t("Das hat nicht geklappt.")); } });
+    // App ab 1.4.0: updateStatus() {"zustand":"frei|pruefe|gesperrt","rest":s}. Eine Prüfung gleichzeitig, danach Sperre
+    // mit Restzeit. Ältere Apps ohne updateStatus(): wie bisher, die App meldet das Ergebnis selbst.
+    const upd = { timer: 0 };
+    const updStatus = () => {
+      if (typeof NATIVE.updateStatus !== "function") return null;
+      try { const r = NATIVE.updateStatus(); const s = typeof r === "string" ? JSON.parse(r) : r; return s && s.zustand ? s : null; } catch (e) { return null; }
+    };
+    const updRender = () => {
+      const s = updStatus(), btn = $("appUpdates"), txt = $("appUpdatesTxt");
+      if (!s) { btn.disabled = false; txt.textContent = t("Nach Updates suchen"); return false; }
+      const rest = Math.max(0, Math.round(Number(s.rest) || 0));
+      if (s.zustand === "pruefe") { btn.disabled = true; txt.textContent = t("Prüfe …"); return true; }
+      if (s.zustand === "gesperrt" && rest > 0) { btn.disabled = true; txt.textContent = t("Wieder möglich in {s} s", { s: rest }); return true; }
+      btn.disabled = false; txt.textContent = t("Nach Updates suchen"); return false;
+    };
+    const updWatch = () => {
+      clearInterval(upd.timer); let n = 0;
+      upd.timer = setInterval(() => { if (!updRender() || ++n > 180) clearInterval(upd.timer); }, 1000);
+    };
+    $("appUpdates").addEventListener("click", () => {
+      if ($("appUpdates").disabled) return;
+      try { NATIVE.updatesSuchen(); } catch (e) { toast(t("Das hat nicht geklappt.")); return; }
+      if (updRender()) updWatch();
+    });
+    if (updRender()) updWatch();
   }
   $("wakeRow").addEventListener("click", () => { if (!wakeAvailable()) toast(t("Weckwort kommt mit einem Update. Bis dahin: Orb antippen.")); });
   $("optWake").addEventListener("change", async () => {

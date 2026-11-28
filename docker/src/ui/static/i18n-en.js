@@ -377,6 +377,8 @@ window.I18N_EN = {
   "App-Einstellungen": "App settings",
   "Server, Kopplung, Sprache, Updates": "Server, pairing, language, updates",
   "Nach Updates suchen": "Check for updates",
+  "Prüfe …": "Checking …",
+  "Wieder möglich in {s} s": "Possible again in {s} s",
   "Installiert: {v}": "Installed: {v}",
   "Smart Home": "Smart home",
   "Smart Home schalten": "Smart home switch",
