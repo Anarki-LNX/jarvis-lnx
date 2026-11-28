@@ -1,4 +1,4 @@
-# NuOrb-Kiosk (Phosh variant). Needs ./nuorb-ca.crt = your home CA from ui/make-certs.sh (not in the repo).
+# NuOrb-Kiosk (Phosh variant). Needs ./nuorb-ca.crt = the home CA of your NuOrb server, from https://<server-ip>:8443/nuorb-ca.crt (not in the repo).
 #
 # Browser: Epiphany (WebKitGTK). Firefox 158 hat auf phoc einen Resize-Bug (Inhalt folgt der
 # Fenstergröße nicht, --kiosk greift nicht) – auf dem Gerät am 2026-11-24 per Screenshot bestätigt.

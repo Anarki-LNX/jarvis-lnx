@@ -1,6 +1,0 @@
-[Unit]
-Description=NuOrb-Verwaltung: freigegebene Dienste neu starten (Whitelist)
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/sbin/nuorb-admin-ctl

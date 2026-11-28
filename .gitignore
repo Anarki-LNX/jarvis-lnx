@@ -44,5 +44,3 @@ node_modules/
 
 # local screenshots / diagnostics
 diagnose/
-ui/screenshots/
-admin/screenshots/

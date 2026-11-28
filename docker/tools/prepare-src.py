@@ -7,7 +7,8 @@ wird nichts gebaut.
 
 Aufruf (vom Projektordner aus):  python3 docker/tools/prepare-src.py [--quelle PFAD]
   --quelle: Projektwurzel mit nuorb-ui/, nuorb-admin/, scripts/ (Standard: zwei Ebenen über diesem Skript).
-            Für das öffentliche Repo geht auch dessen Layout (ui/, admin/).
+            Das ist die private Arbeitskopie des Maintainers. Im öffentlichen Repo ist docker/src selbst die
+            Quelle (siehe SOURCES.md), dort wird dieses Skript nicht gebraucht.
 
 Jede Ersetzung MUSS greifen (sonst Abbruch), damit eine geänderte Quelle nicht still durchrutscht. Fällt eine
 Ersetzung weg, weil die Quelle sie nicht mehr braucht: Regel hier entfernen.
@@ -46,9 +47,9 @@ except ImportError:
 
 
 def quelle_layout(q: Path) -> dict[str, Path]:
-    if (q / "nuorb-ui").is_dir():
-        return {"ui": q / "nuorb-ui", "admin": q / "nuorb-admin", "stt": q / "scripts/sprache-stt-router.py", "scripts": q / "scripts"}
-    return {"ui": q / "ui", "admin": q / "admin", "stt": q / "scripts/sprache-stt-router.py", "scripts": q / "scripts"}
+    if not (q / "nuorb-ui").is_dir():
+        sys.exit(f"{q} hat kein nuorb-ui/. Im öffentlichen Repo ist docker/src schon die Quelle (SOURCES.md).")
+    return {"ui": q / "nuorb-ui", "admin": q / "nuorb-admin", "stt": q / "scripts/sprache-stt-router.py", "scripts": q / "scripts"}
 
 
 def kopieren(q: Path) -> None:

@@ -1,4 +1,0 @@
-fastapi==0.165.*
-uvicorn==0.54.*
-httpx==0.28.*
-ruamel.yaml>=0.18

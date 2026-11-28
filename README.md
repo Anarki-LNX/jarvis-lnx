@@ -172,45 +172,42 @@ Audio never leaves your network: recording happens on the phone, STT and TTS run
 
 ```
 docker/    the self-hosted server as one container (start here)  → docker/README.md
+  src/     server code of the voice UI, the admin panel, the STT router and the smart home tools
+  app/     container start, setup and helpers around it, tests in docker/tests/
+proxmox/   Proxmox VE LXC installer and template build  → docs/proxmox.md
 nixos/     phone NixOS configuration (flake, kiosk, device service, restricted SSH entry)  → nixos/README.md
-ui/        NuOrb UI: FastAPI server + orb web UI (static/), phone shell (phone/), test tools
-admin/     NuOrb admin: admin panel server + UI, privileged helper (ctl/) for service restarts
-scripts/   setup, build, deploy and test scripts (backend-*, handy-* = phone, sprache-* = voice, steuerung-* = control/MCP)
+scripts/   helper scripts from the phone and LXC build (backend-*, handy-* = phone, sprache-* = voice, steuerung-* = control/MCP)
 voice/     own-voice recording tools + sentence corpus (WIP)
-docs/      screenshots
+website/   the project website
+docs/      Proxmox guide, privacy notes, screenshots
 ```
 
+Where each part of the code comes from and where to change it: **[SOURCES.md](SOURCES.md)**.
 Comments and most docs inside the code are in German.
 
 ### Configuration
 
-All private LAN addresses were replaced by placeholders: `NUORB_SERVER_IP` (backend LXC), `PHONE_HOST`,
-`OLLAMA_HOST` (GPU PC), `PROXMOX_HOST`, `APT_CACHE_HOST`. See **[`config.env.example`](config.env.example)** for
-where each one is used. Shell scripts read them from the environment; for the phone build edit `nixos/site.nix`.
+The Docker server needs no address configuration (see [`docker/.env.example`](docker/.env.example)). For the phone
+and the helper scripts, all private LAN addresses were replaced by placeholders: `NUORB_SERVER_IP` (NuOrb server),
+`PHONE_HOST`, `OLLAMA_HOST` (GPU PC), `PROXMOX_HOST`, `APT_CACHE_HOST`. See
+**[`config.env.example`](config.env.example)** for where each one is used. Shell scripts read them from the
+environment, for the phone build edit `nixos/site.nix`.
 
-Nothing secret is in this repository. You create your own: SSH keys, the home CA (`ui/make-certs.sh`),
-the user password hash, the admin password (set on first login with a one-time code), API keys (entered in
-the admin panel, stored in `~/.hermes/.env` on the backend).
+Nothing secret is in this repository. NuOrb creates its home CA and certificates itself, the admin password is set
+on first login with a one-time code, API keys are entered in the admin panel.
 
-### Installation overview
+### Phone build overview
 
 > This is a hobby build log made reusable, not a one-click installer. Expect to adapt paths and names.
 
-1. **Backend LXC** (Debian 13): `scripts/nuorb-lxc-base.sh` (base packages, user `nuorb`), install Hermes Agent
-   as user `nuorb`, point it at Ollama. Optionally restrict Ollama's port to the LXC: `scripts/backend-ollama-firewall.sh`.
-2. **Voice chain:** `scripts/sprache-nuorb-setup.sh` (Piper + Parakeet), `scripts/sprache-stt-router.py` +
-   `.service` (OpenAI-compatible STT endpoint for Hermes on 127.0.0.1:8178).
-3. **Certificates:** `ui/make-certs.sh` on the LXC → home CA + server certs for :8443/:8444.
-4. **UI:** `ui/deploy.sh` (rsync to the LXC, venv, `nuorb-ui.service`). Has a demo mode (`NUORB_MODE=demo`).
-5. **Admin panel:** `admin/deploy.sh` (+ `admin/ctl/` path-unit helper for restarts). First login asks for a
-   one-time setup code printed on the server.
-6. **MCP tools for Hermes:** `scripts/steuerung-geraet-install.sh` (device intents), optional
-   `scripts/steuerung-claude-*` (Claude fallback, "ask Claude" project tool, limited budget).
-7. **Phone:** unlock the bootloader, build and flash NixOS, see [`nixos/README.md`](nixos/README.md). Later updates:
+1. **Server:** install NuOrb with the installer, Docker Compose or the Proxmox LXC (see above).
+2. **Phone:** unlock the bootloader, build and flash NixOS, see [`nixos/README.md`](nixos/README.md). Copy the home
+   CA from `https://<server-ip>:8443/nuorb-ca.crt` to `nixos/nuorb-ca.crt` first. Later updates:
    `scripts/handy-deploy.sh` over Wi-Fi.
 
-Note: the Hermes gateway unit name (`hermes-gateway-<id>.service`) is instance-specific; adjust it in
-`admin/server.py` and `admin/ctl/nuorb-admin-ctl.sh`.
+Up to v0.7.0 the repository also had the old manual LXC setup without Docker (`ui/`, `admin/`, deploy scripts and
+systemd units). These were outdated copies of the code in `docker/src` and were removed in v0.7.1. They are still
+in the [v0.7.0 tag](https://github.com/Anarki-LNX/nuorb/tree/v0.7.0) for reference.
 
 ### Safety notes: read before touching your phone
 

@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
-# XIAOMI REBIRTH / NuOrb: lokale deutsche Sprachkette fuer Hermes in LXC 100 "nuorb" (nur CPU).
+# XIAOMI REBIRTH / NuOrb: lokale deutsche Sprachkette fuer Hermes im Backend-LXC (nur CPU).
 #   TTS: Piper + thorsten (CC0)
 #   STT: Parakeet-TDT-0.6B-v3 int8 (sherpa-onnx) im residenten STT-Router (127.0.0.1:8178, OpenAI-kompatibel)
 #        Reserve: faster-whisper small im Hermes-Prozess (STT_WEG=whisper)
 #   Edge TTS: aus
 # Laeuft als Benutzer nuorb (kein root, kein sudo), idempotent. Die systemd-Unit des Routers
-# installiert root einmalig (siehe scripts/sprache-stt-router.service).
+# installiert root einmalig (Vorlage scripts/sprache-stt-router.service im Tag v0.7.0).
+# Altes Setup ohne Docker. Der STT-Router steht heute in docker/src/stt/stt_router.py.
 # Aufruf vom PC:
-#   scp -i ~/.ssh/id_ed25519_nuorb scripts/sprache-nuorb-setup.sh scripts/sprache-stt-router.py root@${NUORB_SERVER_IP}:/tmp/
-#   ssh -i ~/.ssh/id_ed25519_nuorb root@${NUORB_SERVER_IP} 'su - nuorb -c "bash /tmp/sprache-nuorb-setup.sh"'
+#   scp scripts/sprache-nuorb-setup.sh root@${NUORB_SERVER_IP}:/tmp/
+#   scp docker/src/stt/stt_router.py root@${NUORB_SERVER_IP}:/tmp/sprache-stt-router.py
+#   ssh root@${NUORB_SERVER_IP} 'su - nuorb -c "bash /tmp/sprache-nuorb-setup.sh"'
 # Variablen (optional): STIMME=de_DE-thorsten-medium|high  STT_MODELL=whisper-small  STT_WEG=router|whisper
 set -euo pipefail
 STIMME=${STIMME:-de_DE-thorsten-medium}

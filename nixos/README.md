@@ -21,8 +21,8 @@ and ElXreno's mainline kernel branch `courbet-7.3`.
 |---|---|
 | `nuorb.hash` | `mkpasswd -m sha-512 > nuorb.hash` (password/PIN of user `nuorb`) |
 | `ssh-nuorb.pub` | your own SSH public key (root + nuorb) |
-| `admin-handy.pub` | public key of the admin panel's phone key (`admin/` creates it on the backend); optional, the module skips it if absent |
-| `nuorb-ca.crt` | home CA certificate created by `ui/make-certs.sh` on the backend |
+| `admin-handy.pub` | public key of the admin panel's phone key (created by the old LXC admin panel, see the v0.7.0 tag); optional, the module skips it if absent |
+| `nuorb-ca.crt` | home CA certificate of your NuOrb server, download it from `https://<server-ip>:8443/nuorb-ca.crt` |
 | `firmware/a615_zap.mbn`, `firmware/ipa_fws.mbn` | proprietary Qualcomm blobs: extract them from **your own** device's vendor partition. They are not redistributable and therefore not included. |
 
 Note: a flake only sees files that are tracked by git (or use a `path:` flake reference / a copy outside git).

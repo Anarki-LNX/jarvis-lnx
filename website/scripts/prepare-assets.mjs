@@ -19,18 +19,18 @@ const log = (...a) => console.log("[assets]", ...a);
 mkdirSync(join(pub, "orb"), { recursive: true });
 // Kommentare werden entfernt (sie enthalten interne Projekt-Bezeichner), außer Lizenzhinweisen; der Code bleibt unverändert.
 for (const f of ["orb.js", "orb.css"]) {
-  let src = readFileSync(join(repo, "ui/static", f), "utf8");
+  let src = readFileSync(join(repo, "docker/src/ui/static", f), "utf8");
   // Blockkommentare entfernen (orb.js/orb.css enthalten keine "/*" in Strings) – Lizenz-/Copyright-Hinweise bleiben erhalten
   src = src.replace(/\/\*[\s\S]*?\*\//g, (c) => (/copyright|license/i.test(c) ? c : ""));
   if (f.endsWith(".js")) src = src.replace(/^[ \t]*\/\/.*\n/gm, ""); // reine Zeilenkommentare (auch GLSL)
   src = src.replace(/^\s*\n/, "");
-  writeFileSync(join(pub, "orb", f), `/* NuOrb orb – ui/static/${f} from https://github.com/Anarki-LNX/nuorb (MIT) */\n` + src);
+  writeFileSync(join(pub, "orb", f), `/* NuOrb orb – docker/src/ui/static/${f} from https://github.com/Anarki-LNX/nuorb (MIT) */\n` + src);
 }
-log("orb.js/orb.css aus ui/static übernommen");
+log("orb.js/orb.css aus docker/src/ui/static übernommen");
 
 // 2) Schriften
 mkdirSync(join(pub, "fonts"), { recursive: true });
-for (const f of readdirSync(join(repo, "ui/static/fonts"))) cpSync(join(repo, "ui/static/fonts", f), join(pub, "fonts", f));
+for (const f of readdirSync(join(repo, "docker/src/ui/static/fonts"))) cpSync(join(repo, "docker/src/ui/static/fonts", f), join(pub, "fonts", f));
 log("Schriften übernommen");
 
 // 4) Demo-Medien aus dem Manifest der Video-Sitzung. Normalisiert auf:
