@@ -157,6 +157,52 @@ class ReleaseDateien(unittest.TestCase):
                 self.assertEqual(r.returncode, 0, r.stderr)
                 self.assertIn("WEITER", r.stdout)
 
+    def ohne_docker_path(self) -> str:
+        """PATH mit allen Programmen aus /usr/bin außer docker und den Proxmox-Werkzeugen: beide Skripte halten so
+        an derselben Stelle an, ohne etwas zu installieren."""
+        d = T / "bin-ohne-docker"
+        if not d.exists():
+            d.mkdir()
+            for p in Path("/usr/bin").iterdir():
+                if not (p.name.startswith("docker") or p.name in ("pct", "pveam", "pvesm", "pvesh", "pveversion")):
+                    (d / p.name).symlink_to(p)
+        return str(d)
+
+    def gleiches_ergebnis(self, datei: Path, name: str, args: list[str]):
+        tag = "v9.9.4"
+        z = T / "srv" / "download" / tag
+        z.mkdir(parents=True, exist_ok=True)
+        text = datei.read_text()
+        self.assertIn('\nNUORB_RELEASE=""\n', text)
+        (z / name).write_text(text.replace('\nNUORB_RELEASE=""\n', f'\nNUORB_RELEASE="{tag}"\n', 1))
+        (z / "SHA256SUMS").write_text(f"{hashlib.sha256((z / name).read_bytes()).hexdigest()}  {name}\n")
+        alt = T / f"main-{name}"     # wie vom Branch main geladen: ohne Tag, nicht in einem Checkout
+        alt.write_text(text)
+        env = {**os.environ, "NUORB_DL_BASE": self.base, "HOME": str(T), "LANG": "C.UTF-8", "TMPDIR": str(T),
+               "PATH": self.ohne_docker_path()}
+        vorher, Handler.latest = Handler.latest, tag
+        try:
+            a = subprocess.run(["bash", str(alt), *args], env=env, capture_output=True, text=True, timeout=60, stdin=subprocess.DEVNULL)
+            b = subprocess.run(["bash", str(z / name), *args], env=env, capture_output=True, text=True, timeout=60, stdin=subprocess.DEVNULL)
+        finally:
+            Handler.latest = vorher
+        self.assertEqual(a.returncode, b.returncode, a.stderr + b.stderr)
+        self.assertTrue((a.stdout + a.stderr).endswith(b.stdout + b.stderr) or b.stderr.strip() in a.stderr, (a.stdout, a.stderr, b.stdout, b.stderr))
+        self.assertTrue(b.stderr.strip() or b.stdout.strip(), "das Skript hat etwas ausgegeben")
+        return a, b
+
+    def test_alter_einzeiler_install_sh(self):
+        a, b = self.gleiches_ergebnis(INSTALL, "install.sh", ["--yes", "--lang", "de", "--dir", str(T / "nie")])
+        self.assertIn("v9.9.4", a.stdout + a.stderr)
+        self.assertIn("Docker", b.stderr)
+        self.assertFalse((T / "nie").exists())
+
+    @unittest.skipUnless(PROXMOX, "proxmox/ nur im öffentlichen Repo")
+    def test_alter_einzeiler_nuorb_lxc(self):
+        assert PROXMOX is not None
+        a, b = self.gleiches_ergebnis(PROXMOX / "nuorb-lxc.sh", "nuorb-lxc.sh", ["--yes", "--lang", "de"])
+        self.assertIn("root", b.stderr)
+
     def test_skript_laedt_nichts_vom_branch(self):
         text = INSTALL.read_text()
         self.assertNotIn("raw.githubusercontent.com", text)

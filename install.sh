@@ -82,6 +82,7 @@ NuOrb server installer (install, update, repair)
 EOF
 }
 
+ORIG_ARGS=("$@")
 while [ $# -gt 0 ]; do
   case "$1" in
     --dir) DIR="$2"; shift ;;
@@ -259,6 +260,23 @@ release_file() {   # release_file NAME DEST: aus dem Release laden und gegen SHA
               "$name passt nicht zu SHA256SUMS von $RELEASE. Es wurde nichts geändert, bitte melden.")"
   fi
   mv "$dest.tmp" "$dest"
+}
+
+# ------------------------------------------------------------------ bootstrap (old one-liner from the main branch)
+# Die Datei auf dem Branch main hat kein Release-Tag eingetragen. Aufgerufen über den alten Einzeiler (Rohdatei vom
+# Branch main) lädt sie die install.sh des neuesten (oder mit --release gewählten) Releases, prüft sie gegen
+# dessen SHA256SUMS und führt sie mit denselben Argumenten aus. So liefern alter und neuer Einzeiler dasselbe Ergebnis.
+bootstrap() {
+  [ -z "$NUORB_RELEASE" ] || return 0                      # Release-Fassung: nichts zu tun
+  [ -z "$SOURCE" ] || return 0                             # Entwicklung mit lokalem docker/-Ordner
+  [ "${NUORB_NO_BOOTSTRAP:-}" = 1 ] && return 0
+  [ -f "$(dirname -- "$0")/docker/compose.yaml" ] && return 0   # aus einem Checkout des Repos gestartet
+  resolve_release
+  local tmp
+  tmp=$(mktemp -d "${TMPDIR:-/tmp}/nuorb-install.XXXXXX")
+  release_file install.sh "$tmp/install.sh"
+  ok "$(t "install.sh of release $RELEASE, checksum ok" "install.sh aus Release $RELEASE, Prüfsumme ok")"
+  exec bash "$tmp/install.sh" "${ORIG_ARGS[@]}"
 }
 
 # ------------------------------------------------------------------ installation from before v0.7.0
@@ -588,6 +606,7 @@ finish() {
 # ------------------------------------------------------------------ main
 # Für Tests: nur die Funktionen laden (NUORB_LIB_ONLY=1 source install.sh)
 if [ "${NUORB_LIB_ONLY:-}" = 1 ]; then return 0 2>/dev/null || exit 0; fi
+bootstrap
 printf '%sNuOrb%s · %s\n' "$B" "$N" "$(t "self-hosted voice assistant · installer" "selbst gehosteter Sprachassistent · Installation")"
 check_docker
 old_install_check

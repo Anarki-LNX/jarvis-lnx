@@ -95,6 +95,7 @@ EOF
 
 # ------------------------------------------------------------------ arguments
 need_arg() { [ $# -ge 2 ] && [ -n "$2" ] || die "$(t "Option $1 needs a value." "Option $1 braucht einen Wert.")"; }
+ORIG_ARGS=("$@")
 while [ $# -gt 0 ]; do
   case "$1" in
     install) CMD=install ;;
@@ -330,6 +331,21 @@ release_file() {   # release_file NAME DEST
   fi
 }
 
+# Bootstrap: the file on the main branch has no release tag written in. Called through the old one-liner
+# (raw file from the main branch) it loads nuorb-lxc.sh of the newest release, checks it
+# against SHA256SUMS and runs it with the same arguments, so old and new one-liner give the same result.
+bootstrap() {
+  [ -z "$NUORB_RELEASE" ] || return 0
+  [ "${NUORB_NO_BOOTSTRAP:-}" = 1 ] && return 0
+  local here; here=$(dirname -- "${BASH_SOURCE[0]:-$0}")
+  [ -r "$here/ct-setup.sh" ] && return 0     # started from a checkout
+  resolve_release
+  local tmp
+  tmp=$(mktemp -d -p /var/tmp nuorb-lxc-boot.XXXXXX)
+  release_file nuorb-lxc.sh "$tmp/nuorb-lxc.sh"
+  exec bash "$tmp/nuorb-lxc.sh" "${ORIG_ARGS[@]}"
+}
+
 # ct-setup.sh and install.sh: next to this script in a checkout (development, tests), otherwise from the release
 fetch_scripts() {
   [ -n "$WORK" ] && [ -r "$WORK/install.sh" ] && return 0
@@ -494,6 +510,7 @@ cmd_update() {
 # For tests: load the functions only (NUORB_LIB_ONLY=1 source nuorb-lxc.sh)
 # shellcheck disable=SC2317  # exit is reached when the file is run instead of sourced
 if [ "${NUORB_LIB_ONLY:-}" = 1 ]; then trap - EXIT ERR; return 0 2>/dev/null || exit 0; fi
+bootstrap
 printf '%sNuOrb%s · %s\n' "$B" "$N" "$(t "self-hosted voice assistant · Proxmox VE container" "selbst gehosteter Sprachassistent · Proxmox-VE-Container")"
 check_host
 if [ "$CMD" = auto ]; then
