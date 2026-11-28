@@ -2,9 +2,10 @@
 # Basis: offizielles Hermes-Agent-Image (s6-überwacht, Benutzer hermes, Daten unter /opt/data).
 # Darauf: NuOrb-Oberfläche (:8443), Admin-Panel (:8444), STT-Router mit Parakeet (CPU) und Piper-TTS.
 # Modelle und Stimmen werden beim ersten Start ins Volume /opt/models geladen, nicht ins Image gebacken.
-ARG HERMES_IMAGE=nousresearch/hermes-agent:v0.23.4
+# Basis-Images per Digest festgelegt (Tag zur Lesbarkeit, Digest zählt). Dependabot schlägt Updates vor.
+ARG HERMES_IMAGE=nousresearch/hermes-agent:v0.23.4@sha256:ef0650d523ee1b5ab32c779acabc446d9936869a9932591553688a62bcf0c42f
 
-FROM busybox:1.37 AS files
+FROM busybox:1.37@sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec AS files
 COPY src/ui/ /f/opt/nuorb/ui/
 COPY src/admin/ /f/opt/nuorb/admin/
 COPY src/stt/ /f/opt/nuorb/stt/

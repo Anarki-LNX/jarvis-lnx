@@ -1,0 +1,17 @@
+# Updates für gepinnte Abhängigkeiten als Pull Requests (Tests laufen in der CI, nichts wird automatisch gemergt).
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /docker
+    schedule: {interval: weekly}
+    open-pull-requests-limit: 5
+  - package-ecosystem: pip
+    directory: /docker/tests
+    schedule: {interval: weekly}
+    open-pull-requests-limit: 3
+  - package-ecosystem: docker
+    directory: /docker
+    schedule: {interval: weekly}
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: {interval: weekly}

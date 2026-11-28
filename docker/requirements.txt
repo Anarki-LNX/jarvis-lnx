@@ -10,6 +10,6 @@ piper-tts==1.8.0
 onnxruntime==1.32.0
 sherpa-onnx==2.0.3
 numpy==2.5.5
-cryptography
-segno
-zeroconf
+cryptography==50.0.2
+segno==1.6.6
+zeroconf==0.154.0
