@@ -120,7 +120,8 @@ check "template list updated and Debian 12 downloaded (newest)" called 'pveam do
 check "pct create with spec defaults" called 'pct create 105 local:vztmpl/debian-12-standard_12\.12-1_amd64\.tar\.zst --hostname nuorb --ostype debian --unprivileged 1 --features nesting=1,keyctl=1 --cores 4 --memory 6144 --swap 512 --rootfs local-lvm:24 --net0 name=eth0,bridge=vmbr0,ip=dhcp --onboot 1 --timezone host --tags nuorb'
 check "container started" called '^pct start 105$'
 check "ct-setup.sh copied and run" called 'pct push 105 .*ct-setup\.sh /root/ct-setup\.sh'
-check "install.sh: --yes, no firewall, lang, IP, no brain, ports" called "nuorb-install\.sh.* _ https://raw\.githubusercontent\.com/Anarki-LNX/nuorb/main/install\.sh en 192\.168\.1\.50 none 8443,8444"
+check "install.sh copied into the container (no download from a branch)" called 'pct push 105 .*/install\.sh /root/nuorb-install\.sh'
+check "install.sh: --yes, no firewall, lang, IP, no brain, ports" called "nuorb-install\.sh --yes --no-firewall --lang en --ip 192\.168\.1\.50 --llm none --ports 8443,8444"
 check "summary with admin URL and setup code" said 'https://192\.168\.1\.50:8444'
 check "summary shows setup code" said 'K7QP-3XMD'
 check "summary mentions pairing" said 'NuOrb app'
@@ -131,7 +132,7 @@ runit MOCK_TEMPLATE=1 -- --yes --lang de --ctid 120 --hostname orb --cores 2 --r
 check "options: ends with 0" rc_is 0
 check "existing template used, nothing downloaded" not_called 'pveam (download|update)'
 check "options reach pct create" called 'pct create 120 local:vztmpl/debian-12-standard_12\.7-1_amd64\.tar\.zst --hostname orb .* --cores 2 --memory 4096 .* --rootfs tank:16 --net0 name=eth0,bridge=vmbr1,ip=192\.168\.1\.60/24,gw=192\.168\.1\.1,tag=20 '
-check "static IP, language, brain URL and ports reach install.sh" called 'install\.sh de 192\.168\.1\.60 http://192\.168\.1\.50:11434 9443,9444'
+check "static IP, language, brain URL and ports reach install.sh" called 'install\.sh --yes --no-firewall --lang de --ip 192\.168\.1\.60 --llm http://192\.168\.1\.50:11434 --ports 9443,9444'
 check "German texts" said 'läuft in Container 120'
 check "no DHCP tip with a static IP" bash -c "! grep -q 'DHCP-Reservierung' '$OUT'"
 
@@ -173,7 +174,7 @@ check "failed install.sh: exit code not 0 and log named" bash -c "[ $RC != 0 ] &
 # ------------------------------------------------------------------ update
 runit MOCK_CTS="110,running,nuorb 111,running,web" MOCK_NUORB_IDS=110 MOCK_HAS_UPDATE=1 -- --yes
 check "re-run with one NuOrb container updates it" bash -c "[ $RC = 0 ]"
-check "update runs /usr/local/bin/update in 110" called 'pct exec 110 -- env NUORB_REF=main /usr/local/bin/update'
+check "update runs /usr/local/bin/update in 110" called 'pct exec 110 -- env NUORB_RELEASE= /usr/local/bin/update'
 check "update creates nothing" not_called 'pct create'
 runit MOCK_CTS="110,running,nuorb" MOCK_NUORB_IDS=110 -- update
 check "update without update command installs it first" called 'pct push 110 .*ct-setup\.sh'
@@ -192,7 +193,7 @@ if command -v script >/dev/null; then
   A=$(answers std de standard yes)
   runtty "$A" --
   check "dialog standard: ends with 0" rc_is 0
-  check "dialog standard: language asked, German chosen" bash -c "grep -q 'Language / Sprache' '$MOCK_LOG' && grep -q 'install\.sh de ' '$MOCK_LOG'"
+  check "dialog standard: language asked, German chosen" bash -c "grep -q 'Language / Sprache' '$MOCK_LOG' && grep -q 'install\.sh .*--lang de ' '$MOCK_LOG'"
   check "dialog standard: defaults created" called '--cores 4 --memory 6144 --swap 512 --rootfs local-lvm:24'
 
   A=$(answers adv en advanced 140 orb2 6 8192 32 tank vmbr0 192.168.1.70/24 192.168.1.1 = 8443,8444 http://192.168.1.50:8080 yes)
@@ -200,7 +201,7 @@ if command -v script >/dev/null; then
   check "dialog advanced: ends with 0" rc_is 0
   check "dialog advanced: values reach pct create" called 'pct create 140 .* --hostname orb2 .* --cores 6 --memory 8192 .* --rootfs tank:32 --net0 name=eth0,bridge=vmbr0,ip=192\.168\.1\.70/24,gw=192\.168\.1\.1 '
   check "dialog advanced: bridge menu without firewall bridges" bash -c "grep -q 'Network bridge.* vmbr1 ' '$MOCK_LOG' && ! grep -q 'fwbr' '$MOCK_LOG'"
-  check "dialog advanced: brain URL reaches install.sh" called 'install\.sh en 192\.168\.1\.70 http://192\.168\.1\.50:8080 8443,8444'
+  check "dialog advanced: brain URL reaches install.sh" called 'install\.sh --yes --no-firewall --lang en --ip 192\.168\.1\.70 --llm http://192\.168\.1\.50:8080 --ports 8443,8444'
 
   A=$(answers cancel en '!cancel')
   runtty "$A" --
@@ -230,6 +231,7 @@ else
 fi
 
 # ------------------------------------------------------------------ texts
+check "no download from a branch in the Proxmox scripts" bash -c "! grep -nE 'raw\.githubusercontent|/main/' '$HERE/../nuorb-lxc.sh' '$HERE/../ct-setup.sh' '$HERE/../build-template.sh'"
 check "no en or em dashes in the Proxmox scripts" bash -c "! grep -nP '[\\x{2013}\\x{2014}]' '$HERE/../nuorb-lxc.sh' '$HERE/../ct-setup.sh' '$HERE/../build-template.sh' 2>/dev/null"
 check "no private addresses (only 192.168.1.x examples)" bash -c "! grep -nE '\b(10|172\.(1[6-9]|2[0-9]|3[01])|192\.168)\.[0-9]+\.[0-9]+' '$HERE/../nuorb-lxc.sh' '$HERE/../ct-setup.sh' | grep -vE '192\.168\.1\.(1|50|255)\b'"
 

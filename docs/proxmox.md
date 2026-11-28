@@ -39,7 +39,7 @@ a Docker container inside the CT. The one-liner sets them for you; with the temp
 Open the shell of your Proxmox **host** (web UI: click the node, then *Shell*, or SSH as root) and run:
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/proxmox/nuorb-lxc.sh)"
+bash -c "$(curl -fsSL https://github.com/Anarki-LNX/nuorb/releases/latest/download/nuorb-lxc.sh)"
 ```
 
 Run it on the host, not inside an existing container or VM.
@@ -67,7 +67,7 @@ The whole run takes about 5 to 10 minutes, mostly downloads. Everything is logge
 All settings are also available as options. Add `_` and the options after the command:
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/proxmox/nuorb-lxc.sh)" _ --yes --ctid 120
+bash -c "$(curl -fsSL https://github.com/Anarki-LNX/nuorb/releases/latest/download/nuorb-lxc.sh)" _ --yes --ctid 120
 ```
 
 | Option | Meaning |

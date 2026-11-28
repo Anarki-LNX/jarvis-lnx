@@ -3,7 +3,7 @@
 **Your own private voice assistant, self-hosted in one Docker container, used from your phone.**
 
 **→ [Install guide](INSTALL.md) · [Installationsanleitung](INSTALL.de.md) · [▶ Video tutorial](https://youtu.be/NO66dwKtCvg) · [▶ Video-Anleitung (DE)](https://youtu.be/xUsvfRHpvc8) · [Contributing](CONTRIBUTING.md) · [AI declaration](AI_DECLARATION.md)**. One command:
-`curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/install.sh | bash`
+`curl -fsSL https://github.com/Anarki-LNX/nuorb/releases/latest/download/install.sh | bash`
 
 Image (amd64, arm64): `ghcr.io/anarki-lnx/nuorb` · also on [Docker Hub](https://hub.docker.com/r/anarkilnx/nuorb): `anarkilnx/nuorb`
 
@@ -32,7 +32,7 @@ Audio is processed on your server; nothing is sent anywhere unless you choose a 
 | **4. Pair** | Admin panel → *Pair device* → scan the QR code with the app. Done. |
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/install.sh | bash
+curl -fsSL https://github.com/Anarki-LNX/nuorb/releases/latest/download/install.sh | bash
 # checks Docker and the firewall, asks 2-3 questions, starts NuOrb and shows the admin address + setup code
 ```
 
@@ -47,7 +47,7 @@ curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/install.sh | 
 On Proxmox VE, in the host shell:
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/proxmox/nuorb-lxc.sh)"
+bash -c "$(curl -fsSL https://github.com/Anarki-LNX/nuorb/releases/latest/download/nuorb-lxc.sh)"
 ```
 
 **You need:** Docker with Compose v2 (not for the Proxmox LXC), ~4 GB free RAM, ~8 GB disk, internet once for the speech models (~530 MB),
@@ -278,7 +278,7 @@ eigenen **Ollama** oder **Claude** (oder beidem, umschaltbar). Bedient wird per 
 oder Browser im Heimnetz. Der Assistent heißt **NuOrb** („Nu-Orb“), stellt sich beim ersten Start vor
 („Mein Schöpfer hat mich NuOrb getauft …“) und lässt sich jederzeit umbenennen. Container starten, Einrichtung im Admin-Panel, Smartphone per QR-Code koppeln. Fertig.
 Umstieg von v0.3.x: `docker compose -p nuorb down` (ohne `-v`), neue `compose.yaml` holen, `docker compose up -d`. Daten bleiben.
-Installation mit einem Befehl: `curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/install.sh | bash -s -- --lang de`. Anleitung: [INSTALL.de.md](INSTALL.de.md).
+Installation mit einem Befehl: `curl -fsSL https://github.com/Anarki-LNX/nuorb/releases/latest/download/install.sh | bash -s -- --lang de`. Anleitung: [INSTALL.de.md](INSTALL.de.md).
 Auf **Proxmox VE** gibt es NuOrb auch als fertiges LXC (Einzeiler in der Host-Shell oder Template zum Herunterladen): [docs/proxmox.de.md](docs/proxmox.de.md).
 
 | Weg | Für wen |

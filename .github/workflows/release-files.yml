@@ -1,0 +1,52 @@
+# Attaches the installer files to every release, with SHA256SUMS over all of them:
+#   install.sh, nuorb-lxc.sh, ct-setup.sh (each with the release tag written in), compose.yaml, env.example, README.md
+# The scripts download only from their own release and stop if a file does not match SHA256SUMS.
+# One-liners: https://github.com/Anarki-LNX/nuorb/releases/latest/download/install.sh (or nuorb-lxc.sh)
+# If the release for the tag does not exist yet, a draft is created; publish it with the release notes as usual.
+name: release-files
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+concurrency:
+  group: release-files-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  files:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Collect files and write the release tag into the scripts
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.+~-][0-9A-Za-z.]+)?$ ]]; then echo "::error::invalid tag $TAG"; exit 1; fi
+          mkdir -p dist
+          cp install.sh proxmox/nuorb-lxc.sh proxmox/ct-setup.sh docker/compose.yaml docker/README.md dist/
+          cp docker/.env.example dist/env.example
+          for f in dist/install.sh dist/nuorb-lxc.sh; do
+            grep -q '^NUORB_RELEASE=""$' "$f" || { echo "::error::$f has no NUORB_RELEASE line"; exit 1; }
+            sed -i "s/^NUORB_RELEASE=\"\"$/NUORB_RELEASE=\"$TAG\"/" "$f"
+          done
+          (cd dist && sha256sum install.sh nuorb-lxc.sh ct-setup.sh compose.yaml env.example README.md > SHA256SUMS)
+          cat dist/SHA256SUMS
+          {
+            echo "### Installer files for $TAG"
+            echo '```'
+            cat dist/SHA256SUMS
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 \
+            || gh release create "$TAG" --draft --verify-tag --title "NuOrb $TAG" --notes "Release notes follow." \
+            || gh release view "$TAG" >/dev/null
+          cd dist
+          gh release upload "$TAG" --clobber install.sh nuorb-lxc.sh ct-setup.sh compose.yaml env.example README.md SHA256SUMS

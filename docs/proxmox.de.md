@@ -41,7 +41,7 @@ CT als Docker-Container läuft. Der Einzeiler setzt sie selbst; beim Template ha
 und führe aus:
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/proxmox/nuorb-lxc.sh)"
+bash -c "$(curl -fsSL https://github.com/Anarki-LNX/nuorb/releases/latest/download/nuorb-lxc.sh)"
 ```
 
 Auf dem Host ausführen, nicht in einem vorhandenen Container oder einer VM.
@@ -71,7 +71,7 @@ gelöscht werden soll (Standard: nein, damit du hineinschauen kannst).
 Alle Einstellungen gibt es auch als Optionen. Hänge `_` und die Optionen an den Befehl an:
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/proxmox/nuorb-lxc.sh)" _ --yes --lang de --ctid 120
+bash -c "$(curl -fsSL https://github.com/Anarki-LNX/nuorb/releases/latest/download/nuorb-lxc.sh)" _ --yes --lang de --ctid 120
 ```
 
 | Option | Bedeutung |

@@ -65,22 +65,49 @@ else
   fi
 fi
 
+# ------------------------------------------------------------------ release helper (install.sh checked against SHA256SUMS)
+mkdir -p /usr/local/lib/nuorb
+cat > /usr/local/lib/nuorb/release.sh <<'EOF'
+# NuOrb: install.sh aus einem Release laden und gegen dessen SHA256SUMS prüfen (für update und den ersten Start).
+NUORB_DL="${NUORB_DL_BASE:-https://github.com/Anarki-LNX/nuorb/releases}"
+nuorb_release_latest() {   # gibt das Tag des neuesten Releases aus, z. B. v0.7.0
+  local u t
+  u=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "$NUORB_DL/latest" 2>/dev/null) || return 1
+  t="${u##*/}"
+  case "$t" in v[0-9]*) printf '%s\n' "$t" ;; *) return 1 ;; esac
+}
+nuorb_fetch_install() {   # nuorb_fetch_install TAG ZIEL
+  local tag="$1" dest="$2" sums want got
+  sums=$(curl -fsSL --retry 3 "$NUORB_DL/download/$tag/SHA256SUMS") || { echo "SHA256SUMS of $tag not found" >&2; return 1; }
+  want=$(printf '%s\n' "$sums" | awk '$2 == "install.sh" || $2 == "*install.sh" {print $1; exit}')
+  [ -n "$want" ] || { echo "install.sh is not listed in SHA256SUMS of $tag" >&2; return 1; }
+  curl -fsSL --retry 3 "$NUORB_DL/download/$tag/install.sh" -o "$dest" || return 1
+  got=$(sha256sum "$dest" | cut -d' ' -f1)
+  if [ "$got" != "$want" ]; then rm -f "$dest"; echo "install.sh does not match SHA256SUMS of $tag, nothing changed" >&2; return 1; fi
+}
+EOF
+chmod 0644 /usr/local/lib/nuorb/release.sh
+
 # ------------------------------------------------------------------ update command
 say "installing the command: update"
 cat > /usr/local/bin/update <<'EOF'
 #!/usr/bin/env bash
-# NuOrb update inside the Proxmox container: updates Debian and Docker, pulls
-# the newest NuOrb image and restarts it. Settings and data stay.
+# NuOrb update inside the Proxmox container: updates Debian and Docker, installs
+# the newest NuOrb release and restarts it. Settings and data stay.
 set -Eeuo pipefail
 [ "$(id -u)" -eq 0 ] || { echo "update: run as root" >&2; exit 1; }
 export DEBIAN_FRONTEND=noninteractive LANG=C.UTF-8 LC_ALL=C.UTF-8 HOME=/root
-REF="${NUORB_REF:-main}"
+# shellcheck disable=SC1091
+. /usr/local/lib/nuorb/release.sh
 echo ":: updating Debian and Docker"
 apt-get update -qq
 apt-get -y -qq -o Dpkg::Options::=--force-confold dist-upgrade >/dev/null
-echo ":: updating NuOrb"
-curl -fsSL --retry 3 "https://raw.githubusercontent.com/Anarki-LNX/nuorb/${REF}/install.sh" \
-  | bash -s -- --yes --no-firewall "$@"
+TAG="${NUORB_RELEASE:-}"
+[ -n "$TAG" ] || TAG=$(nuorb_release_latest) || { echo "newest NuOrb release not found (internet?)" >&2; exit 1; }
+echo ":: updating NuOrb to $TAG"
+nuorb_fetch_install "$TAG" /root/nuorb-install.sh
+bash /root/nuorb-install.sh --yes --no-firewall --release "$TAG" "$@"
+rm -f /root/nuorb-install.sh
 docker image prune -f >/dev/null 2>&1 || true
 EOF
 chmod 0755 /usr/local/bin/update
@@ -151,26 +178,30 @@ EOF
 # ------------------------------------------------------------------ first boot (template only)
 if [ "$TEMPLATE" = 1 ]; then
   say "installing the first boot service"
-  mkdir -p /var/lib/nuorb
+  mkdir -p /var/lib/nuorb /etc/nuorb
+  if [ -n "${NUORB_RELEASE:-}" ]; then printf '%s\n' "$NUORB_RELEASE" > /etc/nuorb/release; fi
   cat > /usr/local/sbin/nuorb-firstboot <<'EOF'
 #!/usr/bin/env bash
 # Runs once at the first start of a container made from the NuOrb template:
 # waits for network and Docker, then installs NuOrb with install.sh.
 set -uo pipefail
 export LANG=C.UTF-8 LC_ALL=C.UTF-8 HOME=/root
-REF="${NUORB_REF:-main}"
 STATE=/var/lib/nuorb
+# shellcheck disable=SC1091
+. /usr/local/lib/nuorb/release.sh
 mkdir -p "$STATE"; rm -f "$STATE/firstboot-failed"; touch "$STATE/firstboot-running"
 failed() { echo "NuOrb first boot: $*"; rm -f "$STATE/firstboot-running"; touch "$STATE/firstboot-failed"; exit 1; }
-for _ in $(seq 1 150); do getent hosts raw.githubusercontent.com >/dev/null 2>&1 && break; sleep 2; done
-getent hosts raw.githubusercontent.com >/dev/null 2>&1 || failed "no network or DNS after 5 minutes"
+for _ in $(seq 1 150); do getent hosts github.com >/dev/null 2>&1 && break; sleep 2; done
+getent hosts github.com >/dev/null 2>&1 || failed "no network or DNS after 5 minutes"
 for _ in $(seq 1 30); do docker info >/dev/null 2>&1 && break; sleep 2; done
 docker info >/dev/null 2>&1 || failed "Docker does not run. On the Proxmox host: pct set <ID> -features nesting=1,keyctl=1, then restart the container."
 LANG_ARG=()
 [ -r /etc/nuorb/lang ] && LANG_ARG=(--lang "$(tr -cd 'a-z' < /etc/nuorb/lang)")
-curl -fsSL --retry 5 "https://raw.githubusercontent.com/Anarki-LNX/nuorb/${REF}/install.sh" -o /root/nuorb-install.sh \
-  || failed "could not download install.sh"
-bash /root/nuorb-install.sh --yes --no-firewall --llm none "${LANG_ARG[@]}" || failed "install.sh failed"
+# Release des Templates (beim Bauen eingetragen), sonst das neueste
+TAG=$(tr -cd 'v0-9.' < /etc/nuorb/release 2>/dev/null || true)
+[ -n "$TAG" ] || TAG=$(nuorb_release_latest) || failed "newest NuOrb release not found"
+nuorb_fetch_install "$TAG" /root/nuorb-install.sh || failed "could not download or check install.sh of $TAG"
+bash /root/nuorb-install.sh --yes --no-firewall --llm none --release "$TAG" "${LANG_ARG[@]}" || failed "install.sh failed"
 rm -f /root/nuorb-install.sh "$STATE/firstboot-running"
 touch "$STATE/firstboot-done"
 EOF

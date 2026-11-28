@@ -51,7 +51,8 @@ jobs:
         env:
           VERSION: ${{ steps.v.outputs.version }}
           BUILD_DIR: ${{ runner.temp }}
-        run: sudo --preserve-env=BUILD_DIR NUORB_REF=main proxmox/build-template.sh "$VERSION" dist
+        # The first start installs exactly this release (install.sh checked against its SHA256SUMS)
+        run: sudo --preserve-env=BUILD_DIR NUORB_RELEASE="v$VERSION" proxmox/build-template.sh "$VERSION" dist
 
       - name: Check the archive
         env:
@@ -90,10 +91,10 @@ jobs:
           TAG: ${{ github.ref_name }}
           VERSION: ${{ steps.v.outputs.version }}
         run: |
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --draft --verify-tag --title "NuOrb $TAG" \
-              --notes "Release notes follow. The Proxmox LXC template is attached."
-          fi
+          # release-files.yml may create the draft at the same time
+          gh release view "$TAG" >/dev/null 2>&1 \
+            || gh release create "$TAG" --draft --verify-tag --title "NuOrb $TAG" --notes "Release notes follow." \
+            || gh release view "$TAG" >/dev/null
           gh release upload "$TAG" --clobber \
             "dist/nuorb-lxc-${VERSION}-amd64.tar.zst" \
             "dist/nuorb-lxc-${VERSION}-amd64.tar.zst.sha256" \

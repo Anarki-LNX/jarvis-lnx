@@ -70,7 +70,7 @@ say "ct-setup.sh --template"
 chroot "$ROOT" /usr/sbin/locale-gen >/dev/null
 install -m 0755 "$HERE/ct-setup.sh" "$ROOT/root/ct-setup.sh"
 chroot "$ROOT" /usr/bin/env -i PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin HOME=/root \
-  NUORB_REF="${NUORB_REF:-main}" bash /root/ct-setup.sh --template
+  NUORB_RELEASE="${NUORB_RELEASE:-}" bash /root/ct-setup.sh --template
 rm -f "$ROOT/root/ct-setup.sh"
 
 mkdir -p "$ROOT/etc/nuorb"

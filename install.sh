@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
 # NuOrb server – one-command install, update and repair.
 #
-#   curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/install.sh | bash
-#   curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/install.sh | bash -s -- --lang de
+#   curl -fsSL https://github.com/Anarki-LNX/nuorb/releases/latest/download/install.sh | bash
+#   curl -fsSL https://github.com/Anarki-LNX/nuorb/releases/latest/download/install.sh | bash -s -- --lang de
 #
 # Works from any shell (bash runs the script). Run it again to update or repair. Options: --help
 # Never opens ports to the internet, never runs sudo without asking.
 set -Eeuo pipefail
 
 REPO="Anarki-LNX/nuorb"
-REF="${NUORB_REF:-main}"
-RAW="https://raw.githubusercontent.com/${REPO}/${REF}/docker"
+# Release, aus dem compose.yaml und Co. kommen. Der Release-Workflow trägt hier das Tag ein (z. B. v0.7.0).
+# Leer = neuestes Release. Alle nachgeladenen Dateien werden gegen SHA256SUMS dieses Releases geprüft.
+NUORB_RELEASE=""
+RELEASE="$NUORB_RELEASE"
+DL="${NUORB_DL_BASE:-https://github.com/${REPO}/releases}"
 
 DIR="${HOME}/nuorb"
 NAME="nuorb"                 # compose project / container name
@@ -74,6 +77,7 @@ NuOrb server installer (install, update, repair)
   --bind ADDRESS    publish the ports only on this address (default: all, needed for VPN access)
   --uninstall       remove NuOrb (asks; data only with an extra confirmation)
   --name NAME       other project/container name, for a second instance (default: nuorb)
+  --release TAG     install this release, e.g. v0.7.0 (default: the newest release)
   --help
 EOF
 }
@@ -92,6 +96,7 @@ while [ $# -gt 0 ]; do
     --uninstall) UNINSTALL=1 ;;
     --name) NAME="$2"; shift ;;
     --source) SOURCE="$2"; shift ;;
+    --release) RELEASE="$2"; shift ;;
     --image) IMAGE="$2"; shift ;;
     -h|--help) usage; exit 0 ;;
     *) fail "$(t "Unknown option: $1" "Unbekannte Option: $1")" "$(usage)" ;;
@@ -224,16 +229,53 @@ uninstall() {
   exit 0
 }
 
+# ------------------------------------------------------------------ release files (checked against SHA256SUMS)
+resolve_release() {
+  [ -n "$RELEASE" ] && return 0
+  local u
+  u=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "$DL/latest" 2>/dev/null || true)
+  RELEASE="${u##*/}"
+  case "$RELEASE" in
+    v[0-9]*) ;;
+    *) fail "$(t "Could not find the newest NuOrb release ($DL/latest). Internet? Or choose one: --release v0.7.0" \
+                 "Das neueste NuOrb-Release wurde nicht gefunden ($DL/latest). Internet? Oder eines wählen: --release v0.7.0")" ;;
+  esac
+}
+SUMS=""
+release_file() {   # release_file NAME DEST: aus dem Release laden und gegen SHA256SUMS prüfen
+  local name="$1" dest="$2" want got
+  if [ -z "$SUMS" ]; then
+    SUMS=$(curl -fsSL --retry 3 "$DL/download/$RELEASE/SHA256SUMS") \
+      || fail "$(t "Download failed: $DL/download/$RELEASE/SHA256SUMS" "Download fehlgeschlagen: $DL/download/$RELEASE/SHA256SUMS")"
+  fi
+  want=$(printf '%s\n' "$SUMS" | awk -v n="$name" '$2 == n || $2 == "*" n {print $1; exit}')
+  [ -n "$want" ] || fail "$(t "$name is not listed in SHA256SUMS of $RELEASE." "$name steht nicht in SHA256SUMS von $RELEASE.")"
+  curl -fsSL --retry 3 "$DL/download/$RELEASE/$name" -o "$dest.tmp" \
+    || fail "$(t "Download failed: $DL/download/$RELEASE/$name" "Download fehlgeschlagen: $DL/download/$RELEASE/$name")"
+  got=$(sha256sum "$dest.tmp" | cut -d' ' -f1)
+  if [ "$got" != "$want" ]; then
+    rm -f "$dest.tmp"
+    fail "$(t "$name does not match SHA256SUMS of $RELEASE. Nothing was changed, please report this." \
+              "$name passt nicht zu SHA256SUMS von $RELEASE. Es wurde nichts geändert, bitte melden.")"
+  fi
+  mv "$dest.tmp" "$dest"
+}
+
 # ------------------------------------------------------------------ files
 fetch_files() {
   step "$(t "Preparing $DIR" "$DIR vorbereiten")"
   mkdir -p "$DIR"
   local f
-  for f in compose.yaml .env.example README.md; do
-    if [ -n "$SOURCE" ]; then cp "$SOURCE/$f" "$DIR/$f"
-    else curl -fsSL --retry 3 "$RAW/$f" -o "$DIR/$f.tmp" || fail "$(t "Download failed: $RAW/$f" "Download fehlgeschlagen: $RAW/$f")"; mv "$DIR/$f.tmp" "$DIR/$f"; fi
-  done
-  ok "compose.yaml, .env.example, README.md"
+  if [ -n "$SOURCE" ]; then
+    for f in compose.yaml .env.example README.md; do cp "$SOURCE/$f" "$DIR/$f"; done
+    ok "compose.yaml, .env.example, README.md ($SOURCE)"
+  else
+    resolve_release
+    release_file compose.yaml "$DIR/compose.yaml"
+    release_file env.example "$DIR/.env.example"
+    release_file README.md "$DIR/README.md"
+    ok "compose.yaml, .env.example, README.md ($RELEASE, $(t "checksums ok" "Prüfsummen ok"))"
+  fi
   # zweite Instanz bzw. Entwicklungs-Image: eigene Namen über compose.override.yaml (wird von Compose automatisch gelesen)
   if [ "$NAME" != nuorb ] || [ -n "$IMAGE" ] || [ "$VOL_PREFIX" != nuorb ]; then
     {
@@ -457,6 +499,8 @@ firewall() {
 # ------------------------------------------------------------------ start
 start() {
   step "$(t "Downloading and starting NuOrb" "NuOrb laden und starten")"
+  # Image auf die Version des Releases festlegen statt latest (Update: neues Release, neue Version)
+  if [ -z "$SOURCE" ] && [ -z "$IMAGE" ] && [ -n "$RELEASE" ]; then set_env NUORB_VERSION "${RELEASE#v}"; fi
   if [ -z "$IMAGE" ]; then dc pull --quiet nuorb || fail "$(t "Image download failed (internet? Docker Hub/GHCR reachable?)." "Download des Images fehlgeschlagen (Internet? GHCR erreichbar?).")"; fi
   local img; img=$(dc config --images 2>/dev/null | head -1 || true)
   # Hat ein Container Internet? (ufw-Forwarding, daemon.json) – kurz mit dem NuOrb-Image testen
@@ -521,7 +565,7 @@ finish() {
                              "Die Sprachmodelle (~530 MB) laden noch. Die Einrichtung zeigt den Fortschritt; Sprache geht danach.")" ;;
   esac
   printf '\n   %s %s\n' "$(t "Folder:" "Ordner:")" "$DIR"
-  printf '   %s curl -fsSL https://raw.githubusercontent.com/%s/main/install.sh | bash\n' "$(t "Update/repair:" "Update/Reparatur:")" "$REPO"
+  printf '   %s curl -fsSL https://github.com/%s/releases/latest/download/install.sh | bash\n' "$(t "Update/repair:" "Update/Reparatur:")" "$REPO"
   printf '   %s\n\n' "$(t "Never open ports $UI_PORT/$ADMIN_PORT to the internet; use a VPN when away." "Ports $UI_PORT/$ADMIN_PORT nie ins Internet freigeben; unterwegs ein VPN nutzen.")"
 }
 

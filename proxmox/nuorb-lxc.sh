@@ -3,7 +3,7 @@
 #
 # Run in the shell of the Proxmox VE host as root:
 #
-#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/proxmox/nuorb-lxc.sh)"
+#   bash -c "$(curl -fsSL https://github.com/Anarki-LNX/nuorb/releases/latest/download/nuorb-lxc.sh)"
 #
 # A dialog offers Standard (Debian 12, unprivileged, 4 cores, 6 GB RAM, 24 GB
 # disk, DHCP on vmbr0) or Advanced (every value can be changed). The script
@@ -15,7 +15,7 @@
 # Update: run the script again, or pass "update", or type "update" inside the
 # container. It pulls the newest NuOrb image; settings and data stay.
 #
-#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/proxmox/nuorb-lxc.sh)" _ update
+#   bash -c "$(curl -fsSL https://github.com/Anarki-LNX/nuorb/releases/latest/download/nuorb-lxc.sh)" _ update
 #
 # Options for scripted use (all optional, --help lists them): --yes, --ctid,
 # --hostname, --cores, --ram, --disk, --storage, --bridge, --ip, --gw, --vlan,
@@ -23,8 +23,11 @@
 set -Eeuo pipefail
 
 REPO="Anarki-LNX/nuorb"
-REF="${NUORB_REF:-main}"
-RAW="https://raw.githubusercontent.com/${REPO}/${REF}"
+# Release, aus dem ct-setup.sh und install.sh kommen. Der Release-Workflow trägt hier das Tag ein (z. B. v0.7.0).
+# Leer = neuestes Release. Beide Dateien werden gegen SHA256SUMS dieses Releases geprüft.
+NUORB_RELEASE=""
+RELEASE="$NUORB_RELEASE"
+DL="${NUORB_DL_BASE:-https://github.com/${REPO}/releases}"
 GITHUB="https://github.com/${REPO}"
 LOG="${NUORB_LXC_LOG:-/var/log/nuorb-lxc.log}"
 
@@ -175,7 +178,7 @@ check_host() {
   case "$arch" in
     amd64|x86_64) ;;
     *) die "$(t "The NuOrb container is available for amd64 (x86_64) only, this host is $arch." "Den NuOrb-Container gibt es nur für amd64 (x86_64), dieser Host ist $arch.")" \
-           "$(t "On other hardware install NuOrb with Docker:" "Auf anderer Hardware NuOrb mit Docker installieren:") curl -fsSL ${RAW}/install.sh | bash" ;;
+           "$(t "On other hardware install NuOrb with Docker:" "Auf anderer Hardware NuOrb mit Docker installieren:") curl -fsSL ${DL}/latest/download/install.sh | bash" ;;
   esac
   local v; v=$(pveversion 2>/dev/null | sed -n 's#^pve-manager/\([0-9]*\)\..*#\1#p')
   if [ -n "$v" ] && [ "$v" -lt 8 ]; then
@@ -299,21 +302,55 @@ wait_network() {   # wait_network ID
            "Container $1 hat nach 3 Minuten kein Netz oder DNS. Bridge, DHCP oder die feste Adresse prüfen.")"
 }
 
-# ct-setup.sh: next to this script in a checkout, otherwise from GitHub
-fetch_ct_setup() {
+# ------------------------------------------------------------------ release files (checked against SHA256SUMS)
+resolve_release() {
+  [ -n "$RELEASE" ] && return 0
+  local u
+  u=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "$DL/latest" 2>/dev/null || true)
+  RELEASE="${u##*/}"
+  case "$RELEASE" in
+    v[0-9]*) ;;
+    *) die "$(t "Could not find the newest NuOrb release ($DL/latest)." "Das neueste NuOrb-Release wurde nicht gefunden ($DL/latest).")" ;;
+  esac
+}
+SUMS=""
+release_file() {   # release_file NAME DEST
+  local name="$1" dest="$2" want got
+  if [ -z "$SUMS" ]; then
+    SUMS=$(curl -fsSL --retry 3 "$DL/download/$RELEASE/SHA256SUMS") || die "$(t "Download failed:" "Download fehlgeschlagen:") $DL/download/$RELEASE/SHA256SUMS"
+  fi
+  want=$(printf '%s\n' "$SUMS" | awk -v n="$name" '$2 == n || $2 == "*" n {print $1; exit}')
+  [ -n "$want" ] || die "$(t "$name is not listed in SHA256SUMS of $RELEASE." "$name steht nicht in SHA256SUMS von $RELEASE.")"
+  curl -fsSL --retry 3 "$DL/download/$RELEASE/$name" -o "$dest" || die "$(t "Download failed:" "Download fehlgeschlagen:") $DL/download/$RELEASE/$name"
+  got=$(sha256sum "$dest" | cut -d' ' -f1)
+  if [ "$got" != "$want" ]; then
+    rm -f "$dest"
+    die "$(t "$name does not match SHA256SUMS of $RELEASE. Nothing was changed, please report this." \
+             "$name passt nicht zu SHA256SUMS von $RELEASE. Es wurde nichts geändert, bitte melden.")"
+  fi
+}
+
+# ct-setup.sh and install.sh: next to this script in a checkout (development, tests), otherwise from the release
+fetch_scripts() {
+  [ -n "$WORK" ] && [ -r "$WORK/install.sh" ] && return 0
   WORK=$(mktemp -d -p /var/tmp nuorb-lxc.XXXXXX)
   local here; here=$(dirname -- "${BASH_SOURCE[0]:-$0}")
-  if [ -r "$here/ct-setup.sh" ]; then cp "$here/ct-setup.sh" "$WORK/ct-setup.sh"
-  else curl -fsSL --retry 3 "$RAW/proxmox/ct-setup.sh" -o "$WORK/ct-setup.sh" || die "$(t "Download failed:" "Download fehlgeschlagen:") $RAW/proxmox/ct-setup.sh"
+  if [ -r "$here/ct-setup.sh" ] && [ -r "$here/../install.sh" ]; then
+    cp "$here/ct-setup.sh" "$WORK/ct-setup.sh"; cp "$here/../install.sh" "$WORK/install.sh"
+  else
+    resolve_release
+    release_file ct-setup.sh "$WORK/ct-setup.sh"
+    release_file install.sh "$WORK/install.sh"
+    ok "$(t "Scripts of release $RELEASE, checksums ok" "Skripte aus Release $RELEASE, Prüfsummen ok")"
   fi
 }
 
 setup_ct() {   # setup_ct ID: Docker, update command, login notice
-  fetch_ct_setup
+  fetch_scripts
   run "$(t "Copying the setup script" "Einrichtungsskript kopieren")" pct push "$1" "$WORK/ct-setup.sh" /root/ct-setup.sh --perms 0755
   # shellcheck disable=SC2016  # $1 expands inside the container
   run "$(t "Installing Debian updates and Docker (a few minutes)" "Debian-Updates und Docker installieren (einige Minuten)")" \
-      pct exec "$1" -- bash -c 'NUORB_REF="$1" /root/ct-setup.sh; rc=$?; rm -f /root/ct-setup.sh; exit $rc' _ "$REF"
+      pct exec "$1" -- bash -c '/root/ct-setup.sh; rc=$?; rm -f /root/ct-setup.sh; exit $rc'
 }
 
 # install.sh output on screen up to its own summary (this script prints one for the container); all of it goes to the log
@@ -324,12 +361,14 @@ install_nuorb() {   # install_nuorb ID IP
   local llm="${LLM:-none}"
   step "$(t "Installing NuOrb in container $1" "NuOrb in Container $1 installieren")"
   printf '\n## %s  install.sh in %s\n' "$(date '+%F %T')" "$1" >> "$LOG"
-  # shellcheck disable=SC2016  # $1..$5 expand inside the container
-  if ! pct exec "$1" -- env HOME=/root NUORB_REF="$REF" bash -c \
-      'curl -fsSL --retry 3 "$1" -o /root/nuorb-install.sh && bash /root/nuorb-install.sh --yes --no-firewall --lang "$2" --ip "$3" --llm "$4" --ports "$5"; rc=$?; rm -f /root/nuorb-install.sh; exit $rc' \
-      _ "$RAW/install.sh" "$NU_LANG" "$2" "$llm" "$PORTS" 2>&1 | tee -a "$LOG" | screen; then
+  fetch_scripts
+  run "$(t "Copying install.sh" "install.sh kopieren")" pct push "$1" "$WORK/install.sh" /root/nuorb-install.sh --perms 0700
+  local rel=(); [ -n "$RELEASE" ] && rel=(--release "$RELEASE")
+  if ! pct exec "$1" -- env HOME=/root bash /root/nuorb-install.sh --yes --no-firewall --lang "$NU_LANG" --ip "$2" --llm "$llm" \
+      --ports "$PORTS" "${rel[@]}" 2>&1 | tee -a "$LOG" | screen; then
     die "$(t "install.sh failed in container $1. Log:" "install.sh ist in Container $1 fehlgeschlagen. Log:") $LOG"
   fi
+  pct exec "$1" -- rm -f /root/nuorb-install.sh >/dev/null 2>&1 || true
 }
 
 summary() {   # summary ID
@@ -446,7 +485,7 @@ cmd_update() {
   printf '\n## %s  update in %s\n' "$(date '+%F %T')" "$id" >> "$LOG"
   local lang_arg=()
   [ -n "$NU_LANG" ] && lang_arg=(--lang "$NU_LANG")
-  pct exec "$id" -- env NUORB_REF="$REF" /usr/local/bin/update "${lang_arg[@]}" 2>&1 | tee -a "$LOG" | screen \
+  pct exec "$id" -- env NUORB_RELEASE="$RELEASE" /usr/local/bin/update "${lang_arg[@]}" 2>&1 | tee -a "$LOG" | screen \
     || die "$(t "Update failed in container $id. Log:" "Update in Container $id fehlgeschlagen. Log:") $LOG"
   summary "$id"
 }

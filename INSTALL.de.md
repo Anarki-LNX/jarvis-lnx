@@ -20,7 +20,7 @@ Proxmox-VM/LXC oder deinem PC. Dein Smartphone (NuOrb-App) oder jeder Browser im
 Auf einem Proxmox-VE-Host in der **Host**-Shell ausführen (Knoten → *Shell*):
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/proxmox/nuorb-lxc.sh)"
+bash -c "$(curl -fsSL https://github.com/Anarki-LNX/nuorb/releases/latest/download/nuorb-lxc.sh)"
 ```
 
 Ein Dialog fragt die Einstellungen ab (Standard: Debian 12, unprivilegiert, 4 Kerne, 6 GB RAM, 24 GB Platte, DHCP auf
@@ -45,7 +45,7 @@ Oder gleich das fertige [Proxmox-LXC](docs/proxmox.de.md) nehmen.
 ## 2. Installation mit einem Befehl
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/install.sh | bash -s -- --lang de
+curl -fsSL https://github.com/Anarki-LNX/nuorb/releases/latest/download/install.sh | bash -s -- --lang de
 ```
 
 Funktioniert aus jeder Shell (auch fish/zsh, das Skript läuft in bash).
@@ -189,8 +189,9 @@ sudo firewall-cmd --reload
 
 ```bash
 mkdir -p ~/nuorb && cd ~/nuorb
-curl -fsSLO https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/docker/compose.yaml
-curl -fsSL  https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/docker/.env.example -o .env
+curl -fsSLO https://github.com/Anarki-LNX/nuorb/releases/latest/download/compose.yaml
+curl -fsSL https://github.com/Anarki-LNX/nuorb/releases/latest/download/SHA256SUMS | grep " compose.yaml$" | sha256sum -c   # optional: gegen die Prüfsummen des Releases prüfen
+curl -fsSL  https://github.com/Anarki-LNX/nuorb/releases/latest/download/env.example -o .env
 nano .env                       # mindestens NUORB_HOSTS=192.168.1.50 (IP dieses Servers), NUORB_LANG, TZ
 docker compose up -d
 docker compose logs -f nuorb    # auf „setup code“ warten, Strg+C
