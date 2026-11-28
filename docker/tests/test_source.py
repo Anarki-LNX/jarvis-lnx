@@ -91,6 +91,23 @@ class Quelle(unittest.TestCase):
         self.assertEqual(funde, [])
 
 
+class RueckwegVonV074(unittest.TestCase):
+    """v0.7.3 muss ein Volume von v0.7.4 (NuOrb-Bereich gehört dort nuorb) wieder lesbar machen. Das Verhalten prüft der
+    Image-Lauf „v0.7.4-Volume mit v0.7.3-Image“, hier nur, dass die Schritte in nuorb-init stehen und richtig gezielt sind."""
+
+    def setUp(self):
+        self.init = (DOCKER / "rootfs/opt/nuorb/bin/nuorb-init").read_text(encoding="utf-8")
+
+    def test_nuorb_bereich_zurueck_an_hermes(self):
+        self.assertIn("find /opt/data/nuorb -xdev ! -user hermes -exec chown -h hermes:hermes {} +", self.init)
+
+    def test_dateien_ohne_bekannten_besitzer_zurueck(self):
+        self.assertRegex(self.init, r"-path /opt/data/installs -o -path /opt/data/cache \\\) -prune[\s\\]*-o -nouser -exec chown -h hermes:hermes")
+
+    def test_vor_dem_start_der_dienste(self):
+        self.assertLess(self.init.index("! -user hermes"), self.init.index("first_run.py"))
+
+
 class ComposeHaertung(unittest.TestCase):
     """Phase 2: Härtung des Containers in compose.yaml bleibt erhalten (gemessen und getestet im e2e-Lauf)."""
 
