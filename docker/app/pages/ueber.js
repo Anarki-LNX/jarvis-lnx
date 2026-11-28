@@ -8,6 +8,8 @@
     voice_note: "Speech is generated on this server. Both voices are CC0: free to use, also commercially.",
     h_lic: "Licenses", lic_own: "{brand}'s own code is under the MIT license. It builds on many open-source projects and models; each keeps its own license.",
     lic_link: "Third-party components and licenses", lic_path: "In the container:",
+    h_weather: "Weather data", th_source: "Source", th_notice: "Notice",
+    weather_note: "The built-in weather asks these services directly from this server. Official warnings of the German Weather Service are passed on unchanged.",
   };
   const DE = {
     back: "← Zur Verwaltung", title: "Über", h_models: "Sprachmodelle", h_stt: "Spracherkennung", h_voice: "Stimmen",
@@ -15,6 +17,8 @@
     voice_note: "Die Sprachausgabe entsteht auf diesem Server. Beide Stimmen sind CC0: frei nutzbar, auch kommerziell.",
     h_lic: "Lizenzen", lic_own: "Der eigene Code von {brand} steht unter der MIT-Lizenz. {brand} baut auf vielen Open-Source-Projekten und Modellen auf; jedes behält seine eigene Lizenz.",
     lic_link: "Komponenten von Dritten und ihre Lizenzen", lic_path: "Im Container:",
+    h_weather: "Wetterdaten", th_source: "Quelle", th_notice: "Hinweis",
+    weather_note: "Das eingebaute Wetter fragt diese Dienste direkt von diesem Server aus ab. Amtliche Warnungen des Deutschen Wetterdienstes werden unverändert weitergegeben.",
   };
   const M = {
     de: { active: "aktiv", lang: { de: "Deutsch", en: "Englisch" }, ready: "geladen", notReady: "wird noch geladen",
@@ -42,6 +46,14 @@
       const cr = tr.insertCell();
       if (v.data_url) cr.append(link(v.data_url, v.data), ` · ${v.base}`); else cr.textContent = "·";
     }
+    const wb = $("weather"); wb.replaceChildren();
+    for (const w of d.weather || []) {
+      const tr = wb.insertRow();
+      tr.insertCell().append(link(w.url, w.name));
+      tr.insertCell().append(link(w.license_url, w.license));
+      tr.insertCell().textContent = w.notice;
+    }
+    $("pWeather").hidden = !(d.weather || []).length;
     $("licLink").href = d.licenses_url; $("licPath").textContent = d.licenses_path;
   }).catch(() => {});
 })();

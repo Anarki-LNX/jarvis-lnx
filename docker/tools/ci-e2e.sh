@@ -12,6 +12,7 @@ cleanup() {
   local rc=$?
   [ "$rc" = 0 ] || "${C[@]}" logs --tail 80 nuorb 2>/dev/null | tail -80 || true
   [ -n "${MOCK:-}" ] && kill "$MOCK" 2>/dev/null
+  [ -n "${WMOCK:-}" ] && kill "$WMOCK" 2>/dev/null
   if [ "${NUORB_CI_KEEP_VOLUMES:-0}" = 1 ]; then "${C[@]}" down >/dev/null 2>&1 || true   # lokal: Modelle behalten
   else "${C[@]}" down -v >/dev/null 2>&1 || true; fi
   exit "$rc"
@@ -19,6 +20,7 @@ cleanup() {
 trap cleanup EXIT
 
 python3 tools/mock-llm.py 18434 > .work/ci-mock.log 2>&1 & MOCK=$!
+python3 tools/mock-weather.py 18435 > .work/ci-weather.log 2>&1 & WMOCK=$!
 # Image direkt mit docker build bauen: Neuere Compose-Versionen bauen sonst über buildx bake, und das verlangt
 # für "network: host" aus compose.test.yaml eine eigene Freigabe. Das Ergebnis ist dasselbe Image.
 docker build -t nuorb:test --build-arg NUORB_BUILD="${NUORB_BUILD:-ci}" .

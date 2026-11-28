@@ -16,6 +16,7 @@ import argparse
 import importlib.util
 import json
 import os
+import socket
 import ssl
 import subprocess
 import sys
@@ -103,8 +104,14 @@ def main() -> int:
     check("Ohne Ort: ehrlicher Hinweis", "noch nicht eingerichtet" in out, out.strip()[:90])
 
     wlog = Path(tempfile.mkdtemp(prefix="wx-mock-", dir=str(work))) / "weather.log"
-    wmock = subprocess.Popen([sys.executable, str(HIER / "mock-weather.py"), str(a.weather_port)], stdout=open(wlog, "w"),
-                             stderr=subprocess.STDOUT)
+    wmock = None
+    with socket.socket() as so:
+        frei = so.connect_ex(("127.0.0.1", a.weather_port)) != 0
+    if frei:
+        wmock = subprocess.Popen([sys.executable, str(HIER / "mock-weather.py"), str(a.weather_port)], stdout=open(wlog, "w"),
+                                 stderr=subprocess.STDOUT)
+    else:
+        wlog = work / "ci-weather.log"   # von ci-e2e.sh gestartet
     llm_log = Path(tempfile.mkdtemp(prefix="wx-llm-", dir=str(work))) / "mock.log"
     llm = subprocess.Popen([sys.executable, str(HIER / "mock-llm.py"), str(a.mock_port)], stdout=open(llm_log, "w"),
                            stderr=subprocess.STDOUT)
@@ -113,6 +120,36 @@ def main() -> int:
     old_url, model = setup0.get("ollama_url", ""), setup0.get("ollama_model", "")
     try:
         time.sleep(1.5)
+        # ------------------------------------------------ Verwaltung „Wetter“ (Abfragen laufen im Admin gegen den Mock)
+        st, d = adm.req("GET", "/api/weather")
+        check("Verwaltung: Wetter ohne Ort", st == 200 and d.get("place") is None and
+              "Quelle: Deutscher Wetterdienst" in [x.get("notice") for x in d.get("credits", [])], str(d)[:90])
+        ohne = Client(a.admin, insecure)
+        ohne.cookies = dict(adm.cookies)   # angemeldet, aber ohne X-NuOrb
+        st, _ = ohne.req("POST", "/api/weather/search", {"query": "Teststadt"})
+        check("Verwaltung: POST ohne X-NuOrb abgelehnt (CSRF)", st == 403, str(st))
+        st, html = adm.req("GET", "/static/docker/wetter.html")
+        st2, js = adm.req("GET", "/static/docker/admin-extra.js")
+        check("Verwaltung: Seite Wetter ausgeliefert und verlinkt", st == 200 and b"wetter.js" in html and st2 == 200
+              and b"wetter.html" in js)
+        st, d = adm.req("POST", "/api/weather/search", {"query": "Teststadt"})
+        hits = d.get("results") or []
+        check("Verwaltung: Ortssuche über den Server", st == 200 and hits and hits[0].get("name") == "Teststadt", str(d)[:90])
+        st, d = adm.req("POST", "/api/weather/place", {"place": hits[0] if hits else {}})
+        check("Verwaltung: Ort gespeichert, DWD automatisch", st == 200 and d.get("effective") == "dwd", str(d)[:90])
+        st, d = adm.req("GET", "/api/weather/station")
+        check("Verwaltung: nächste DWD-Station mit Entfernung", st == 200 and d.get("station") == "Teststation"
+              and d.get("distance_km") == 3.2, str(d)[:90])
+        st, d = adm.req("POST", "/api/weather/keys", {"wxm": "e2e-admin-key-98765"})
+        check("Verwaltung: Schlüssel nur maskiert", st == 200 and "e2e-admin-key" not in json.dumps(d)
+              and str((d.get("keys") or {}).get("wxm", "")).endswith("8765"), str(d.get("keys"))[:60])
+        st, d = adm.req("POST", "/api/weather/keys", {"wxm": ""})
+        st, d = adm.req("POST", "/api/weather/test", {"zeitraum": "jetzt", "lang": "de"})
+        check("Verwaltung: Test-Knopf liefert den Sprechsatz", st == 200 and str(d.get("text", "")).startswith("Laut Deutschem Wetterdienst"),
+              str(d)[:100])
+        st, d = adm.req("GET", "/api/about")
+        check("Über: Quellenhinweise Wetter", st == 200 and any(w.get("id") == "dwd" for w in d.get("weather", [])))
+
         # ------------------------------------------------ 2./3. MCP direkt
         setze(C, BERLIN)
         jetzt = satz(C, "jetzt", "de", mock_url)
@@ -147,11 +184,12 @@ def main() -> int:
         setze(C, BERLIN)
 
         # ------------------------------------------------ 4. über Hermes mit Mock-Gehirn
-        out = dexec(C, f". /opt/nuorb/bin/nuorb-env; NUORB_WEATHER_MOCK={mock_url} $PY -I /opt/nuorb/app/first_run.py 2>&1 | grep -i weather")
+        out = dexec(C, "grep -A6 '  wetter:' /opt/data/config.yaml | grep -c NUORB_WEATHER_MOCK")
         dexec(C, "hermes config set tools.tool_search.enabled false >/dev/null 2>&1; true")
         st, d = adm.req("POST", "/api/setup/apply", {"mode": "local", "ollama_url": f"127.0.0.1:{a.mock_port}",
                                                     "ollama_model": model, "context": 65536, "remote_model": ""}, timeout=150)
-        check("Gehirn auf Werkzeug-Mock umgestellt", st == 200, f"{str(d)[:60]} {out.strip()[:60]}")
+        check("Gehirn auf Werkzeug-Mock umgestellt, MCP-Eintrag nutzt den Wetter-Mock", st == 200 and out.strip() == "1",
+              f"{str(d)[:60]} {out.strip()[:20]}")
         st, pc = adm.req("POST", "/api/pairing/new", {})
         st, d = app.req("POST", "/api/pair", {"code": pc.get("code", ""), "device": "Wetter-Test", "platform": "android"})
         app.headers["Authorization"] = f"Bearer {d.get('token', '')}"
@@ -169,12 +207,11 @@ def main() -> int:
         app.req("POST", "/api/unpair")
         adm.req("POST", "/api/setup/apply", {"mode": "local", "ollama_url": old_url, "ollama_model": model,
                                             "context": 65536, "remote_model": ""}, timeout=150)
-        dexec(C, f"rm -rf {CONF}/weather.json {CONF}/weather.env /opt/data/nuorb/cache/weather; "
-                 ". /opt/nuorb/bin/nuorb-env; $PY -I /opt/nuorb/app/first_run.py >/dev/null 2>&1")
-        cfg = dexec(C, "cat /opt/data/config.yaml")
-        check("Aufgeräumt: Ort gelöscht, Eintrag ohne Mock-Adresse", "NUORB_WEATHER_MOCK" not in cfg
-              and "nicht eingerichtet" in dexec(C, f"{PY} -I /opt/nuorb/app/nuorb_weather_mcp.py --satz jetzt de"))
-        wmock.terminate()
+        dexec(C, f"rm -rf {CONF}/weather.json {CONF}/weather.env /opt/data/nuorb/cache/weather")
+        check("Aufgeräumt: Ort und Schlüssel gelöscht",
+              "nicht eingerichtet" in dexec(C, f"{PY} -I /opt/nuorb/app/nuorb_weather_mcp.py --satz jetzt de"))
+        if wmock:
+            wmock.terminate()
 
     bad = [n for n, ok, _ in e2e.results if not ok]
     print(f"\n{len(e2e.results) - len(bad)}/{len(e2e.results)} Wetter-Prüfungen bestanden." + (f" Fehlgeschlagen: {', '.join(bad)}" if bad else ""))

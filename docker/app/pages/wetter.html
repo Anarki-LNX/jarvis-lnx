@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NuOrb · Weather</title>
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="/ui/tokens.css">
+<link rel="stylesheet" href="/static/docker/docker.css">
+</head>
+<body>
+<main>
+  <div class="top"><a class="back" href="/" data-t="back">← Back to admin</a><div class="lang-toggle" role="group" aria-label="Language" id="langSwitch" data-langtoggle data-noi18n></div></div>
+  <h1 data-t="title">Weather</h1>
+  <p class="lead" data-t="lead">Set your place once. {brand} then answers weather questions with current values, forecast and official warnings. All requests go from this server directly to the weather service.</p>
+
+  <section class="panel" id="pPlace">
+    <h2 data-t="h_place">1 · Place</h2>
+    <p id="placeNow"></p>
+    <div class="row">
+      <div><label for="query" data-t="l_query">Place or postcode</label><input id="query" maxlength="80" spellcheck="false" autocomplete="off"></div>
+      <div class="fit"><button class="btn" id="search" type="button" data-t="search">Search</button></div>
+    </div>
+    <div class="choices" id="results"></div>
+    <p class="muted" id="placeMsg"></p>
+    <p class="muted" data-t="geo_note">Place names: Open-Meteo Geocoding, location data based on GeoNames (CC BY 4.0). Postcodes: OpenStreetMap Nominatim, © OpenStreetMap contributors (ODbL). The search runs only now, not during normal use.</p>
+  </section>
+
+  <section class="panel" id="pSource">
+    <h2 data-t="h_source">2 · Source</h2>
+    <p id="station"></p>
+    <div class="row">
+      <div><label for="provider" data-t="l_provider">Weather service</label>
+        <select id="provider">
+          <option value="auto" data-t="p_auto">Automatic: German Weather Service in Germany, Open-Meteo elsewhere</option>
+          <option value="dwd" data-t="p_dwd">German Weather Service (DWD) via Bright Sky</option>
+          <option value="openmeteo" data-t="p_om">Open-Meteo</option>
+        </select></div>
+      <div><label for="bsurl" data-t="l_bsurl">Own Bright Sky instance (optional)</label><input id="bsurl" placeholder="https://api.brightsky.dev" spellcheck="false"></div>
+      <div class="fit"><button class="btn" id="saveSource" type="button" data-t="save">Save</button></div>
+    </div>
+    <p class="muted" data-t="dwd_note">Quelle: Deutscher Wetterdienst (CC BY 4.0), via Bright Sky. Official warnings are read out unchanged.</p>
+    <div class="row">
+      <div><label for="omkey" data-t="l_omkey">Open-Meteo API key (only for commercial use)</label><input id="omkey" type="password" autocomplete="off" spellcheck="false"></div>
+      <div class="fit"><button class="btn" id="saveOm" type="button" data-t="save">Save</button></div>
+    </div>
+    <p class="muted" id="omState"></p>
+    <p class="muted" data-t="om_note">Weather data by Open-Meteo.com (CC BY 4.0). The free Open-Meteo API may only be used non-commercially. Personal home automation counts as non-commercial.</p>
+    <p class="muted" id="sourceMsg"></p>
+  </section>
+
+  <section class="panel" id="pWxm">
+    <h2 data-t="h_wxm">3 · WeatherXM station (optional)</h2>
+    <p class="muted" data-t="wxm_note">Hyperlocal measurements from a WeatherXM station near you, with your own WeatherXM Pro API key. Forecast and warnings still come from the German Weather Service. The terms of WeatherXM apply to your account.</p>
+    <div class="row">
+      <div><label for="wxmkey" data-t="l_wxmkey">WeatherXM Pro API key</label><input id="wxmkey" type="password" autocomplete="off" spellcheck="false"></div>
+      <div class="fit"><button class="btn" id="saveWxm" type="button" data-t="save">Save</button></div>
+      <div class="fit"><button class="btn" id="findWxm" type="button" data-t="find">Find stations</button></div>
+    </div>
+    <p class="muted" id="wxmState"></p>
+    <div class="choices" id="wxmList"></div>
+    <div class="row">
+      <div><label for="measure" data-t="l_measure">Measurements from</label>
+        <select id="measure"><option value="dwd" data-t="m_dwd">Weather service (DWD or Open-Meteo)</option><option value="wxm" data-t="m_wxm">My WeatherXM station</option></select></div>
+      <div class="fit"><button class="btn" id="saveMeasure" type="button" data-t="save">Save</button></div>
+    </div>
+    <p class="muted" id="wxmMsg"></p>
+  </section>
+
+  <section class="panel" id="pTest">
+    <h2 data-t="h_test">4 · Test</h2>
+    <div class="row">
+      <div><label for="period" data-t="l_period">Period</label>
+        <select id="period">
+          <option value="jetzt" data-t="z_now">Now</option><option value="heute" data-t="z_today">Today</option>
+          <option value="morgen" data-t="z_tomorrow">Tomorrow</option><option value="woche" data-t="z_week">Next days</option>
+          <option value="warnungen" data-t="z_warn">Warnings</option>
+        </select></div>
+      <div class="fit"><button class="btn" id="test" type="button" data-t="test">Test</button></div>
+      <div class="fit"><button class="btn" id="clear" type="button" data-t="clear">Delete place and keys</button></div>
+    </div>
+    <p id="testOut"></p>
+  </section>
+</main>
+<script src="/static/i18n-en.js"></script>
+<script src="/static/docker/nuorb-lang.js"></script>
+<script src="/static/docker/wetter.js"></script>
+</body>
+</html>

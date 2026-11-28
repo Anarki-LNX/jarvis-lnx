@@ -30,6 +30,9 @@ sys.path.insert(0, "/opt/nuorb/admin")
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import nuorb_common as jc  # noqa: E402
 import server as adm  # noqa: E402  (nuorb-admin/server.py)
+import weather_admin  # noqa: E402  (Verwaltungsseite „Wetter“)
+
+weather_admin.TR, weather_admin.LANG = jc.tr, jc.lang
 
 app = adm.app
 PAGES = jc.APP / "pages"
@@ -229,7 +232,7 @@ def about_info() -> dict:
         voices.insert(0, {"id": voice, "lang": voice[:2], "active": True, "name": voice, "license": "?"})
     return {"server": jc.server_label(), "brand": jc.brand(), "ui_lang": jc.ui_lang_setting(),
             "stt": {**jc.STT_CREDIT, "ready": models_info().get("stt_ready")},
-            "voice": voice, "voices": voices,
+            "voice": voice, "voices": voices, "weather": weather_admin.credits(),
             "licenses_url": "https://github.com/Anarki-LNX/nuorb/blob/main/THIRD_PARTY_LICENSES.md",
             "licenses_path": "/usr/share/doc/nuorb/"}
 
@@ -559,6 +562,7 @@ NEW = [
     APIRoute("/api/pairing/new", pairing_new, methods=["POST"]),
     APIRoute("/api/pairing/devices", pairing_devices, methods=["GET"]),
     APIRoute("/api/pairing/revoke", pairing_revoke, methods=["POST"]),
+    *weather_admin.routes(),
     APIRoute("/static/docker/{name}", docker_page, methods=["GET"]),
     APIRoute("/", index_plus, methods=["GET"]),
 ]
