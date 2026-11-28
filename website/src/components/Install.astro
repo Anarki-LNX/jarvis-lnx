@@ -134,7 +134,7 @@ const tutSources = tut ? ["video/webm", "video/mp4"].map((ty) => tut.video.filte
   .tpl p { margin: 0; color: var(--text-2); font-size: .93rem; line-height: 1.55; }
   .hub { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .7rem; margin: 0; padding: .9rem 1.1rem; border: 1px dashed var(--line-2); border-radius: var(--r-sm); color: var(--text-2); font-size: .93rem; line-height: 1.6; }
   .hub :global(svg) { width: 18px; height: 18px; color: var(--violet); margin-top: .2rem; }
-  .hub code { font: 400 .86rem/1.4 var(--f-mono); color: var(--text); background: rgba(255,255,255,.06); padding: .1rem .35rem; border-radius: 6px; white-space: nowrap; }
+  .hub code { font: 400 .86rem/1.4 var(--f-mono); color: var(--text); background: rgba(255,255,255,.06); padding: .1rem .35rem; border-radius: 6px; overflow-wrap: anywhere; }
   .upd { color: var(--text-2); margin: 0; font-size: .95rem; }
   .more { font-weight: 500; }
   .nw { white-space: nowrap; }
