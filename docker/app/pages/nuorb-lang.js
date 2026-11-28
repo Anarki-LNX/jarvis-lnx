@@ -72,32 +72,14 @@ window.NuI18n = (function () {
   };
 
   // Auf jeder Zusatzseite: Versionszeile mit „Auf Update prüfen“ (oben) und Spendenhinweis (unten, immer sichtbar)
-  const CT = {
-    de: {"kicker": "Unterstützen", "title": "NuOrb unterstützen", "text": "NuOrb ist kostenlos und Open Source unter der MIT-Lizenz. Es gibt keine kostenpflichtigen Funktionen. Wenn es dir nützt, hilft eine Spende über PayPal, dass es weitergeht.", "more": "Fehlerberichte und Pull Requests helfen genauso.", "btn": "Über PayPal spenden", "note": "Öffnet PayPal. Hier findet keine Zahlung statt."},
-    en: {"kicker": "Support", "title": "Support NuOrb", "text": "NuOrb is free and open source under the MIT license. There are no paid features. If it is useful to you, a donation via PayPal helps keep it going.", "more": "Bug reports and pull requests help just as much.", "btn": "Donate via PayPal", "note": "Opens PayPal. No payment happens here."},
-  };
   I.chrome = () => {
     const main = document.querySelector("main");
     if (!main || document.getElementById("verBar")) return;
-    const c = CT[I.lang] || CT.en;
     const bar = document.createElement("div"); bar.className = "ver-bar"; bar.id = "verBar";
     const top = main.querySelector(".top");
     if (top) top.after(bar); else main.prepend(bar);
     if (window.NuUpdate) window.NuUpdate.mount(bar, () => I.lang); else bar.remove();
-    // Spendenkarte am Ende der Seite (nicht sticky)
-    const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-    const card = mk("aside", "donate"); card.setAttribute("aria-labelledby", "donateTitle");
-    const tx = mk("div", "donate-text");
-    const kick = mk("div", "donate-kicker"); const heart = mk("span", "", "♥ · "); heart.setAttribute("aria-hidden", "true"); kick.append(heart, mk("span", "", c.kicker));
-    const h = mk("h2", "donate-title", c.title); h.id = "donateTitle";
-    tx.append(kick, h, mk("p", "", c.text), mk("p", "donate-more", c.more));
-    const act = mk("div", "donate-action");
-    const btn = mk("a", "donate-btn"); btn.href = "https://www.paypal.com/paypalme/HenryMeinekat"; btn.target = "_blank"; btn.rel = "noopener noreferrer";
-    const pre = mk("span", "", "♡ "), post = mk("span", "", " ↗"); pre.setAttribute("aria-hidden", "true"); post.setAttribute("aria-hidden", "true");
-    btn.append(pre, mk("span", "", c.btn), post);
-    act.append(btn, mk("span", "donate-note", c.note));
-    card.append(tx, act);
-    main.append(card);
+    if (window.NuDonate) window.NuDonate.render(main, I.lang);   // Spendenkarte (donate.js) am Ende der Seite
   };
   return I;
 })();

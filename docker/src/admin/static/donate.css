@@ -1,0 +1,38 @@
+/* NuOrb: Spendenkarte (donate.js) am Ende jeder Admin-Seite. Nicht sticky. Desktop: Text links, Knopf rechts.
+   Handy: untereinander, Knopf in voller Breite. Farben aus tokens.css (NuOrb-Cyan), Akzent Gelb für den Knopf. */
+.donate { position: relative; overflow: hidden; box-sizing: border-box; max-width: 900px; margin: 44px auto 12px; padding: 28px 30px;
+  display: flex; align-items: center; gap: 32px; border-radius: 22px; border: 1px solid rgba(56, 217, 255, .16);
+  background: radial-gradient(120% 140% at 0% 0%, rgba(56, 217, 255, .10), transparent 55%),
+              linear-gradient(160deg, rgba(14, 26, 34, .92), rgba(7, 12, 17, .96)); }
+/* Wasserzeichen: Orb-Ring als Umriss rechts unten */
+.donate::after { content: ""; position: absolute; right: -54px; bottom: -64px; width: 210px; height: 210px; border-radius: 50%;
+  border: 2px solid rgba(56, 217, 255, .10); box-shadow: inset 0 0 0 18px rgba(56, 217, 255, .025), 0 0 60px rgba(56, 217, 255, .05);
+  pointer-events: none; }
+.donate > * { position: relative; z-index: 1; }
+.donate-text { flex: 1 1 auto; min-width: 0; }
+.donate-kicker { font: 600 11.5px/1.2 Inter, system-ui, sans-serif; letter-spacing: .24em; text-transform: uppercase;
+  color: var(--cyan-soft, #8eeaff); margin-bottom: 10px; }
+.donate-title { margin: 0 0 12px; font: 400 30px/1.15 Georgia, "Times New Roman", serif; letter-spacing: 0; text-transform: none;
+  color: var(--text, #e8f4f8); }
+.donate-title em { font-style: italic; color: var(--cyan, #38d9ff); }
+.donate p { margin: 0 0 12px; color: var(--text-2, #a9bcc4); font-size: 14.5px; line-height: 1.6; }
+.donate-points { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.donate-points li { position: relative; padding-left: 18px; color: var(--text-2, #a9bcc4); font-size: 13.5px; line-height: 1.5; }
+.donate-points li::before { content: ""; position: absolute; left: 2px; top: .55em; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--cyan, #38d9ff); box-shadow: 0 0 8px rgba(56, 217, 255, .6); }
+.donate-action { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 260px; }
+.donate-btn { display: inline-flex; align-items: center; justify-content: center; padding: 15px 28px; border-radius: 999px;
+  background: #ffc94d; color: #1d1400; font: 600 15.5px Inter, system-ui, sans-serif; text-decoration: none; white-space: nowrap;
+  box-shadow: 0 0 0 1px rgba(255, 201, 77, .5), 0 8px 30px rgba(255, 201, 77, .28); transition: transform .15s ease, box-shadow .15s ease; }
+.donate-btn:hover, .donate-btn:focus-visible { transform: translateY(-1px); background: #ffd56e;
+  box-shadow: 0 0 0 1px rgba(255, 213, 110, .7), 0 10px 36px rgba(255, 201, 77, .38); outline: none; }
+.donate-note { color: var(--text-3, #6f8790); font-size: 11.5px; line-height: 1.45; text-align: center; }
+.donate-star { color: var(--cyan-soft, #8eeaff); font-size: 13px; text-decoration: none; }
+.donate-star:hover, .donate-star:focus-visible { text-decoration: underline; }
+@media (max-width: 680px) {
+  .donate { flex-direction: column; align-items: stretch; padding: 22px 18px; gap: 20px; }
+  .donate-title { font-size: 26px; }
+  .donate-action { max-width: none; align-items: stretch; }
+  .donate-btn { width: 100%; box-sizing: border-box; }
+}
+@media (prefers-reduced-motion: reduce) { .donate-btn { transition: none; } }

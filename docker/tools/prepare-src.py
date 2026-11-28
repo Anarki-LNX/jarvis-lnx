@@ -93,7 +93,7 @@ def waechter() -> list[str]:
         for muster in VERBOTEN:
             for m in re.finditer(muster, text, re.I):
                 zeile = text.count("\n", 0, m.start()) + 1
-                funde.append(f"{p.relative_to(DOCKER)}:{zeile}: {m.group(0)!r}")
+                funde.append(f"{p.relative_to(ZIEL.parent)}:{zeile}: {m.group(0)!r}")
     return funde
 
 
