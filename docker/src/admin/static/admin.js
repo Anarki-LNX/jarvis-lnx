@@ -249,7 +249,7 @@ async function viewModel(view) {
     ["auto", "Automatisch", "Zuerst das lokale Modell auf dem PC; antwortet es nicht, übernimmt Claude."],
     ["remote", "Remote", "Nur Claude. Der PC und seine Grafikkarte werden geschont."]];
   const claudeCards = (name, sel) => Object.entries(br.models).map(([id, c]) => `<label class="choice small-choice">
-      <input type="radio" name="${name}" value="${id}" ${id === sel ? "checked" : ""}><span class="c-title">${esc(c.name)}</span>
+      <input type="radio" name="${esc(name)}" value="${esc(id)}" ${id === sel ? "checked" : ""}><span class="c-title">${esc(c.name)}</span>
       <span class="c-sub">${usd(c.in)} Eingabe / ${usd(c.out)} Ausgabe pro Mio. Token</span><span class="c-sub muted">${esc(c.hint)}</span></label>`).join("");
   setHTML(view, `
     <div class="panel span-12"><div class="panel-head"><h3>Gehirn-Modus</h3><span class="tag cyan">aktiv: ${esc(br.label)} · ${esc(br.models[br.active_model]?.name || br.active_model || "")}${br.mode === "auto" ? " (Ausweich: " + esc(br.models[br.fallback_model]?.name || "") + ")" : ""}</span></div>
@@ -706,7 +706,7 @@ async function viewLogs(view) {
   $("#lgLvl").value = logOpt.level; $("#lgN").value = String(logOpt.lines);
   const load = async () => {
     const d = await api(`/api/logs?source=${encodeURIComponent(logOpt.source)}&level=${logOpt.level}&lines=${logOpt.lines}&q=${encodeURIComponent(logOpt.q)}`);
-    const sel = $("#lgSrc"); if (!sel.options.length) { setHTML(sel, Object.entries(d.sources).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("")); sel.value = logOpt.source; }
+    const sel = $("#lgSrc"); if (!sel.options.length) { setHTML(sel, Object.entries(d.sources).map(([k, v]) => `<option value="${esc(k)}">${esc(v)}</option>`).join("")); sel.value = logOpt.source; }
     const out = $("#lgOut"), atEnd = out.scrollTop + out.clientHeight >= out.scrollHeight - 30;
     setHTML(out, d.lines.map((l) => `<div data-l="${/ERROR|CRITICAL|Traceback|Fehler/.test(l) ? "e" : /WARNING|WARN/.test(l) ? "w" : ""}">${esc(l)}</div>`).join("") || `<div class="empty">Keine Einträge.</div>`);
     if (atEnd || !out.dataset.init) { out.scrollTop = out.scrollHeight; out.dataset.init = 1; }
