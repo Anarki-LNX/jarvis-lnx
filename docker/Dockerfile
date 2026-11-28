@@ -18,6 +18,10 @@ RUN mkdir -p /f/opt/nuorb/home/.config /f/opt/models
 FROM ${HERMES_IMAGE}
 
 USER root
+# Security updates of the Debian base packages (the image scan reports them as fixed upstream).
+RUN apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get -y upgrade --no-install-recommends \
+ && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt /opt/nuorb/requirements.txt
 # Eigenes venv mit Debians Python 3.13 (Hermes nutzt sein eigenes 3.14-venv, das bleibt unberührt).
 # requirements.txt ist aus requirements.in erzeugt und enthält jedes Paket mit Hash: pip bricht ab, wenn eine Datei abweicht.

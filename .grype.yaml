@@ -1,0 +1,18 @@
+# Known findings in the Hermes base image that NuOrb cannot fix itself (checked 2026-11-28 for v0.7.2).
+# They were already in v0.7.1, before the image scan existed. Remove each entry as soon as a newer Hermes
+# base image fixes it (planned check: v0.7.3). New critical findings still stop the release.
+ignore:
+  # Python 3.14.9 shipped by Hermes (its own venv), fixed in 3.14.10
+  - vulnerability: CVE-2026-115557
+    package:
+      name: python
+  # Go standard library 1.24.4 inside a binary of the Hermes image
+  - vulnerability: GO-2026-4337
+    package:
+      name: stdlib
+  - vulnerability: GO-2026-6604
+    package:
+      name: stdlib
+  - vulnerability: GO-2026-6612
+    package:
+      name: stdlib
