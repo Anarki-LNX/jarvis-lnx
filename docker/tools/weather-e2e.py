@@ -51,7 +51,11 @@ def setze(c: str, settings: dict) -> None:
 
 
 def run(app: Client, frage: str) -> tuple[str, list]:
-    st, r = app.req("POST", "/api/ask", {"text": frage, "client": "android"})
+    for _ in range(6):   # Hermes kann nach einer Konfigurationsänderung noch neu laden (503)
+        st, r = app.req("POST", "/api/ask", {"text": frage, "client": "android"})
+        if st != 503:
+            break
+        time.sleep(5)
     if st != 200 or not r.get("run_id"):
         return f"FEHLER {st} {r}", []
     events, answer = [], ""
