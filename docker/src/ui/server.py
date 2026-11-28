@@ -255,6 +255,11 @@ SMARTHOME_PERSONA = (
     "Fragen dazu beantwortest du immer mit mcp__smarthome__geraete/zustand/raeume, Schalten mit "
     "mcp__smarthome_schalten__schalten/szene (der Nutzer bestaetigt auf dem Bildschirm); rufe das Werkzeug ohne "
     "vorherigen Text auf.")
+# Gespraechsmodus: die Oberflaeche hoert nach der Antwort selbst weiter zu, eine Abschlussfrage waere doppelt.
+# Haengt an jede Persona (auch an eine im Admin geaenderte), solange follow_up an ist.
+CONV_PERSONA = (
+    "Der Gespraechsmodus ist aktiv: Stelle am Ende deiner Antwort keine Abschlussfrage wie 'Kann ich sonst noch "
+    "helfen?' oder 'Noch etwas?'. Frag nur nach, wenn du fuer die Aufgabe wirklich eine Angabe brauchst.")
 
 
 def cur_persona() -> str:
@@ -265,6 +270,8 @@ def cur_persona() -> str:
     wake = uc["wake_phrase"] or "Hey " + (uc["brand"].capitalize() if uc["brand"].isupper() else uc["brand"])
     p = p.replace("Hey NUORB", wake).replace("NUORB", uc["assistant_name"])
     p = f"Du heisst {uc['assistant_name']}; so spricht dich der Nutzer an. " + p
+    if cfg().get("follow_up") is not False:
+        p += " " + CONV_PERSONA
     if smarthome_enabled():  # nur dann – sonst bleibt der Prompt (und sein Cache) unveraendert
         p += " " + SMARTHOME_PERSONA
     return p

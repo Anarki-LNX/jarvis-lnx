@@ -45,7 +45,7 @@
     const card = !$("approvalBackdrop").hidden, st = card ? "card" : S.state;
     if (st !== lastNative) { lastNative = st; try { NATIVE.state(st); } catch (e) { /* egal */ } }
   }
-  const CONV = { active: false, rounds: 0, lastAt: 0, n: 0, timer: null, prompted: false }; // Gespraechsmodus (siehe convCheck)
+  const CONV = { active: false, rounds: 0, lastAt: 0, n: 0, timer: null, prompted: false, asked: false }; // Gespraechsmodus (siehe convCheck)
   const qp = new URLSearchParams(location.search);
   if (qp.get("micviz") === "0") opts.micviz = false;
   if (qp.get("echo") === "0") opts.echoOff = true;
@@ -226,7 +226,7 @@
     if (!opts.earcons) return;
     try {
       const ac = audio(), t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
-      const f = { start: [660, 990], stop: [880, 520], up: [520, 1040], err: [300, 220], confirm: [740, 740] }[kind] || [600, 600];
+      const f = { start: [660, 990], stop: [880, 520], up: [520, 1040], err: [300, 220], confirm: [740, 740], bye: [620, 310] }[kind] || [600, 600];
       o.type = "sine"; o.frequency.setValueAtTime(f[0], t); o.frequency.exponentialRampToValueAtTime(f[1], t + .09);
       g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.06, t + .012); g.gain.exponentialRampToValueAtTime(.0001, t + .16);
       o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + .18);
@@ -477,7 +477,9 @@
       const d = await r.json();
       S.busy = false;
       if (!d.text) { if (wasConv) { convEnd("nichts verstanden"); return; } restingState(); toast(t("Ich habe nichts verstanden.")); return; }
-      if (CONV.active && (DE ? CONV_END : CONV_END_EN).test(normSay(d.text))) { card("user", d.text); convEnd("Nutzer", true); return; }
+      const said = normSay(d.text);
+      if ((DE ? CONV_STOP : CONV_STOP_EN).test(said)) { convStop("Stoppwort"); return; } // auch ausserhalb eines Gespraechs: nichts ans Gehirn
+      if (CONV.active && (DE ? CONV_END : CONV_END_EN).test(said)) { card("user", d.text); convEnd("Nutzer", true); return; }
       convTouch(latched || wasConv);
       if (localCommand(d.text)) return;
       if (S.brain === false) { card("user", d.text); offlineReply(); return; }
@@ -515,23 +517,36 @@
 
   // ------------------------------------------------------------------ Gespraechsmodus
   // Nach einer Antwort auf eine gesprochene Frage (Tippen, Halten, F14, „Hey NUORB“) fragt NUORB kurz nach und hoert
-  // ohne Wake-Word wieder zu (opts.followTimeout s bis zum Sprachbeginn). Ende: Abschiedssatz, Stille, 20 Runden, 5 min.
+  // ohne Wake-Word wieder zu (opts.followTimeout s bis zum Sprachbeginn). Ende: Abschiedssatz oder Stoppwort (nur Ton),
+  // Stille, Weckwort waehrend der Sprachausgabe, CONV_MAX Nachfragen, 5 min. Die gesprochene Nachfrage kommt hoechstens
+  // einmal pro Gespraech, danach zeigt nur der Startton (earcon "start") und die Mikrofonanzeige die Bereitschaft.
   // Nie waehrend offener Karte (Karten bleiben Tippen-only), nie waehrend Sprachausgabe (kein Echo ins Mikro).
   const CONV_ASK = [t("Noch etwas?"), t("Kann ich noch etwas für dich tun?"), t("Sonst noch was?"), t("Noch eine Frage?")];
-  const CONV_END = /^(nein|nee|ne|nö|nichts|nix|danke|das war'?s|das wars|das ist alles|passt|ruhemodus|ruhe|schlaf\w*|gute nacht|tschüss|tschau|bis später|bis dann|stopp?|ende|fertig|ok(ay)? danke)( (danke|das war'?s|das wars|mehr|nuorb|schön|sehr|alles|gut|bitte|für jetzt))*$/;
-  const CONV_END_EN = /^(no|nope|nothing|no thanks?|no thank you|thanks?|thank you|that'?s all|that'?s it|thats all|thats it|goodbye|good ?bye|bye|good night|stop|sleep|nothing else|all good)( (thanks?|thank you|nuorb|for now|that'?s all|thats all|bye|then))*$/;
+  const CONV_MAX = 5; // hoechstens so viele Nachfragen nach der ersten Frage
+  // Abschied: nur der ganze Satz zaehlt (verankert), dann Ende ohne Abschlusssatz, nur Ton
+  const CONV_END = /^(nein|nee|ne|nö|nichts|nix|danke|das war'?s|das wars|das ist alles|das reicht|danke das reicht|passt|ruhemodus|ruhe|schlaf\w*|gute nacht|tschüss|tschau|mach'?s gut|bis später|bis bald|bis dann|fertig|ok(ay)? danke)( (danke|das war'?s|das wars|das reicht|mehr|nuorb|schön|sehr|alles|gut|bitte|für jetzt))*$/;
+  const CONV_END_EN = /^(no|nope|nothing|no thanks?|no thank you|thanks?|thank you|that'?s all|that'?s it|thats all|thats it|that'?s enough|thats enough|i'?m done|goodbye|good ?bye|bye|see you|see ya|good night|sleep|nothing else|all good)( (thanks?|thank you|nuorb|for now|that'?s all|thats all|bye|then|later|soon))*$/;
+  // Stoppwort: sofort abbrechen, nichts sagen, nicht weiter zuhoeren (auch als „nuorb stopp“ oder „stopp nuorb“)
+  const CONV_STOP = /^(nuorb )?(stopp?|ende|aufhören|hör auf|sei still|halt|halt stopp|ruhe jetzt)( (nuorb|bitte|jetzt|sofort))*$/;
+  const CONV_STOP_EN = /^(nuorb )?(stop|halt|enough|be quiet|quiet|shut up|stop it|cancel)( (nuorb|please|now|it))*$/;
   const normSay = (t) => String(t).toLowerCase().replace(/[.!?,;:]/g, " ").replace(/\s+/g, " ").trim();
   function convTouch(start) {
     if (!opts.follow) { CONV.active = false; return; }
     if (!CONV.active && !start) return;
-    if (!CONV.active) { CONV.active = true; CONV.rounds = 0; clog("Gespräch beginnt"); }
+    if (!CONV.active) { CONV.active = true; CONV.rounds = 0; CONV.asked = false; clog("Gespräch beginnt"); }
     CONV.rounds++; CONV.lastAt = Date.now(); CONV.prompted = false;
   }
   function convEnd(why, say) {
     if (!CONV.active) return;
     CONV.active = false; clearTimeout(CONV.timer); clog(`Gespräch endet (${why}, ${CONV.rounds} Runden)`);
-    if (say) speech.say(t("Okay, ich bin da, wenn du mich brauchst."));
+    if (say) earcon("bye"); // kein Abschlusssatz, nur ein kurzer Ton
     if (!S.busy && !speech.active) restingState();
+    if (WAKE.on) { els.stateSub.textContent = t("Sag „Hey NUORB“"); }
+  }
+  // Stoppwort oder Weckwort waehrend der Sprachausgabe: Ausgabe und Lauf abbrechen, Gespraech beenden, Mikro bleibt zu
+  function convStop(why) {
+    CONV.active = false; clearTimeout(CONV.timer); clog(`Gespräch gestoppt (${why}, ${CONV.rounds} Runden)`);
+    interrupt(true); earcon("bye"); restingState();
     if (WAKE.on) { els.stateSub.textContent = t("Sag „Hey NUORB“"); }
   }
   function convCheck() {
@@ -539,10 +554,10 @@
     if (!CONV.active) return;
     CONV.timer = setTimeout(() => {
       if (!CONV.active || S.busy || S.run || S.approval || rec.mr || rec.starting || speech.active || S.state === "listening" || S.state === "transcribing") return;
-      if (CONV.rounds >= 20 || Date.now() - CONV.lastAt > 300000) return convEnd(CONV.rounds >= 20 ? "20 Runden" : "5 min");
+      if (CONV.rounds > CONV_MAX || Date.now() - CONV.lastAt > 300000) return convEnd(CONV.rounds > CONV_MAX ? `${CONV_MAX} Nachfragen` : "5 min", true);
       const last = String(speech.lastText || "").trim();
-      if (!CONV.prompted && !/[?]["“”»]?$/.test(last)) {
-        CONV.prompted = true; speech.say(CONV_ASK[CONV.n++ % CONV_ASK.length]); return; // nach der Nachfrage kommt convCheck erneut
+      if (!CONV.prompted && !CONV.asked && !/[?]["“”»]?$/.test(last)) { // gesprochene Nachfrage nur einmal pro Gespraech
+        CONV.prompted = CONV.asked = true; speech.say(CONV_ASK[CONV.n++ % CONV_ASK.length]); return; // danach kommt convCheck erneut
       }
       CONV.prompted = true;
       handsFree("Gespräch", { conv: true, noneMs: opts.followTimeout * 1000 });
@@ -1262,7 +1277,7 @@
     const txt = t("Hallo! Mein Schöpfer hat mich {n} getauft. Falls dir das zu kompliziert ist, sag mir einfach, wie du mich nennen möchtest.", { n })
       + (wakeAvailable() ? " " + t("Wecken kannst du mich mit „Hey NUORB“.") : "") + " " + t("Und wie darf ich dich nennen?");
     card("ai", txt); view("talk");
-    if (opts.follow) { CONV.active = true; CONV.rounds = 0; CONV.lastAt = Date.now(); CONV.prompted = true; }
+    if (opts.follow) { CONV.active = true; CONV.rounds = 0; CONV.asked = false; CONV.lastAt = Date.now(); CONV.prompted = true; }
     speech.say(txt);
     if (!again) fetch("/api/assistant", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ onboarded: true }) }).catch(() => {});
     clog("Begrüßung" + (again ? " (wiederholt)" : ""));
@@ -1488,7 +1503,8 @@
   function onWake(d) {
     clog(`Wake: ${d.wort || "?"} ${d.score != null ? Number(d.score).toFixed(2) : ""} (Zustand ${S.state})`);
     if (!WAKE.on || S.approval || S.state === "listening" || rec.starting) return;
-    if (speech.active || Date.now() - (speech.endedAt || 0) < 1500) { clog("Wake ignoriert (Sprachausgabe)"); return; }
+    if (speech.active) { clog("Wake während Sprachausgabe: Stopp"); convStop("Weckwort"); return; } // wie ein Stoppwort
+    if (Date.now() - (speech.endedAt || 0) < 1500) { clog("Wake ignoriert (Nachhall)"); return; }
     if (S.busy) return; // Antwort laeuft noch
     CONV.active = false;
     if (DEV.st && DEV.st.screen && DEV.st.screen.on === false) devCall("screen", { on: true }).catch(() => {});
