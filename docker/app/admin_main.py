@@ -29,6 +29,7 @@ from starlette.responses import JSONResponse
 sys.path.insert(0, "/opt/nuorb/admin")
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import nuorb_common as jc  # noqa: E402
+import route_hooks  # noqa: E402
 import server as adm  # noqa: E402  (nuorb-admin/server.py)
 
 app = adm.app
@@ -562,7 +563,8 @@ NEW = [
     APIRoute("/static/docker/{name}", docker_page, methods=["GET"]),
     APIRoute("/", index_plus, methods=["GET"]),
 ]
-app.router.routes[0:0] = NEW
+for _r in route_hooks.extend_routes(app, NEW):  # vor die Originale, verdeckte Originale raus
+    print(f"[nuorb-admin] Route ersetzt: {_r}", flush=True)
 
 
 if __name__ == "__main__":

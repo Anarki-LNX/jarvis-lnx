@@ -202,3 +202,52 @@ class HeimCA(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RoutenHaken(unittest.TestCase):
+    """docker/app/route_hooks.py: Docker-Erweiterungen vor die Originale setzen, verdeckte Originale entfernen."""
+
+    def setUp(self):
+        from fastapi import FastAPI
+        from fastapi.routing import APIRoute
+        self.APIRoute = APIRoute
+        self.rh = lade("route_hooks_test", APP / "route_hooks.py", {})
+        self.app = FastAPI()
+
+        @self.app.get("/a")
+        async def a_orig():
+            return {"von": "original"}
+
+        @self.app.api_route("/b", methods=["GET", "POST"])
+        async def b_orig():
+            return {"von": "original"}
+
+    def test_original_endpoint_und_fehlende_route(self):
+        self.assertEqual(self.rh.original_endpoint(self.app, "/a").__name__, "a_orig")
+        with self.assertRaises(RuntimeError):
+            self.rh.original_endpoint(self.app, "/gibt-es-nicht")
+        with self.assertRaises(RuntimeError):
+            self.rh.original_endpoint(self.app, "/a", "POST")
+
+    def test_neue_route_gewinnt_und_verdecktes_original_ist_weg(self):
+        from fastapi.testclient import TestClient
+
+        async def a_neu():
+            return {"von": "docker"}
+
+        async def b_neu():
+            return {"von": "docker"}
+        weg = self.rh.extend_routes(self.app, [self.APIRoute("/a", a_neu, methods=["GET"]),
+                                               self.APIRoute("/b", b_neu, methods=["GET"])])
+        self.assertEqual(weg, ["GET /a"])  # /b bleibt, weil sein POST noch vom Original kommt
+        c = TestClient(self.app)
+        self.assertEqual(c.get("/a").json(), {"von": "docker"})
+        self.assertEqual(c.get("/b").json(), {"von": "docker"})
+        self.assertEqual(c.post("/b").json(), {"von": "original"})
+        self.assertEqual(sum(1 for r in self.app.router.routes if getattr(r, "path", "") == "/a"), 1)
+
+    def test_doppelte_neue_route_bricht_ab(self):
+        async def x():
+            return {}
+        with self.assertRaises(ValueError):
+            self.rh.extend_routes(self.app, [self.APIRoute("/c", x, methods=["GET"]), self.APIRoute("/c", x, methods=["GET"])])
