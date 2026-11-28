@@ -247,10 +247,20 @@ def main() -> int:
               st == 200 and setup1.get("ollama_url") == f"http://127.0.0.1:{port2}", f"{st} {setup1.get('ollama_url')} {str(d)[:80]}")
         s = wait_brain(app, True)
         n0 = log2.read_text().count("POST")
-        ans2, ev2, _ = ask(app, "Wie spät ist es?")
+        # Hermes liest config.yaml pro Runde neu. Direkt nach dem Umstellen kann die erste Frage noch an die alte
+        # Adresse gehen (in der CI einmal gesehen). Darum bis zu drei Versuche; ein Fehler ist nur, wenn die neue
+        # Adresse nie eine Anfrage bekommt.
+        ans2, versuche = "", 0
+        while versuche < 3:
+            versuche += 1
+            ans2, ev2, _ = ask(app, "Wie spät ist es?")
+            time.sleep(0.5)
+            if log2.read_text().count("POST") > n0:
+                break
+            time.sleep(3)
         n1 = log2.read_text().count("POST")
         check("Gehirn nutzt die neue Adresse", bool(ans2) and not ans2.startswith("FEHLER") and n1 > n0,
-              f"brain_ok={s.get('brain_ok')} Anfragen an :{port2}: {n1 - n0} Antwort={ans2[:60]!r}")
+              f"brain_ok={s.get('brain_ok')} Anfragen an :{port2}: {n1 - n0} nach {versuche} Versuch(en) Antwort={ans2[:60]!r}")
     finally:
         mock2.terminate()
         st, d = adm.req("POST", "/api/setup/apply", {"mode": "local", "ollama_url": old_url, "ollama_model": model,
