@@ -7,6 +7,7 @@ NUORB_UPDATE_CHECK=0. Ergebnis und Einstellung liegen in config/update-check.jso
 from __future__ import annotations
 
 import asyncio
+import calendar
 import json
 import os
 import re
@@ -100,8 +101,22 @@ def request_update(release: str) -> dict:
     os.chmod(tmp, 0o644)
     os.replace(tmp, d / "request.json")
     c["requested"] = time.time()
+    c["requested_release"] = release
     jc._write_json(cache_file(), c)
     return state()
+
+
+def pending(c: dict) -> dict | None:
+    """Offene Anforderung: angefordert vor weniger als REQUEST_GAP und die Hilfe hat seitdem keinen Status geschrieben."""
+    t = float(c.get("requested", 0))
+    if not t or time.time() - t > REQUEST_GAP:
+        return None
+    st = helper().get("status") or {}
+    try:   # die Hilfe schreibt UTC (…Z)
+        newer_status = bool(st.get("time")) and calendar.timegm(time.strptime(st["time"][:19], "%Y-%m-%dT%H:%M:%S")) >= t - 2
+    except ValueError:
+        newer_status = False
+    return None if newer_status else {"release": c.get("requested_release"), "since": int(t)}
 
 
 def state() -> dict:
@@ -112,6 +127,7 @@ def state() -> dict:
             "published": c.get("published"), "checked": c.get("checked"), "error": c.get("error"),
             "newer": bool(cv and lv and lv > cv), "auto": c.get("auto", True) is not False,
             "enabled": enabled(), "kind": jc.env("NUORB_INSTALL_KIND") or None, "helper": helper() or None,
+            "pending": pending(c),
             "commands": COMMANDS.get(jc.env("NUORB_INSTALL_KIND") or "docker", COMMANDS["docker"])}
 
 

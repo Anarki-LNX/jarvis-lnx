@@ -93,3 +93,4 @@ label.check input { width: auto; }
   .donate-action { align-items: stretch; }
   .donate-btn { width: 100%; box-sizing: border-box; }
 }
+.ver-cmd code { word-break: break-all; }

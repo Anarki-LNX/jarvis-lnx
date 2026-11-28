@@ -143,6 +143,14 @@ class UpdateAnfordern(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             uc.request_update("v0.7.4")
 
+    def test_offene_anforderung_bis_die_hilfe_antwortet(self):
+        self.hilfe()
+        st = uc.request_update("v0.7.4")
+        self.assertEqual(st["pending"]["release"], "v0.7.4")   # sofort sichtbar, auch bevor die Hilfe läuft
+        jetzt = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        (uc.CONTROL / "status" / "status.json").write_text(json.dumps({"state": "running", "release": "v0.7.4", "time": jetzt}))
+        self.assertIsNone(uc.state()["pending"])                # die Hilfe hat geantwortet
+
     def test_symlinks_werden_nicht_gelesen(self):
         self.hilfe()
         (uc.CONTROL / "status" / "helper.json").unlink()

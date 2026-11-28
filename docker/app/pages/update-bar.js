@@ -7,6 +7,7 @@ window.NuUpdate = (function () {
           failed: "Prüfung fehlgeschlagen.", now: "Jetzt aktualisieren", copy: "Befehl kopieren", copied: "Kopiert.",
           sure: "NuOrb wird auf {v} aktualisiert. Vorher werden Einstellungen und Daten gesichert. Der Container startet dabei neu, das dauert einige Minuten. Fortfahren?",
           running: "Update auf {v} läuft. Die Seite lädt danach neu.", done: "Aktualisiert auf {v}.",
+          waiting: "Update auf {v} angefordert, warte auf die Update-Hilfe …",
           rolled: "Das Update auf {v} ist nicht sauber gestartet. NuOrb ist zurück auf der vorigen Version, mit den Daten von vorher.",
           fail: "Das Update ist fehlgeschlagen: {m}", back: "Zurück zur vorigen Version:",
           cmdDocker: "Auf dem Rechner mit NuOrb ausführen:", cmdProxmox: "Im Proxmox-Container ausführen (auf dem Host: pct enter <ID>):" },
@@ -14,6 +15,7 @@ window.NuUpdate = (function () {
           failed: "Check failed.", now: "Update now", copy: "Copy command", copied: "Copied.",
           sure: "NuOrb will be updated to {v}. Settings and data are saved first. The container restarts, this takes a few minutes. Continue?",
           running: "Update to {v} is running. The page reloads afterwards.", done: "Updated to {v}.",
+          waiting: "Update to {v} requested, waiting for the update helper …",
           rolled: "The update to {v} did not start cleanly. NuOrb is back on the previous version, with the data from before.",
           fail: "The update failed: {m}", back: "Back to the previous version:",
           cmdDocker: "Run on the machine with NuOrb:", cmdProxmox: "Run inside the Proxmox container (on the host: pct enter <ID>):" },
@@ -46,7 +48,8 @@ window.NuUpdate = (function () {
       const t = T[langFn()] || T.en;
       bar.replaceChildren();
       const hs = (st.helper && st.helper.status) || null;
-      const running = hs && hs.state === "running";
+      const waiting = !!st.pending;                       // angefordert, die Hilfe hat noch nicht geantwortet
+      const running = (hs && hs.state === "running") || waiting;
       bar.classList.toggle("newer", !!st.newer || running);
       bar.append(el("span", "ver-label", st.label || ""));
       if (st.enabled && !running) {
@@ -58,7 +61,10 @@ window.NuUpdate = (function () {
         bar.append(b);
       }
       const s = el("span", "ver-status");
-      if (running) {
+      if (waiting && !(hs && hs.state === "running")) {
+        s.textContent = t.waiting.replace("{v}", st.pending.release || "");
+        wasRunning = true;
+      } else if (running) {
         s.textContent = t.running.replace("{v}", hs.release || "");
         wasRunning = true;
       } else if (st.newer) {
