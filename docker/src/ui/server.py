@@ -20,6 +20,7 @@ import json
 import os
 import re
 import secrets
+import socket
 import sys
 import time
 import wave
@@ -162,6 +163,33 @@ def origin_ok(request: Request) -> bool:
     if origin == "null" or site not in ("", "same-origin", "none"):
         return False
     return origin == f"{request.url.scheme}://{(request.headers.get('host') or '').strip().lower()}"
+
+# Schutz vor DNS-Rebinding: nur Hostnamen, die eine fremde Webseite nicht auf diesen Server umbiegen kann. Erlaubt sind
+# IP-Adressen, Namen ohne Punkt (nur im Heimnetz auflösbar), Heimnetz-Endungen, der eigene Hostname und alles aus
+# NUORB_HOSTS und NUORB_ALLOWED_HOSTS (Komma-Liste, auch *.beispiel.de). Gilt unabhängig von TLS und Kopplung.
+HOME_SUFFIXES = (".local", ".lan", ".home", ".home.arpa", ".internal", ".localdomain", ".fritz.box")
+ALLOWED_HOSTS = {h.strip().lower().rstrip(".") for v in ("NUORB_HOSTS", "NUORB_ALLOWED_HOSTS")
+                 for h in os.environ.get(v, "").split(",") if h.strip()} | {"localhost", socket.gethostname().lower()}
+
+
+def host_ok(request: Request) -> bool:
+    h = (request.headers.get("host") or "").strip().lower()
+    if not h:
+        return True  # ohne Host-Kopf (HTTP/1.0, Werkzeuge): kein Browser, kein Rebinding
+    if h.startswith("["):
+        name = h[1:h.find("]")] if "]" in h else h
+    else:
+        name = h.rsplit(":", 1)[0] if h.count(":") == 1 else h
+    name = name.rstrip(".")
+    try:
+        ipaddress.ip_address(name)
+        return True
+    except ValueError:
+        pass
+    if "." not in name or name in ALLOWED_HOSTS or name.endswith(HOME_SUFFIXES):
+        return True
+    return any(a.startswith("*.") and name.endswith(a[1:]) for a in ALLOWED_HOSTS)
+
 
 PERSONA = (
     "Du sprichst ueber die NUORB-Sprachoberflaeche auf dem Handy des Nutzers. "
@@ -313,6 +341,9 @@ async def lan_only(request: Request, call_next):
         ok = False
     if not ok:
         return JSONResponse({"error": "nur im Heimnetz erreichbar"}, status_code=403)
+    if not host_ok(request):
+        print(f"[host] {request.client.host if request.client else '?'}: Host {request.headers.get('host', '')[:80]!r} abgelehnt", flush=True)
+        return JSONResponse({"detail": "Unbekannter Hostname. Eigene Namen in NUORB_ALLOWED_HOSTS eintragen."}, status_code=421)
     # Kopplungspflicht (wie im Docker-Image). Auf nuorb vorerst aus (NUORB_REQUIRE_PAIRING=0): Kiosk und LAN-Browser
     # haben keinen Token. Eingeschaltet brauchen alle /api/* ausser info/pair einen Geraete-Token.
     path = request.url.path

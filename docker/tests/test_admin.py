@@ -15,6 +15,7 @@ adm = lade("nuorb_admin_test", SRC / "admin/server.py", {
     "NUORB_HOME": str(T), "ADMIN_DATA": str(T / "data"), "HERMES_HOME": str(T / "hermes"),
     "HERMES_BIN": str(T / "fehlt/hermes"), "NUORB_UI_SETTINGS": str(T / "ui.json"), "ADMIN_CTL_DIR": str(T / "ctl"),
     "ADMIN_CERTS": str(T / "certs"), "NUORB_UI_STATIC": str(T / "static"),
+    "NUORB_ALLOWED_HOSTS": "nuorb.example.org,*.ts.net",
 })
 BASE = "https://192.168.1.50:8444"
 PW = "Test-Passwort-sicher-42"
@@ -246,6 +247,25 @@ class Schwaerzung(unittest.TestCase):
         self.assertEqual(out["name"], "sichtbar")
         self.assertNotEqual(out["api_key"], "geheim1234567890")
         self.assertNotEqual(out["liste"][0]["token"], "abcdefgh12345678")
+
+
+class HostAllowlist(unittest.TestCase):
+    """P1.5: DNS-Rebinding. Fremde Hostnamen werden abgelehnt, die Formen aus dem Heimnetz gehen durch."""
+    ERLAUBT = ["192.168.1.50:{p}", "192.168.1.50", "[fe80::1]:{p}", "[::1]", "localhost:{p}", "nuorb:{p}", "nuorb.local:{p}",
+               "nuorb.fritz.box", "nuorb.home.arpa", "nuorb.lan:{p}", "nuorb.example.org:{p}", "geraet.tail1234.ts.net"]
+    VERBOTEN = ["boese.example:{p}", "nuorb.example.org.boese.example", "192.168.1.50.nip.io", "example.org", "ts.net.boese.example"]
+
+    def test_hosts(self):
+        for h in self.ERLAUBT:
+            with self.subTest(host=h):
+                self.assertNotEqual(host_anfrage(h.format(p=8444)).status_code, 421)
+        for h in self.VERBOTEN:
+            with self.subTest(host=h):
+                self.assertEqual(host_anfrage(h.format(p=8444)).status_code, 421)
+
+
+def host_anfrage(host):
+    return TestClient(adm.app, base_url=BASE, client=("192.168.1.60", 1)).get("/api/auth/state", headers={"Host": host})
 
 
 if __name__ == "__main__":

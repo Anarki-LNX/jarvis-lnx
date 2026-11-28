@@ -11,7 +11,7 @@ from _lade import SRC, lade, temp_ordner
 T = temp_ordner("ui")
 ui = lade("nuorb_ui_test", SRC / "ui/server.py", {
     "NUORB_MODE": "demo", "NUORB_REQUIRE_PAIRING": "0", "UI_ALLOWED_ORIGINS": "https://nuorb.example:8443",
-    "NUORB_CONF_DIR": str(T), "HOME": str(T), "UI_CONFIG": str(T / "ui.json"), "UI_CERT_DIR": str(T / "certs"),
+    "NUORB_CONF_DIR": str(T), "HOME": str(T), "NUORB_ALLOWED_HOSTS": "nuorb.example.org,*.ts.net", "UI_CONFIG": str(T / "ui.json"), "UI_CERT_DIR": str(T / "certs"),
 })
 BASE = "https://192.168.1.50:8443"
 J, TXT = "application/json", "text/plain"
@@ -88,6 +88,25 @@ class Kopplungspflicht(unittest.TestCase):
 
     def test_falscher_token_401(self):
         self.assertEqual(anfrage("GET", "/api/status", Authorization="Bearer falsch").status_code, 401)
+
+
+class HostAllowlist(unittest.TestCase):
+    """P1.5: DNS-Rebinding. Fremde Hostnamen werden abgelehnt, die Formen aus dem Heimnetz gehen durch."""
+    ERLAUBT = ["192.168.1.50:{p}", "192.168.1.50", "[fe80::1]:{p}", "[::1]", "localhost:{p}", "nuorb:{p}", "nuorb.local:{p}",
+               "nuorb.fritz.box", "nuorb.home.arpa", "nuorb.lan:{p}", "nuorb.example.org:{p}", "geraet.tail1234.ts.net"]
+    VERBOTEN = ["boese.example:{p}", "nuorb.example.org.boese.example", "192.168.1.50.nip.io", "example.org", "ts.net.boese.example"]
+
+    def test_hosts(self):
+        for h in self.ERLAUBT:
+            with self.subTest(host=h):
+                self.assertNotEqual(host_anfrage(h.format(p=8443)).status_code, 421)
+        for h in self.VERBOTEN:
+            with self.subTest(host=h):
+                self.assertEqual(host_anfrage(h.format(p=8443)).status_code, 421)
+
+
+def host_anfrage(host):
+    return TestClient(ui.app, base_url=BASE, client=("192.168.1.60", 1)).get("/api/info", headers={"Host": host})
 
 
 if __name__ == "__main__":
