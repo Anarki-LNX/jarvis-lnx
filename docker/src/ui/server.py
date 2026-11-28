@@ -14,6 +14,8 @@ Start: ~/nuorb-ui/venv/bin/python -I ~/nuorb-ui/server.py
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import fcntl
 import io
 import ipaddress
 import json
@@ -772,6 +774,20 @@ def _sha(s: str) -> str:
     return hashlib.sha256(s.encode()).hexdigest()
 
 
+@contextlib.contextmanager
+def json_lock(p: Path):
+    """Sperre ueber Prozessgrenzen (Oberflaeche und Verwaltung schreiben dieselben Dateien): Lesen, Aendern und
+    Schreiben von devices.json und pairing.json als ein Schritt. Sperrdatei <datei>.lock daneben, 0600."""
+    p.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(p.with_name(p.name + ".lock"), os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        os.close(fd)
+
+
 def _read_json(p: Path, default):
     try:
         return json.loads(p.read_text(encoding="utf-8"))
@@ -790,15 +806,16 @@ def redeem_pairing_code(code: str) -> bool:
     c = "".join(ch for ch in str(code).upper() if ch in CODE_ALPHABET)
     if len(c) != 8:
         return False
-    data = _read_json(PAIRING_FILE, {})
     h, hit = _sha(c), None
-    for k, v in data.items():
-        if hmac.compare_digest(k, h) and isinstance(v, dict) and v.get("exp", 0) > time.time():
-            hit = k
-    if not hit:
-        return False
-    data.pop(hit, None)  # nur einmal einloesbar
-    _write_json(PAIRING_FILE, {k: v for k, v in data.items() if isinstance(v, dict) and v.get("exp", 0) > time.time()})
+    with json_lock(PAIRING_FILE):  # nur einmal einloesbar, auch bei gleichzeitigen Anfragen
+        data = _read_json(PAIRING_FILE, {})
+        for k, v in data.items():
+            if hmac.compare_digest(k, h) and isinstance(v, dict) and v.get("exp", 0) > time.time():
+                hit = k
+        if not hit:
+            return False
+        data.pop(hit, None)
+        _write_json(PAIRING_FILE, {k: v for k, v in data.items() if isinstance(v, dict) and v.get("exp", 0) > time.time()})
     return True
 
 
@@ -820,10 +837,14 @@ def device_for_request(request: Request) -> str | None:
         if isinstance(v, dict) and hmac.compare_digest(str(v.get("token", "")), h):
             if time.time() - _seen_cache.get(did, 0) > 60:  # „zuletzt gesehen“ hoechstens 1x pro Minute schreiben
                 _seen_cache[did] = time.time()
-                v["last_seen"] = datetime.now().astimezone().isoformat(timespec="seconds")
-                v["ip"] = request.client.host if request.client else ""
                 try:
-                    _write_json(DEVICES_FILE, devs)
+                    with json_lock(DEVICES_FILE):  # frisch lesen: ein gleichzeitiger Widerruf darf nicht ueberschrieben werden
+                        d = _read_json(DEVICES_FILE, {})
+                        if not isinstance(d.get(did), dict):
+                            return None
+                        d[did]["last_seen"] = datetime.now().astimezone().isoformat(timespec="seconds")
+                        d[did]["ip"] = request.client.host if request.client else ""
+                        _write_json(DEVICES_FILE, d)
                 except OSError as exc:
                     print(f"[pair] devices.json nicht schreibbar: {exc}", flush=True)
             return did
@@ -879,10 +900,11 @@ async def api_pair(request: Request):
     name = re.sub(r"[\x00-\x1f<>]", "", str(body.get("device") or "Smartphone"))[:60]
     platform = re.sub(r"[^a-z0-9_-]", "", str(body.get("platform") or "web").lower())[:20]
     token, did = secrets.token_urlsafe(32), "d_" + secrets.token_hex(6)
-    devs = _read_json(DEVICES_FILE, {})
     now = datetime.now().astimezone().isoformat(timespec="seconds")
-    devs[did] = {"name": name, "platform": platform, "token": _sha(token), "created": now, "last_seen": now, "ip": ip}
-    _write_json(DEVICES_FILE, devs)
+    with json_lock(DEVICES_FILE):
+        devs = _read_json(DEVICES_FILE, {})
+        devs[did] = {"name": name, "platform": platform, "token": _sha(token), "created": now, "last_seen": now, "ip": ip}
+        _write_json(DEVICES_FILE, devs)
     print(f"[pair] Geraet gekoppelt: {did} {name!r} ({platform}) von {ip}", flush=True)
     uc = ui_cfg()
     resp = JSONResponse({"token": token, "device_id": did, "name": server_name(), "api": 1,
@@ -896,9 +918,10 @@ async def api_pair(request: Request):
 async def api_unpair(request: Request):
     did = device_for_request(request)
     if did:
-        devs = _read_json(DEVICES_FILE, {})
-        devs.pop(did, None)
-        _write_json(DEVICES_FILE, devs)
+        with json_lock(DEVICES_FILE):
+            devs = _read_json(DEVICES_FILE, {})
+            devs.pop(did, None)
+            _write_json(DEVICES_FILE, devs)
         print(f"[pair] Geraet entkoppelt: {did}", flush=True)
     resp = JSONResponse({"ok": True, "removed": bool(did)})
     resp.delete_cookie(DEVICE_COOKIE, path="/")

@@ -14,6 +14,7 @@ import asyncio
 import base64
 import contextlib
 import difflib
+import fcntl
 import hashlib
 import hmac
 import io
@@ -936,6 +937,20 @@ CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # ohne 0/O/1/I
 PAIR_PROBE: dict = {"t": 0.0, "ok": False}
 
 
+@contextlib.contextmanager
+def json_lock(p: Path):
+    """Sperre über Prozessgrenzen (Oberfläche und Verwaltung schreiben dieselben Dateien): Lesen, Ändern und
+    Schreiben von devices.json und pairing.json als ein Schritt. Sperrdatei <datei>.lock daneben, 0600."""
+    p.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(p.with_name(p.name + ".lock"), os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        os.close(fd)
+
+
 def _json_read(p: Path, default):
     with contextlib.suppress(FileNotFoundError, ValueError):
         return json.loads(p.read_text(encoding="utf-8"))
@@ -983,10 +998,11 @@ async def pairing_new(request: Request):
         return {**pair_payload(request, None), "pairing_supported": False}
     raw = "".join(secrets.choice(CODE_ALPHABET) for _ in range(8))
     async with BRAIN_LOCK:
-        data = {k: v for k, v in _json_read(PAIRING_FILE, {}).items() if v.get("exp", 0) > time.time()}
-        exp = time.time() + CODE_TTL
-        data[hashlib.sha256(raw.encode()).hexdigest()] = {"exp": exp, "by": who(request)[:40], "created": now_iso()}
-        _json_write(PAIRING_FILE, data)
+        with json_lock(PAIRING_FILE):
+            data = {k: v for k, v in _json_read(PAIRING_FILE, {}).items() if v.get("exp", 0) > time.time()}
+            exp = time.time() + CODE_TTL
+            data[hashlib.sha256(raw.encode()).hexdigest()] = {"exp": exp, "by": who(request)[:40], "created": now_iso()}
+            _json_write(PAIRING_FILE, data)
     audit(who(request), "Kopplungscode erzeugt")
     code = f"{raw[:4]}-{raw[4:]}"
     return {**pair_payload(request, code), "expires": int(exp), "ttl": CODE_TTL, "pairing_supported": True}
@@ -1020,11 +1036,12 @@ async def pairing_revoke(request: Request):
     d = await body(request)
     did = str(d.get("id", ""))
     async with BRAIN_LOCK:
-        devs = _json_read(DEVICES_FILE, {})
-        if did not in devs:
-            raise HTTPException(404, "Gerät nicht gefunden.")
-        name = devs.pop(did).get("name", did)
-        _json_write(DEVICES_FILE, devs)
+        with json_lock(DEVICES_FILE):
+            devs = _json_read(DEVICES_FILE, {})
+            if did not in devs:
+                raise HTTPException(404, "Gerät nicht gefunden.")
+            name = devs.pop(did).get("name", did)
+            _json_write(DEVICES_FILE, devs)
     audit(who(request), f"Gerät entkoppelt: {name}")
     return {"ok": True}
 

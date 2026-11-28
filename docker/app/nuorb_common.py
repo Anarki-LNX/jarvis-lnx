@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import contextlib
 import datetime as dt
+import fcntl
 import hashlib
 import hmac
 import ipaddress
@@ -173,6 +174,20 @@ def _sha(s: str) -> str:
     return hashlib.sha256(s.encode()).hexdigest()
 
 
+@contextlib.contextmanager
+def json_lock(p: Path):
+    """Sperre über Prozessgrenzen (Oberfläche und Verwaltung schreiben dieselben Dateien): Lesen, Ändern und Schreiben
+    von devices.json und pairing.json als ein Schritt. Sperrdatei <datei>.lock daneben, 0600."""
+    p.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(p.with_name(p.name + ".lock"), os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        os.close(fd)
+
+
 def _read_json(p: Path, default):
     with contextlib.suppress(FileNotFoundError, ValueError):
         return json.loads(p.read_text(encoding="utf-8"))
@@ -329,10 +344,11 @@ def _norm_code(c: str) -> str:
 
 def new_pairing_code(created_by: str) -> dict:
     code = "".join(secrets.choice(CODE_ALPHABET) for _ in range(8))
-    data = {k: v for k, v in _read_json(PAIRING, {}).items() if v.get("exp", 0) > time.time()}
     exp = time.time() + CODE_TTL
-    data[_sha(code)] = {"exp": exp, "by": created_by[:40], "created": now_iso()}
-    _write_json(PAIRING, data)
+    with json_lock(PAIRING):
+        data = {k: v for k, v in _read_json(PAIRING, {}).items() if v.get("exp", 0) > time.time()}
+        data[_sha(code)] = {"exp": exp, "by": created_by[:40], "created": now_iso()}
+        _write_json(PAIRING, data)
     return {"code": f"{code[:4]}-{code[4:]}", "expires": int(exp), "ttl": CODE_TTL}
 
 
@@ -340,16 +356,17 @@ def redeem_pairing_code(code: str) -> bool:
     c = _norm_code(code)
     if len(c) != 8:
         return False
-    data = _read_json(PAIRING, {})
     h = _sha(c)
-    hit = None
-    for k, v in data.items():
-        if hmac.compare_digest(k, h) and v.get("exp", 0) > time.time():
-            hit = k
-    if not hit:
-        return False
-    data.pop(hit, None)  # einmalig
-    _write_json(PAIRING, {k: v for k, v in data.items() if v.get("exp", 0) > time.time()})
+    with json_lock(PAIRING):  # einmalig, auch bei gleichzeitigen Anfragen
+        data = _read_json(PAIRING, {})
+        hit = None
+        for k, v in data.items():
+            if hmac.compare_digest(k, h) and v.get("exp", 0) > time.time():
+                hit = k
+        if not hit:
+            return False
+        data.pop(hit, None)
+        _write_json(PAIRING, {k: v for k, v in data.items() if v.get("exp", 0) > time.time()})
     return True
 
 
@@ -360,10 +377,11 @@ def devices() -> dict:
 def add_device(name: str, platform: str, ip: str) -> tuple[str, str]:
     token = secrets.token_urlsafe(32)
     did = "d_" + secrets.token_hex(6)
-    d = devices()
-    d[did] = {"name": (name or "Device")[:60], "platform": (platform or "unknown")[:20], "token": _sha(token),
-              "created": now_iso(), "last_seen": now_iso(), "ip": ip}
-    _write_json(DEVICES, d)
+    with json_lock(DEVICES):
+        d = devices()
+        d[did] = {"name": (name or "Device")[:60], "platform": (platform or "unknown")[:20], "token": _sha(token),
+                  "created": now_iso(), "last_seen": now_iso(), "ip": ip}
+        _write_json(DEVICES, d)
     return did, token
 
 
@@ -374,24 +392,28 @@ def device_for_token(token: str, ip: str = "") -> str | None:
     if not token or len(token) > 200:
         return None
     h = _sha(token)
-    d = devices()
-    for did, v in d.items():
+    for did, v in devices().items():
         if hmac.compare_digest(v.get("token", ""), h):
-            if time.time() - _seen_cache.get(did, 0) > 60:  # „zuletzt gesehen“ höchstens einmal pro Minute schreiben (wie die NuOrb-Oberfläche)
+            if time.time() - _seen_cache.get(did, 0) > 60:  # „zuletzt gesehen“ höchstens einmal pro Minute schreiben
                 _seen_cache[did] = time.time()
-                v["last_seen"], v["ip"] = now_iso(), ip
-                _write_json(DEVICES, d)
+                with json_lock(DEVICES):  # frisch lesen: ein gleichzeitiger Widerruf darf nicht überschrieben werden
+                    d = devices()
+                    if did not in d:
+                        return None
+                    d[did]["last_seen"], d[did]["ip"] = now_iso(), ip
+                    _write_json(DEVICES, d)
             return did
     return None
 
 
 def revoke_device(did: str) -> bool:
-    d = devices()
-    if did in d:
+    with json_lock(DEVICES):
+        d = devices()
+        if did not in d:
+            return False
         d.pop(did)
         _write_json(DEVICES, d)
-        return True
-    return False
+    return True
 
 
 def pairing_required() -> bool:

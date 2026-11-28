@@ -58,5 +58,40 @@ class Geraete(unittest.TestCase):
         self.assertIsNone(jc.device_for_token("falsch"))
 
 
+class Sperren(unittest.TestCase):
+    """P1.7: Lesen, Ändern und Schreiben von devices.json und pairing.json als ein Schritt."""
+
+    def test_widerruf_wird_nicht_von_last_seen_ueberschrieben(self):
+        import threading
+        did, token = jc.add_device("Rennen", "android", "192.168.1.70")
+        jc._seen_cache.pop(did, None)
+
+        def widerruf_langsam():  # wie die Verwaltung: lesen, kurz warten, ohne das Gerät schreiben
+            with jc.json_lock(jc.DEVICES):
+                d = jc.devices()
+                time.sleep(0.3)
+                d.pop(did)
+                jc._write_json(jc.DEVICES, d)
+        t = threading.Thread(target=widerruf_langsam)
+        t.start()
+        time.sleep(0.05)
+        ergebnis = jc.device_for_token(token, "192.168.1.70")  # will last_seen schreiben
+        t.join()
+        self.assertNotIn(did, jc.devices(), "widerrufenes Gerät ist wieder da")
+        self.assertIsNone(ergebnis)
+
+    def test_code_bei_gleichzeitigen_anfragen_nur_einmal(self):
+        from concurrent.futures import ThreadPoolExecutor
+        code = jc.new_pairing_code("test")["code"]
+        with ThreadPoolExecutor(10) as ex:
+            treffer = list(ex.map(lambda _: jc.redeem_pairing_code(code), range(10)))
+        self.assertEqual(treffer.count(True), 1, treffer)
+
+    def test_sperrdatei_nur_fuer_den_besitzer(self):
+        jc.add_device("Rechte", "android", "192.168.1.71")
+        lock = jc.DEVICES.with_name(jc.DEVICES.name + ".lock")
+        self.assertEqual(stat.S_IMODE(lock.stat().st_mode), 0o600)
+
+
 if __name__ == "__main__":
     unittest.main()
