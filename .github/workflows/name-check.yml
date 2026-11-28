@@ -1,0 +1,23 @@
+# Fails as soon as the old project name shows up again, in file contents or in paths.
+# The search pattern may appear only here and in the website's own check (website/scripts/check.mjs).
+name: name-check
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  name-check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Old name in file contents
+        run: |
+          if git grep -inE 'j\.?a\.?r\.?v\.?i\.?s' -- . ':!.github/workflows/name-check.yml' ':!website/scripts/check.mjs'; then
+            echo "::error::old project name found, see the lines above"; exit 1
+          fi
+      - name: Old name in paths
+        run: |
+          if git ls-files | grep -iE 'j\.?a\.?r\.?v\.?i\.?s'; then
+            echo "::error::old project name in file or folder names"; exit 1
+          fi
