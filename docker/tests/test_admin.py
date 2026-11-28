@@ -236,6 +236,20 @@ class Pfadpruefungen(unittest.TestCase):
                 self.assertIn(c.post(f"/api/backups/{bid}/restore").status_code, (404, 405))
 
 
+class AuditLog(unittest.TestCase):
+    """P2.12: Nutzereingaben im Audit-Log erzeugen keine neuen Spalten oder Zeilen."""
+
+    def test_tabs_und_zeilenumbrueche_werden_maskiert(self):
+        log = adm.DATA / "audit.log"
+        vorher = log.read_text().count("\n") if log.exists() else 0
+        adm.audit("192.168.1.60", "Zeitplan angelegt: Licht\taus\n2026-01-01T00:00:00\tadmin\tgefälschte Zeile")
+        zeilen = log.read_text().splitlines()
+        self.assertEqual(len(zeilen), vorher + 1)
+        felder = zeilen[-1].split("\t")
+        self.assertEqual(len(felder), 3)
+        self.assertIn("\\n2026", felder[2])
+
+
 class Schwaerzung(unittest.TestCase):
     def test_schluessel_werden_verborgen(self):
         for geheim in ("sk-" + "ant-api03-" + "x" * 40, "Bearer " + "a" * 40):  # zur Laufzeit zusammengesetzt (Datenschutz-Scan)

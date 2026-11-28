@@ -113,9 +113,15 @@ def now_iso() -> str:
     return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
+def _log_field(v: object) -> str:
+    """Ein Feld des Audit-Logs: Tabs und Zeilenumbrüche aus Nutzereingaben (Gerätenamen, Zeitplannamen …) dürfen
+    keine neuen Spalten oder gefälschten Zeilen erzeugen. Backslash zuerst, damit sich das umkehren lässt."""
+    return str(v).replace("\\", "\\\\").replace("\t", "\\t").replace("\r", "\\r").replace("\n", "\\n")
+
+
 def audit(who: str, what: str) -> None:
     with open(DATA / "audit.log", "a", encoding="utf-8") as f:
-        f.write(f"{now_iso()}\t{who}\t{what}\n")
+        f.write(f"{now_iso()}\t{_log_field(who)}\t{_log_field(what)}\n")
 
 
 def atomic_write(path: Path, data: str | bytes, mode: int | None = None) -> None:
