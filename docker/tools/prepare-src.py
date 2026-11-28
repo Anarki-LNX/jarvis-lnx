@@ -97,11 +97,58 @@ def waechter() -> list[str]:
     return funde
 
 
+def vergleichen(a: Path, b: Path, ohne: set[str]) -> list[str]:
+    """Unterschiede zwischen zwei Ordnern (fehlende, zusätzliche, abweichende Dateien), relativ benannt."""
+    def dateien(d: Path) -> dict[str, Path]:
+        return {str(p.relative_to(d)): p for p in d.rglob("*") if p.is_file() and "__pycache__" not in p.parts}
+    da, db = dateien(a), dateien(b)
+    out = []
+    for name in sorted(set(da) | set(db)):
+        if name in ohne:
+            continue
+        if name not in db:
+            out.append(f"fehlt in {b}: {name}")
+        elif name not in da:
+            out.append(f"zusätzlich in {b}: {name}")
+        elif da[name].read_bytes() != db[name].read_bytes():
+            out.append(f"weicht ab: {name}")
+    return out
+
+
 def main() -> int:
+    global ZIEL
     ap = argparse.ArgumentParser()
     ap.add_argument("--quelle", type=Path, default=DOCKER.parent)
+    ap.add_argument("--check", type=Path, nargs="?", const=ZIEL, metavar="ORDNER",
+                    help="nur in einen Arbeitsordner erzeugen und mit ORDNER vergleichen (Standard docker/src); "
+                         "Exit 1, wenn ORDNER nicht genau dem Ergebnis entspricht")
+    ap.add_argument("--ohne", action="append", default=[], metavar="DATEI",
+                    help="beim Vergleich auslassen, relativ zu docker/src (mehrfach möglich)")
     a = ap.parse_args()
-    kopieren(a.quelle.resolve())
+    if a.check:
+        import tempfile
+        basis = Path.home() / ".cache" / "nuorb-prepare-src"   # nie /tmp
+        basis.mkdir(parents=True, exist_ok=True)
+        ZIEL = Path(tempfile.mkdtemp(prefix="check-", dir=basis)) / "src"
+        try:
+            rc = erzeugen(a.quelle.resolve())
+            if rc:
+                return rc
+            diff = vergleichen(ZIEL, a.check.resolve(), set(a.ohne))
+            for d in diff:
+                print("VERALTET", d, file=sys.stderr)
+            if diff:
+                print(f"{a.check} ist nicht aus der Quelle erzeugt. prepare-src.py ausführen und erneut übernehmen.", file=sys.stderr)
+                return 1
+            print(f"{a.check} entspricht der Quelle.")
+            return 0
+        finally:
+            shutil.rmtree(ZIEL.parent, ignore_errors=True)
+    return erzeugen(a.quelle.resolve())
+
+
+def erzeugen(quelle: Path) -> int:
+    kopieren(quelle)
     fehler = ersetzen()
     funde = waechter()
     for f in fehler:
@@ -112,7 +159,7 @@ def main() -> int:
         print("Abbruch: docker/src/ ist nicht sauber. Nichts bauen.", file=sys.stderr)
         return 1
     n = sum(1 for p in ZIEL.rglob("*") if p.is_file())
-    print(f"docker/src/ bereit ({n} Dateien), Privatsphäre-Prüfung bestanden.")
+    print(f"{ZIEL.relative_to(DOCKER) if ZIEL.is_relative_to(DOCKER) else ZIEL}/ bereit ({n} Dateien), Privatsphäre-Prüfung bestanden.")
     return 0
 
 

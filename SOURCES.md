@@ -24,6 +24,12 @@ The rules for the private values are in a file that is never published, so the s
 repository, and it does not need to be. Changes from pull requests are carried back into the private working copy
 by hand before the next run.
 
+Two checks keep both sides in step. Before every commit to `docker/src` the maintainer runs
+`prepare-src.py --check`, which builds `docker/src` from the working copy into a scratch folder and fails if the
+committed folder differs. In this repository `docker/tests/test_source.py` runs in CI: every file the Dockerfile,
+the start scripts and the pages refer to must exist, every route the image wraps must exist in `docker/src`, all
+Python code must compile, and no private address or key may appear.
+
 ## Everything else
 
 | Folder | What is in it |
