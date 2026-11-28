@@ -18,7 +18,6 @@ Ausgabe: id <TAB> text <TAB> quelle <TAB> geschaetzte_sekunden <TAB> kumuliert_m
 """
 import argparse
 import heapq
-import math
 import random
 import re
 import sys
@@ -60,7 +59,7 @@ def einheiten(ph: list[str]) -> list[str]:
     toks = ["_" if x == " " else x for x in p]
     toks = ["_"] + toks + ["_"]
     uni = [t for t in toks if t != "_"]
-    di = [a + "|" + b for a, b in zip(toks, toks[1:]) if not (a == "_" and b == "_")]
+    di = [a + "|" + b for a, b in zip(toks, toks[1:], strict=False) if not (a == "_" and b == "_")]
     return uni + di
 
 

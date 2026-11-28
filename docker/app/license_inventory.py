@@ -40,7 +40,7 @@ def main(dest: Path) -> None:
                 for f in d.files or []:
                     p = Path(f)
                     if ".dist-info" in str(p.parent) and LIC_FILE.match(p.name):
-                        src = Path(d.locate_file(f))
+                        src = Path(str(d.locate_file(f)))
                         if src.is_file():
                             target.mkdir(parents=True, exist_ok=True)
                             shutil.copy2(src, target / p.name)

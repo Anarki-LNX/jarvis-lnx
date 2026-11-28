@@ -1,0 +1,55 @@
+# Unit tests, linters and the end-to-end test of the Docker image.
+# The end-to-end test also runs before every image release (docker.yml calls this workflow).
+name: tests
+on:
+  push:
+  pull_request:
+  workflow_call:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  unit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install test dependencies
+        run: pip install --disable-pip-version-check -r docker/tests/requirements.txt
+      - name: Unit tests (docker/tests)
+        env:
+          NUORB_TEST_TMP: ${{ runner.temp }}
+        run: cd docker/tests && python -m pytest -q
+
+  lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install linters
+        run: |
+          pip install --disable-pip-version-check ruff==0.14.6 mypy==1.18.2
+          sudo apt-get install -y -qq shellcheck
+      - name: ruff
+        run: ruff check .
+      - name: mypy (not strict yet)
+        run: mypy
+      - name: shellcheck
+        run: |
+          shellcheck -S warning -x install.sh proxmox/*.sh proxmox/tests/*.sh docker/tools/*.sh \
+            docker/rootfs/opt/nuorb/bin/nuorb-env docker/rootfs/opt/nuorb/bin/nuorb-init
+
+  e2e:
+    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: End-to-end test (image, compose.test.yaml, mock LLM)
+        run: docker/tools/ci-e2e.sh

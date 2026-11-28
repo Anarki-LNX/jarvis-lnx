@@ -20,10 +20,11 @@ import ipaddress
 import re
 import sys
 import time
+from typing import Any
 from pathlib import Path
 
 from fastapi import HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.routing import APIRoute
 from starlette.routing import Route
 
@@ -124,6 +125,7 @@ if _orig_device_for_request:
         did = _device(request)   # kennt auch Bearer und das Cookie nuorb_device
         if did:
             return {"id": did}
+        assert _orig_device_for_request is not None
         return _orig_device_for_request(request)
     ui.device_for_request = _device_for_request
 
@@ -213,7 +215,7 @@ async def pair_asset(request: Request):
     return FileResponse(PAGES / "pair.js", media_type="text/javascript", headers={"Cache-Control": "no-cache"})
 
 
-_orig_status = None
+_orig_status: Any = None
 for r in app.router.routes:
     if isinstance(r, Route) and r.path == "/api/status":
         _orig_status = r.endpoint
@@ -223,6 +225,7 @@ for r in app.router.routes:
 
 
 async def status_plus(request: Request):
+    assert _orig_status is not None
     data = dict(await _orig_status())
     data.setdefault("lang", jc.lang())
     data.update(assistant_name=jc.assistant_name(), user_name=jc.user_name() or None, onboarded=jc.onboarded(),
@@ -231,13 +234,14 @@ async def status_plus(request: Request):
     return data
 
 
-_orig_index = None
+_orig_index: Any = None
 for r in app.router.routes:
     if isinstance(r, Route) and r.path == "/":
         _orig_index = r.endpoint
 
 
 async def index_plus(request: Request):
+    assert _orig_index is not None
     resp = await _orig_index()
     html = resp.body.decode("utf-8")
     if jc.lang() == "en":
@@ -262,7 +266,7 @@ async def wakeword(request: Request):
     return FileResponse(p, media_type="application/octet-stream", headers={"Cache-Control": "no-store"})
 
 
-_orig_ask = None
+_orig_ask: Any = None
 for r in app.router.routes:
     if isinstance(r, Route) and r.path == "/api/ask":
         _orig_ask = r.endpoint
@@ -271,6 +275,7 @@ for r in app.router.routes:
 async def ask_guard(request: Request):
     if not SETUP_DONE.exists() and ui.cur_mode() == "live":
         return JSONResponse({"detail": NO_BRAIN[jc.lang()].replace("{brand}", jc.brand()), "code": "no_brain"}, status_code=503)
+    assert _orig_ask is not None
     return await _orig_ask(request)
 
 

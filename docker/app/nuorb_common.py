@@ -14,7 +14,6 @@ import hashlib
 import hmac
 import ipaddress
 import json
-import urllib.error
 import contextvars
 import os
 import re
@@ -267,9 +266,10 @@ def ensure_certs() -> None:
         if have == want and cur.not_valid_after_utc - now > dt.timedelta(days=30) and srv_key_p.exists():
             return
     ca_key = serialization.load_pem_private_key(ca_key_p.read_bytes(), None)
+    assert isinstance(ca_key, ec.EllipticCurvePrivateKey), "Heim-CA mit EC-Schlüssel erwartet"
     ca_crt = x509.load_pem_x509_certificate(ca_crt_p.read_bytes())
     k = ec.generate_private_key(ec.SECP256R1())
-    alt = []
+    alt: list[x509.GeneralName] = []
     for h in want:
         try:
             alt.append(x509.IPAddress(ipaddress.ip_address(h)))

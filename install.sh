@@ -105,8 +105,10 @@ VOL_PREFIX="$NAME"   # Volumes <name>_data, <name>_models
 OS_ID="" OS_LIKE="" OS_NAME=""
 OSR="${NUORB_OS_RELEASE:-/etc/os-release}"
 if [ -r "$OSR" ]; then   # in einer Subshell lesen: os-release setzt u. a. NAME
+  # shellcheck disable=SC1090,SC1091
+  OS_ID=$(. "$OSR"; printf '%s' "${ID:-}")
   # shellcheck disable=SC1090
-  OS_ID=$(. "$OSR"; printf '%s' "${ID:-}"); OS_LIKE=$(. "$OSR"; printf '%s' "${ID_LIKE:-}")
+  OS_LIKE=$(. "$OSR"; printf '%s' "${ID_LIKE:-}")
   # shellcheck disable=SC1090
   OS_NAME=$(. "$OSR"; printf '%s' "${PRETTY_NAME:-${ID:-}}")
 fi
@@ -305,6 +307,7 @@ local_llms() {  # Server auf diesem Rechner: "PORT|TYP|SERVER|BIND" je Zeile
   done
 }
 listen_hint() {  # listen_hint SERVER -> wie man den Server im Netz lauschen lässt
+  # shellcheck disable=SC1111  # typografische Anführungszeichen im Text gewollt
   case "$1" in
     Ollama) cmdline "sudo systemctl edit ollama   $(t "# add:" "# eintragen:") [Service]  Environment=\"OLLAMA_HOST=0.0.0.0\"  Environment=\"OLLAMA_CONTEXT_LENGTH=65536\""
             cmdline "sudo systemctl restart ollama" ;;
@@ -347,7 +350,7 @@ configure() {
     found=$(local_llms)
     if [ -n "$found" ]; then
       ok "$(t "Language model server on this machine:" "Sprachmodell-Server auf diesem Rechner:")"
-      printf '%s\n' "$found" | while IFS='|' read -r p ty sv bd; do
+      printf '%s\n' "$found" | while IFS='|' read -r p _ sv bd; do
         printf '      · %s  http://%s:%s%s\n' "$sv" "$IP" "$p" "$([ "$bd" = loopback ] && t "  (only 127.0.0.1, not reachable from the container)" "  (nur 127.0.0.1, vom Container nicht erreichbar)")"
       done
       first=$(printf '%s\n' "$found" | head -1)
@@ -502,6 +505,7 @@ finish() {
                              "Adresse im Browser öffnen. Die Zertifikatswarnung ist erwartet (eigenes Zertifikat). Fortfahren.")"
     printf '   2. %s\n' "$(t "Enter the setup code, choose a password, follow the setup (language, brain)." \
                              "Einrichtungscode eingeben, Passwort wählen, der Einrichtung folgen (Sprache, Gehirn).")"
+    # shellcheck disable=SC1111  # typografische Anführungszeichen im Text gewollt
     printf '   3. %s\n' "$(t "\"Pair device\": scan the QR code with the NuOrb app." "„Gerät koppeln“: QR-Code mit der NuOrb-App scannen.")"
   else
     printf '\n   %s\n' "$(t "Already set up. Log in with your password. Phones stay paired." "Schon eingerichtet. Mit deinem Passwort anmelden. Smartphones bleiben gekoppelt.")"

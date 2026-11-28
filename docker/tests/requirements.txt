@@ -1,0 +1,10 @@
+# Nur für die Unit-Tests (docker/tests), gleiche Versionen wie im Image (docker/requirements.txt).
+fastapi==0.165.0
+starlette==1.10.0
+uvicorn==0.54.0
+httpx==0.28.1
+python-multipart==0.0.34
+ruamel.yaml==0.19.1
+PyYAML==6.0.3
+cryptography==50.0.2
+pytest==8.4.2

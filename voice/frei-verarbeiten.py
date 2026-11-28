@@ -92,7 +92,7 @@ def pruefe(pfad=None):
     spitze = float(db(np.max(np.abs(a))))
     clips = int(np.sum(np.abs(a) > 0.98))
     anteil = m.mean()
-    pausen = [(e2 - s2) * FR for s2, e2 in zip([b[1] for b in bereiche(m)][:-1], [b[0] for b in bereiche(m)][1:])]
+    pausen = [(e2 - s2) * FR for s2, e2 in zip([b[1] for b in bereiche(m)][:-1], [b[0] for b in bereiche(m)][1:], strict=True)]
     lange = sum(p >= PAUSE_S for p in pausen)
     # Brumm-Check: Energie bei 50/100 Hz im Rauschen
     maske = np.repeat(~m, int(FR * r))

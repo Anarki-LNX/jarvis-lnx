@@ -29,6 +29,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+WORK = Path(__file__).resolve().parent.parent / ".work"  # Logs der Hilfs-Mocks (wird bei Bedarf angelegt)
+
 OK, FAIL = "\033[32mOK\033[0m", "\033[31mFEHLER\033[0m"
 results: list[tuple[str, bool, str]] = []
 
@@ -232,7 +234,8 @@ def main() -> int:
     st0, setup0 = adm.req("GET", "/api/setup")
     old_url, model = setup0.get("ollama_url", ""), setup0.get("ollama_model", "")
     port2 = 18435
-    log2 = Path(tempfile.mkdtemp(prefix="e2e-mock-", dir=str(Path(__file__).resolve().parent.parent / ".work"))) / "mock2.log"
+    WORK.mkdir(exist_ok=True)
+    log2 = Path(tempfile.mkdtemp(prefix="e2e-mock-", dir=str(WORK))) / "mock2.log"
     mock2 = subprocess.Popen([sys.executable, str(Path(__file__).with_name("mock-llm.py")), str(port2)],
                              stdout=open(log2, "w"), stderr=subprocess.STDOUT)
     try:
@@ -257,7 +260,7 @@ def main() -> int:
 
     # ---------------------------------------------------------------- OpenAI-kompatibler Server (llama.cpp-Art, mit API-Key)
     port3, key3 = 18439, "e2e-" + secrets.token_hex(6)
-    log3 = Path(tempfile.mkdtemp(prefix="e2e-oai-", dir=str(Path(__file__).resolve().parent.parent / ".work"))) / "mock3.log"
+    log3 = Path(tempfile.mkdtemp(prefix="e2e-oai-", dir=str(WORK))) / "mock3.log"
     mock3 = subprocess.Popen([sys.executable, str(Path(__file__).with_name("mock-llm.py")), str(port3)], stdout=open(log3, "w"),
                              stderr=subprocess.STDOUT, env={**os.environ, "MOCK_KIND": "llamacpp", "MOCK_API_KEY": key3})
     try:

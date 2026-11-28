@@ -1,0 +1,23 @@
+# Werkzeug-Einstellungen für die Prüfungen in der CI (.github/workflows/tests.yml). NuOrb ist kein Python-Paket.
+
+[tool.ruff]
+line-length = 130
+target-version = "py313"
+extend-exclude = ["website", ".venv"]
+
+[tool.ruff.lint]
+# Start: Fehler und Fallen (pyflakes, bugbear). Stilregeln (E501, E702 …) kommen schrittweise dazu.
+select = ["E9", "F", "B"]
+ignore = [
+  "B008",  # Funktionsaufruf als Standardwert: in FastAPI üblich (File(...))
+  "B904",  # raise ... from err: wird mit P2.8 (gezielte Fehlerbehandlung) nachgezogen
+]
+
+[tool.mypy]
+# zunächst nicht strikt: nur der Docker-eigene Code und die Tests
+files = ["docker/app", "docker/tests"]
+python_version = "3.13"
+ignore_missing_imports = true
+explicit_package_bases = true
+check_untyped_defs = false
+warn_unused_ignores = false

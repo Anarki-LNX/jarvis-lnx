@@ -134,7 +134,7 @@ mit `fullchain.pem`/`privkey.pem` in `compose.yaml` unter `/certs` einbinden. Hi
 Caddy): `NUORB_TLS=off`, `NUORB_BIND=127.0.0.1`, `NUORB_PUBLIC_URL` auf die Proxy-Adresse.
 
 **Server automatisch finden (mDNS):** Mit `network_mode: host` und `NUORB_MDNS=1` kündigt sich der Server als
-`_nuorb._tcp` (und für ältere Apps `_nuorb._tcp`) im Heimnetz an, und die App listet ihn. Im normalen Bridge-Netz geht das nicht; dann IP eintragen.
+`_nuorb._tcp` im Heimnetz an, und die App listet ihn. Im normalen Bridge-Netz geht das nicht; dann IP eintragen.
 
 ## Gehirn und Sprache
 

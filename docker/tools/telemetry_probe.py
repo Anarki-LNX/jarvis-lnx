@@ -4,7 +4,7 @@ Läuft im Image mit --network none; die bekannten Telemetrie-Hosts zeigen per --
 Skript auf 443/80 lauscht und jeden Verbindungsversuch zählt. Aufruf über tools/telemetry-check.sh.
 Argument: Wartezeit in Sekunden (onnxruntime sendet gebündelt, erster Versuch nach einigen Sekunden).
 """
-import os, socket, ssl, sys, threading, time, glob
+import os, socket, sys, threading, time
 hits = []
 def listen(port):
     s = socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -17,7 +17,7 @@ print("ORT_DISABLE_TELEMETRY =", os.environ.get("ORT_DISABLE_TELEMETRY"), flush=
 import onnxruntime as ort
 m = "/opt/nuorb/venv/lib/python3.13/site-packages/onnxruntime/datasets/sigmoid.onnx"
 import numpy as np
-for i in range(3):
+for _ in range(3):
     sess = ort.InferenceSession(m, providers=["CPUExecutionProvider"])
     x = np.random.rand(*[d if isinstance(d, int) else 1 for d in sess.get_inputs()[0].shape]).astype(np.float32)
     sess.run(None, {sess.get_inputs()[0].name: x})

@@ -1,4 +1,4 @@
 #!/bin/sh
 . /opt/nuorb/bin/nuorb-env
-cd /opt/nuorb/admin
+cd /opt/nuorb/admin || exit 1
 exec $PY -I /opt/nuorb/app/admin_main.py

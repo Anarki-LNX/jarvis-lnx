@@ -2426,7 +2426,7 @@ async def env_save(request: Request):
     if not remove and (not value or "\n" in value or len(value) > 4096):
         raise HTTPException(400, "Wert fehlt oder ist ungültig.")
     lines, found = [], False
-    for n, v, raw in read_env():
+    for n, _v, raw in read_env():
         if n == name:
             found = True
             if not remove:

@@ -40,4 +40,5 @@ export ADMIN_LANG="${ADMIN_LANG:-en}"   # Admin-Webinterface: en (Standard) oder
 export NUORB_ONBOARDING="${NUORB_ONBOARDING:-1}"   # Begrüßung beim ersten Öffnen (NuOrb-Oberfläche)
 export NUORB_MODE=live NUORB_FEATURE_ZUHAUSE="${NUORB_FEATURE_ZUHAUSE:-0}" NUORB_FEATURE_GERAET=0 NUORB_FEATURE_CLOUD_WEICHE="${NUORB_FEATURE_CLOUD_WEICHE:-0}"
 export PATH="/opt/hermes/bin:/opt/hermes/.venv/bin:/command:/usr/local/bin:/usr/bin:/bin"
+# shellcheck disable=SC2034  # wird von den s6-run-Skripten nach dem Einlesen benutzt
 PY=/opt/nuorb/venv/bin/python

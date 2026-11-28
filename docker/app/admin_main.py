@@ -24,7 +24,6 @@ import httpx
 from fastapi import HTTPException, Request
 from fastapi.responses import FileResponse, Response
 from fastapi.routing import APIRoute
-from starlette.routing import Route
 from starlette.responses import JSONResponse
 
 sys.path.insert(0, "/opt/nuorb/admin")
@@ -53,7 +52,7 @@ def gateway_slot() -> Path | None:
 def svc_dir(name: str) -> Path | None:
     if name == "hermes":
         return gateway_slot()
-    p = Path("/run/service") / SVC[name]
+    p = Path("/run/service") / str(SVC[name])
     return p if p.exists() else None
 
 
@@ -320,7 +319,7 @@ def _normalize_ollama(raw: str) -> tuple[str, str]:
 
 def _env_set(name: str, value: str | None) -> None:
     lines, found = [], False
-    for n, v, raw in adm.read_env():
+    for n, _v, raw in adm.read_env():
         if n == name:
             found = True
             if value:
@@ -494,7 +493,8 @@ def assistant_state() -> dict:
 
 
 def assistant_update(d: dict, who: str) -> dict:
-    fields, notes = {}, []
+    fields: dict[str, str | bool | None] = {}
+    notes: list[str] = []
     for key in ("assistant_name", "user_name"):
         if key in d and d[key] is not None:
             v = re.sub(r"\s+", " ", str(d[key])).strip()
@@ -511,7 +511,7 @@ def assistant_update(d: dict, who: str) -> dict:
         raise HTTPException(400, jc.tr("Nichts zu ändern.", "Nothing to change."))
     adm.write_ui_fields(fields, "Name/onboarding")
     if fields.get("user_name"):
-        _remember_user(fields["user_name"])
+        _remember_user(str(fields["user_name"]))
     adm.audit(who, "Assistant: " + ", ".join(notes))
     return {"ok": True, **assistant_state()}
 
