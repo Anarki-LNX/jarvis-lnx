@@ -10,7 +10,7 @@ docker compose exec nuorb ls /usr/share/doc/nuorb
 docker compose exec nuorb cat /usr/share/doc/nuorb/python-packages.tsv
 ```
 
-Checked for NuOrb 0.6.4 (inventory of image 0.6.2, base `nousresearch/hermes-agent:v0.23.4`). This is a best-effort inventory, not
+Checked for NuOrb 0.7.0 (packages and base image unchanged since the inventory of image 0.6.2, base `nousresearch/hermes-agent:v0.23.4`). This is a best-effort inventory, not
 legal advice. Corrections are welcome as an issue.
 
 ## 1. Components that come with obligations

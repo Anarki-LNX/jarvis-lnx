@@ -261,6 +261,22 @@ release_file() {   # release_file NAME DEST: aus dem Release laden und gegen SHA
   mv "$dest.tmp" "$dest"
 }
 
+# ------------------------------------------------------------------ installation from before v0.7.0
+# Bis v0.6.x hießen die Einstellungen anders (nicht NUORB_*), ebenso Volumes und Pfade. Ein normales Update würde
+# dann mit leeren Volumes neu anfangen. Darum hier anhalten und auf das Umzugsskript des Releases v0.7.0 verweisen.
+old_install_check() {
+  local f="$DIR/.env"
+  [ -f "$f" ] || return 0
+  grep -q '^NUORB_' "$f" && return 0
+  grep -qE '^[A-Z]+_(HOSTS|LANG)=' "$f" || return 0
+  local mig="https://github.com/${REPO}/releases/download/v0.7.0/nuorb-umzug-0.7.0.sh"
+  fail "$(t "This is a NuOrb installation from before v0.7.0. Names of settings, volumes and paths have changed. Nothing was changed." \
+            "Das ist eine NuOrb-Installation von vor v0.7.0. Namen von Einstellungen, Volumes und Pfaden haben sich geändert. Es wurde nichts geändert.")" \
+       "$(t "Move it over once with the migration script (keeps password, memory and paired apps):" \
+            "Einmal mit dem Umzugsskript umziehen (Passwort, Gedächtnis und gekoppelte Apps bleiben):")" \
+       "curl -fsSLO $mig && bash nuorb-umzug-0.7.0.sh --dir $DIR"
+}
+
 # ------------------------------------------------------------------ files
 fetch_files() {
   step "$(t "Preparing $DIR" "$DIR vorbereiten")"
@@ -574,6 +590,7 @@ finish() {
 if [ "${NUORB_LIB_ONLY:-}" = 1 ]; then return 0 2>/dev/null || exit 0; fi
 printf '%sNuOrb%s · %s\n' "$B" "$N" "$(t "self-hosted voice assistant · installer" "selbst gehosteter Sprachassistent · Installation")"
 check_docker
+old_install_check
 [ "$UNINSTALL" = 1 ] && uninstall
 fetch_files
 configure

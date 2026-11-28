@@ -10,7 +10,7 @@ docker compose exec nuorb ls /usr/share/doc/nuorb
 docker compose exec nuorb cat /usr/share/doc/nuorb/python-packages.tsv
 ```
 
-Checked for NuOrb 0.6.4 (inventory of image 0.6.2, base `nousresearch/hermes-agent:v0.23.4`). This is a best-effort inventory, not
+Checked for NuOrb 0.7.0 (packages and base image unchanged since the inventory of image 0.6.2, base `nousresearch/hermes-agent:v0.23.4`). This is a best-effort inventory, not
 legal advice. Corrections are welcome as an issue.
 
 ## 1. Components that come with obligations
@@ -99,13 +99,13 @@ Debian GNU/Linux 12 (bookworm) system with Docker, built by [`proxmox/build-temp
 The NuOrb image itself is not inside; the container downloads it at its first start, so sections 1 to 4 apply to it as
 usual.
 
-| Part | Version (0.6.6) | License | Notes |
+| Part | Version (as built for 0.6.6) | License | Notes |
 |---|---|---|---|
 | Debian 12 base system (203 packages, e.g. bash, coreutils, systemd, apt, git, GnuPG, OpenSSL, nano) | bookworm | mostly GPL/LGPL, plus BSD, MIT, Apache-2.0, Artistic, public domain | 142 of the packages contain GPL-licensed parts. License of each package: `/usr/share/doc/<package>/copyright` in the container, license texts in `/usr/share/common-licenses/`. |
 | Docker Engine, CLI and rootless extras (`docker-ce`, `docker-ce-cli`, `docker-ce-rootless-extras`) from Docker's Debian repository | 29.10.1 | Apache-2.0 | [moby/moby](https://github.com/moby/moby), [docker/cli](https://github.com/docker/cli) |
 | containerd (`containerd.io`) | 2.4.2 | Apache-2.0 | [containerd/containerd](https://github.com/containerd/containerd) |
 | Docker Compose and Buildx plugins | 5.8.1 / 0.39.1 | Apache-2.0 | [docker/compose](https://github.com/docker/compose), [docker/buildx](https://github.com/docker/buildx) |
-| NuOrb scripts in the template (`update`, `nuorb-setup-code`, `nuorb-reset-password`, `nuorb-firstboot`) | 0.6.6 | MIT | this repository, `proxmox/` |
+| NuOrb scripts in the template (`update`, `nuorb-setup-code`, `nuorb-reset-password`, `nuorb-firstboot`, `/usr/local/lib/nuorb/release.sh`) | 0.7.0 | MIT | this repository, `proxmox/` |
 
 **Source code:** the exact package list with versions is attached to every release as
 `nuorb-lxc-<version>-amd64.packages.txt` (inside the container: `dpkg -l`). The source code of every Debian package at

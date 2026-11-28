@@ -137,6 +137,26 @@ class ReleaseDateien(unittest.TestCase):
         self.assertNotEqual(boese.returncode, 0)
         self.assertFalse((T / "ct2.sh").exists())
 
+    def alt_pruefen(self, env_text: str) -> subprocess.CompletedProcess:
+        d = T / f"alt-{abs(hash(env_text))}"
+        d.mkdir(exist_ok=True)
+        (d / ".env").write_text(env_text)
+        skript = 'INST="$1"; D="$2"; set --; NUORB_LIB_ONLY=1; . "$INST"; DIR="$D"; old_install_check; echo WEITER'
+        return self.bash(skript, str(INSTALL), str(d))
+
+    def test_installation_von_vor_070_wird_angehalten(self):
+        r = self.alt_pruefen("ALT_HOSTS=192.168.1.50\nALT_LANG=de\nTZ=Europe/Berlin\n")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertNotIn("WEITER", r.stdout)
+        self.assertIn("nuorb-umzug-0.7.0.sh", r.stderr + r.stdout)
+
+    def test_neue_installation_laeuft_weiter(self):
+        for text in ("NUORB_HOSTS=192.168.1.50\nNUORB_LANG=de\n", "TZ=Europe/Berlin\n"):
+            with self.subTest(text=text):
+                r = self.alt_pruefen(text)
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertIn("WEITER", r.stdout)
+
     def test_skript_laedt_nichts_vom_branch(self):
         text = INSTALL.read_text()
         self.assertNotIn("raw.githubusercontent.com", text)
