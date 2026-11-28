@@ -68,10 +68,10 @@ if jc.tls_mode() != "selfsigned":
                 r = await c.request(method, ui.ADMIN_URL + path, json=payload, headers={"X-NuOrb-Internal": token})
             try:
                 data = r.json()
-            except Exception:
+            except ValueError:
                 data = {"detail": r.text[:300]}
             return r.status_code, data if isinstance(data, dict) else {"data": data}
-        except Exception as exc:
+        except (httpx.HTTPError, OSError) as exc:
             return 503, {"detail": f"Admin nicht erreichbar ({exc.__class__.__name__})."}
     ui._admin = _admin_intern
 
@@ -180,7 +180,7 @@ async def pair(request: Request):
         return JSONResponse({"detail": "too_many_attempts"}, status_code=429)
     try:
         body = await request.json()
-    except Exception:
+    except ValueError:
         body = {}
     if not isinstance(body, dict) or not jc.redeem_pairing_code(str(body.get("code", ""))):
         _fails.setdefault(ip, []).append(time.time())
@@ -286,7 +286,7 @@ async def assistant(request: Request):
                 "onboarded": jc.onboarded(), "greeting": personas.GREETING[jc.lang()].replace("{brand}", jc.brand())}
     try:
         body = await request.json()
-    except Exception:
+    except ValueError:
         body = None
     if not isinstance(body, dict) or set(body) - {"assistant_name", "user_name", "onboarded"}:
         return JSONResponse({"detail": "Erlaubt: assistant_name, user_name, onboarded"}, status_code=400)

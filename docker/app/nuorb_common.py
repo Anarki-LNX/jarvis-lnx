@@ -294,7 +294,8 @@ def ca_covers(ca_crt, name: str) -> bool:
         return True
     try:
         ip = ipaddress.ip_address(name)
-        return any(isinstance(g, x509.IPAddress) and ip in g.value for g in nc.permitted_subtrees or [])
+        nets = [g.value for g in nc.permitted_subtrees or [] if isinstance(g, x509.IPAddress)]
+        return any(isinstance(n, (ipaddress.IPv4Network, ipaddress.IPv6Network)) and ip in n for n in nets)
     except ValueError:
         n = name.lower().rstrip(".")
         return any(isinstance(g, x509.DNSName) and (n == g.value or n.endswith("." + g.value)) for g in nc.permitted_subtrees or [])
@@ -341,7 +342,7 @@ def ensure_certs() -> None:
     nicht = [h for h in want_all if not ca_covers(ca_crt, h)]
     want = [h for h in want_all if h not in nicht]
     srv_crt_p, srv_key_p = CERTS / "server.crt", CERTS / "server.key"
-    with contextlib.suppress(Exception):
+    with contextlib.suppress(OSError, ValueError, x509.ExtensionNotFound):   # fehlt oder beschädigt: neu ausstellen
         cur = x509.load_pem_x509_certificate(srv_crt_p.read_bytes())
         san = cur.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
         have = sorted({str(v) for v in san.get_values_for_type(x509.DNSName)}
@@ -397,7 +398,7 @@ def cert_names() -> list[str]:
         san = crt.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
         return [str(v) for v in san.get_values_for_type(x509.DNSName)] + \
                [str(v) for v in san.get_values_for_type(x509.IPAddress)]
-    except Exception:
+    except (OSError, ValueError, x509.ExtensionNotFound):
         return []
 
 
@@ -505,7 +506,7 @@ def llm_detect(base: str, api_key: str = "", timeout: float = 5) -> dict:
                 return r.status, json.loads(r.read() or b"{}")
         except urllib.error.HTTPError as e:
             return e.code, {}
-        except Exception:
+        except (OSError, ValueError):   # nicht erreichbar, Zeitüberschreitung, keine JSON-Antwort
             return 0, {}
     st, mj = get("/v1/models")
     out = {"server": "OpenAI-kompatibel", "models": [], "ctx": None, "ok": st == 200, "error": ""}

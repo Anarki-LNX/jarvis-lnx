@@ -386,10 +386,10 @@ async def _probe(url: str, timeout: float = 1.2, headers: dict | None = None) ->
         r = await client.get(url, timeout=timeout, headers=headers)
         try:
             data = r.json()
-        except Exception:
+        except ValueError:
             data = None
         return r.status_code < 400, data
-    except Exception:
+    except (httpx.HTTPError, OSError):
         return False, None
 
 
@@ -581,8 +581,8 @@ async def ask(request: Request):
             print(f"Geraete-Weiche: Haiku-Start {r.status_code}, weiter mit Standard-Gehirn", flush=True)
             payload.pop("provider", None); payload.pop("model", None); route = "standard"
             r = await start(payload)
-    except Exception:
-        raise HTTPException(503, "Hermes nicht erreichbar")
+    except (httpx.HTTPError, OSError):
+        raise HTTPException(503, "Hermes nicht erreichbar") from None
     if r.status_code >= 400:
         detail = r.text[:300]
         raise HTTPException(r.status_code if r.status_code in (409, 429, 503) else 502, detail)
@@ -660,8 +660,8 @@ async def run_approval(run_id: str, request: Request):
                     out["request_id"] = c.get("prompt_id") or out.get("request_id")
                     out["execution_generation"] = c.get("execution_generation")
                     break
-        except Exception:
-            pass
+        except (ValueError, AttributeError, TypeError) as exc:   # Run-Status unlesbar: ohne Generation weiter
+            print(f"[approval] Run-Status von {run_id} unlesbar ({exc.__class__.__name__})", flush=True)
     r = await client.post(f"{HERMES_URL}/v1/runs/{run_id}/approval", json=out, headers=_auth(), timeout=10)
     if r.status_code >= 400 and out.get("request_id") and out.get("execution_generation") is not None:
         # MCP-Trust-Abfragen (pattern mcp_elicitation) sind laut Doku auch ueber /clarify aufloesbar
@@ -891,7 +891,7 @@ async def api_pair(request: Request):
         return JSONResponse({"detail": "too_many_attempts"}, status_code=429)
     try:
         body = await request.json()
-    except Exception:
+    except ValueError:
         body = {}
     if not isinstance(body, dict) or not redeem_pairing_code(str(body.get("code", ""))):
         fails.append(time.time())
@@ -941,12 +941,12 @@ async def _admin(method: str, path: str, payload: dict | None = None) -> tuple[i
             r = await c.request(method, ADMIN_URL + path, json=payload, headers={"X-NuOrb-Internal": token})
         try:
             data = r.json()
-        except Exception:
+        except ValueError:
             data = {"detail": r.text[:300]}
         if r.status_code == 404:
             data = {"detail": "Admin-UI kennt die Handy-Schnittstelle noch nicht. Bitte im Admin-UI (:8444) umschalten."}
         return r.status_code, data if isinstance(data, dict) else {"data": data}
-    except Exception as exc:
+    except (httpx.HTTPError, OSError) as exc:
         return 503, {"detail": f"Admin-UI nicht erreichbar ({exc.__class__.__name__})."}
 
 
@@ -1108,7 +1108,7 @@ async def clientlog(request: Request):
     _clog_times.append(now)
     try:
         body = await request.json()
-    except Exception:
+    except ValueError:
         return Response(status_code=400)
     msg = re.sub(r"[\x00-\x1f]", " ", str(body.get("msg", "")))[:400]
     ip = request.client.host if request.client else "?"
@@ -1146,8 +1146,8 @@ async def widgets():
                     "next": j.get("next_run_at") or j.get("next_run"),
                     "schedule": j.get("schedule_display") or j.get("schedule"),
                 })
-    except Exception:
-        pass
+    except (httpx.HTTPError, OSError, ValueError, AttributeError) as exc:   # Widgets sind Zusatz, nur melden
+        print(f"[widgets] Aufgaben von Hermes nicht lesbar ({exc.__class__.__name__})", flush=True)
     jobs.sort(key=lambda j: str(j.get("next") or "~"))
     return {"jobs": jobs[:4], "notes": _memory_notes()}
 
@@ -1194,8 +1194,8 @@ class PiperTTS:
                 import onnxruntime
                 onnxruntime.disable_telemetry_events()
                 _ort_explicit_threads(onnxruntime)
-            except Exception:
-                pass
+            except (ImportError, AttributeError) as exc:   # ältere onnxruntime ohne diese Schalter
+                print(f"Piper: onnxruntime-Einstellung übersprungen ({exc.__class__.__name__})", flush=True)
             from piper import PiperVoice
             self.voice = PiperVoice.load(self.path)
             self.ready = True

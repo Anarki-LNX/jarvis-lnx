@@ -38,6 +38,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
+from ruamel.yaml.error import YAMLError
 
 # ------------------------------------------------------------------ Pfade und Einstellungen
 HOME = Path(os.environ.get("NUORB_HOME", "/home/nuorb"))
@@ -233,7 +234,7 @@ FAILS: dict[str, list[float]] = {}
 
 
 def load_sessions() -> None:
-    with contextlib.suppress(Exception):
+    with contextlib.suppress(OSError, ValueError):
         SESSIONS.update(json.loads(SESS_FILE.read_text()))
 
 
@@ -273,7 +274,7 @@ def check_pw(pw: str) -> bool:
         salt = base64.b64decode(a["salt"])
         h = hashlib.scrypt(pw.encode(), salt=salt, n=a["n"], r=a["r"], p=a["p"], maxmem=64 * 1024 * 1024, dklen=32)
         return hmac.compare_digest(h, base64.b64decode(a["hash"]))
-    except Exception:
+    except (OSError, KeyError, TypeError, ValueError):   # fehlt, beschädigt oder unbekanntes Format: kein Login
         return False
 
 
@@ -426,8 +427,8 @@ def who(request: Request) -> str:
 async def body(request: Request) -> dict:
     try:
         d = await request.json()
-    except Exception:
-        raise HTTPException(400, "Ungültige Anfrage.")
+    except ValueError:
+        raise HTTPException(400, "Ungültige Anfrage.") from None
     if not isinstance(d, dict):
         raise HTTPException(400, "Ungültige Anfrage.")
     return d
@@ -575,12 +576,12 @@ def validate_content(kind: str, text: str) -> None:
     if kind == "yaml":
         try:
             yaml_rt.load(text)
-        except Exception as e:
+        except YAMLError as e:
             raise HTTPException(400, f"YAML ist ungültig: {e}")
     elif kind == "json":
         try:
             json.loads(text)
-        except Exception as e:
+        except ValueError as e:
             raise HTTPException(400, f"JSON ist ungültig: {e}")
     elif kind == "skill":
         fm = parse_frontmatter(text)
@@ -646,7 +647,7 @@ async def run_hermes(*args: str, timeout: float = 90) -> tuple[int, str]:
         text = re.sub(r"\x1b\[[0-9;?]*[A-Za-z]", "", out.decode("utf-8", "replace"))
         return p.returncode or 0, redact_text(text)[-6000:]
     except asyncio.TimeoutError:
-        with contextlib.suppress(Exception):
+        with contextlib.suppress(ProcessLookupError):
             p.kill()
         return 124, f"Zeitüberschreitung nach {timeout:.0f} s"
     except FileNotFoundError:
@@ -681,14 +682,18 @@ async def change_apply(pid: str, request: Request):
         mode = 0o600 if kind == "env" else None
         atomic_write(path, p["new"], mode)
         if p.get("mark_own"):
-            with contextlib.suppress(Exception):
+            with contextlib.suppress(OSError):
                 (path.parent / ".nuorb-admin").write_text(now_iso() + "\n")
     if p.get("after_ui"):
-        with contextlib.suppress(Exception):
+        try:
             write_ui_fields(p["after_ui"], "Gehirn-Modus (automatisch mitgeschrieben)")
+        except Exception as exc:  # Änderung selbst ist gespeichert; nur das Mitschreiben fehlt, also melden
+            print(f"[admin] Gehirn-Modus nicht in ui.json geschrieben: {exc.__class__.__name__}: {exc}", flush=True)
     if p.get("after_brain"):
-        with contextlib.suppress(Exception):
+        try:
             save_brain_saved(p["after_brain"])
+        except Exception as exc:
+            print(f"[admin] Gehirn-Einstellung nicht gesichert: {exc.__class__.__name__}: {exc}", flush=True)
     if (p.get("after_ui") or {}).get("brain_mode") == "remote":
         await unload_local_model()
     audit(who(request), f"geändert: {label_of(key)} · {p['desc']} (Sicherung {bid})")
@@ -710,7 +715,7 @@ async def change_discard(pid: str):
 async def backups_list():
     items = []
     for d in sorted(BACKUPS.iterdir(), reverse=True):
-        with contextlib.suppress(Exception):
+        with contextlib.suppress(OSError, ValueError, KeyError):   # unvollständige Sicherung überspringen
             m = json.loads((d / "meta.json").read_text())
             items.append({"id": d.name, "key": m["key"], "file": label_of(m["key"]), "time": m["time"],
                           "reason": m.get("reason", ""), "size": (d / "content").stat().st_size})
@@ -794,7 +799,7 @@ def cfg_set(data, path: str, value) -> None:
 def move_trailing_comment(m: CommentedMap, old_key, new_key) -> None:
     """Kommentarblock hinter dem bisher letzten Schlüssel (z. B. Ueberschrift des nächsten Abschnitts)
     an den neuen letzten Schlüssel haengen, damit der neue Eintrag nicht hinter der Ueberschrift landet."""
-    with contextlib.suppress(Exception):
+    with contextlib.suppress(AttributeError, IndexError, KeyError, TypeError):   # nur Kosmetik der Kommentare
         item = m.ca.items.get(old_key)
         tok = item[2] if item and len(item) > 2 else None
         if tok is None or not tok.value:
@@ -845,7 +850,7 @@ async def config_set_ep(request: Request):
     else:
         try:
             value = YAML(typ="safe").load(raw) if raw.strip() else ""
-        except Exception as e:
+        except YAMLError as e:
             raise HTTPException(400, f"Wert ist kein gültiges YAML: {e}")
     return config_preview({path: value}, f"{path} {'entfernen' if value is None else 'setzen'}")
 
@@ -880,9 +885,9 @@ async def probe(url: str, timeout: float = 1.5, headers: dict | None = None, ver
             r = await c.get(url, headers=headers)
             try:
                 return r.status_code < 400, r.json()
-            except Exception:
+            except ValueError:
                 return r.status_code < 400, None
-    except Exception:
+    except (httpx.HTTPError, OSError):
         return False, None
 
 
@@ -1546,7 +1551,7 @@ def fb_block_set(text: str, model: str | None) -> str:
 
 
 def load_brain_saved() -> dict:
-    with contextlib.suppress(Exception):
+    with contextlib.suppress(OSError, ValueError):
         return json.loads(BRAIN_FILE.read_text())
     return {}
 
@@ -1748,7 +1753,7 @@ async def brain_projekt(request: Request):
 def read_ui_settings() -> dict:
     try:
         return json.loads(UI_SETTINGS.read_text())
-    except Exception:
+    except (OSError, ValueError):
         return {}
 
 
@@ -1968,7 +1973,7 @@ def parse_frontmatter(text: str) -> dict:
     try:
         d = YAML(typ="safe").load(m.group(1))
         return d if isinstance(d, dict) else {}
-    except Exception:
+    except YAMLError:
         return {}
 
 
@@ -2084,7 +2089,7 @@ async def skills_probe(request: Request):
     sentence = text.split("\n\n")[0].strip()
     raw = None
     if (m := re.search(r"^Rohwerte:\s*(\{.*\})\s*$", text, re.M)):
-        with contextlib.suppress(Exception):
+        with contextlib.suppress(ValueError):
             raw = json.loads(m.group(1))
     return {"ok": p.returncode == 0, "sentence": sentence, "raw": raw, "output": text[-3000:]}
 
@@ -2533,7 +2538,7 @@ async def hermes_api(method: str, path: str, js: dict | None = None):
         raise HTTPException(502, "Hermes ist nicht erreichbar.")
     try:
         data = r.json()
-    except Exception:
+    except ValueError:
         data = {"text": r.text[:500]}
     if r.status_code >= 400:
         msg = data.get("error") if isinstance(data, dict) else None
@@ -2583,7 +2588,7 @@ async def sessions_list():
 
 # ------------------------------------------------------------------ Dienste (root-Helfer über Path-Unit)
 def ctl_result() -> dict | None:
-    with contextlib.suppress(Exception):
+    with contextlib.suppress(OSError, ValueError):
         return json.loads((CTL_DIR / "result.json").read_text())
     return None
 
@@ -2684,7 +2689,7 @@ async def phone_cmd(*args: str, timeout: float = 8) -> tuple[int, str]:
         o, e = await asyncio.wait_for(p.communicate(), timeout)
         return p.returncode or 0, (o.decode("utf-8", "replace") or e.decode("utf-8", "replace")).strip()[:4000]
     except asyncio.TimeoutError:
-        with contextlib.suppress(Exception):
+        with contextlib.suppress(ProcessLookupError):
             p.kill()
         return 124, "Zeitüberschreitung"
 
@@ -2720,7 +2725,7 @@ async def phone_status(cached: bool = False) -> dict:
         if code == 0:
             try:
                 data["status"] = json.loads(out)
-            except Exception:
+            except ValueError:
                 data["error"] = "Antwort des Kiosk-Geräts unlesbar."
         else:
             data["error"] = phone_error_text(out, code)

@@ -189,7 +189,8 @@ class HeimCA(unittest.TestCase):
                  .add_extension(x509.SubjectAlternativeName([x509.DNSName("bank.example.com")]), critical=False)
                  .add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()), critical=False)
                  .sign(ca_key, hashes.SHA256()))
-        with self.assertRaises(Exception):
+        from cryptography.x509.verification import VerificationError
+        with self.assertRaises(VerificationError):
             self.pruefen(boese, "bank.example.com")
 
     def test_ca_covers(self):
