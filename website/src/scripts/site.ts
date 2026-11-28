@@ -174,6 +174,39 @@ document.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((b) => {
   });
 });
 
+// Installation: drei Wege als Reiter. Ohne Skript stehen sie untereinander. Anker #install-<weg> wählt den Reiter.
+const ways = document.querySelector<HTMLElement>("[data-ways]");
+if (ways) {
+  const bar = ways.querySelector<HTMLElement>('[role="tablist"]')!;
+  const wtabs = Array.from(bar.querySelectorAll<HTMLButtonElement>("[data-way]"));
+  const wpanels = Array.from(ways.querySelectorAll<HTMLElement>("[data-way-panel]"));
+  wpanels.forEach((p) => { p.setAttribute("role", "tabpanel"); p.setAttribute("aria-labelledby", `way-tab-${p.dataset.wayPanel}`); p.tabIndex = 0; });
+  const pick = (tab: HTMLButtonElement, focus = false) => {
+    wtabs.forEach((b) => { const on = b === tab; b.setAttribute("aria-selected", String(on)); b.tabIndex = on ? 0 : -1; });
+    wpanels.forEach((p) => { p.hidden = p.dataset.wayPanel !== tab.dataset.way; });
+    if (focus) tab.focus();
+  };
+  wtabs.forEach((b, i) => {
+    b.addEventListener("click", () => pick(b));
+    b.addEventListener("keydown", (e) => {
+      const k = e.key; let n = -1;
+      if (k === "ArrowRight") n = (i + 1) % wtabs.length; else if (k === "ArrowLeft") n = (i - 1 + wtabs.length) % wtabs.length;
+      else if (k === "Home") n = 0; else if (k === "End") n = wtabs.length - 1;
+      if (n >= 0) { e.preventDefault(); pick(wtabs[n], true); }
+    });
+  });
+  const fromHash = () => {
+    const w = location.hash.startsWith("#install-") ? location.hash.slice(9) : "";
+    const tab = wtabs.find((b) => b.dataset.way === w);
+    if (tab) { pick(tab); document.getElementById("install")?.scrollIntoView(); }
+  };
+  ways.classList.add("js-ways");
+  bar.hidden = false;
+  pick(wtabs[0]);
+  fromHash();
+  addEventListener("hashchange", fromHash);
+}
+
 // Demo: Geräte-Tabs, Szenen, eigene Steuerung. Nur vorproduzierte Videos von diesem Server.
 type V = { src: string; type: string; w: number; h: number };
 type Clip = { id: string; loop: boolean; video: V[]; sound: V[]; poster: Record<string, string>; tracks: { src: string; srclang: string; label: string }[]; alt: string };

@@ -1,13 +1,19 @@
 ---
-// Installationsbefehl nur zum Kopieren – die Website führt nie etwas aus.
+// Drei Installationswege als Reiter (Docker, Docker Compose, Proxmox LXC). Befehle nur zum Kopieren: die Website
+// führt nie etwas aus. Ohne Skript stehen alle drei Wege untereinander, die Reiterleiste bleibt verborgen.
 import { t, type Lang } from "../i18n";
-import { GITHUB, INSTALL_CMD, INSTALL_CMD_DE, YOUTUBE } from "../config";
+import { COMPOSE_CMDS, GITHUB, INSTALL_CMD, INSTALL_CMD_DE, PROXMOX_CMD, YOUTUBE } from "../config";
 import Icon from "./Icon.astro";
+import Cmd from "./Cmd.astro";
 import media from "../data/media.json";
 interface Props { lang: Lang }
 const { lang } = Astro.props;
 const d = t(lang).install;
 const cmd = lang === "de" ? INSTALL_CMD_DE : INSTALL_CMD;
+const ways = ["docker", "compose", "proxmox"] as const;
+const icons = { docker: "server", compose: "code", proxmox: "chip" } as const;
+const composeCode = [COMPOSE_CMDS.fetch, COMPOSE_CMDS.edit, COMPOSE_CMDS.start];
+const px = d.proxmox;
 const tutorialUrl = lang === "de" ? YOUTUBE.tutorialDe : YOUTUBE.tutorialEn;
 type Clip = { id: string; video: { src: string; type: string; w: number }[]; poster: Record<string, string>; tracks: { src: string; srclang: string; label: string }[]; alt: Record<string, string> };
 const tut = (media as { clips: Clip[] }).clips.find((c) => c.id === `install-tutorial-${lang}`);
@@ -18,29 +24,66 @@ const tutSources = tut ? ["video/webm", "video/mp4"].map((ty) => tut.video.filte
     <div class="head reveal">
       <p class="kicker">{d.kicker}</p>
       <h2 id="install-title">{d.title}</h2>
+      <p class="lead">{d.lead}</p>
     </div>
     <div class="grid">
-      <div class="main reveal">
-        <div class="cmd">
-          <div class="cmd__bar"><span>{d.commandLabel}</span>
-            <button type="button" class="btn btn--glass btn--sm" data-copy={cmd} data-copied={d.copied} hidden><Icon name="copy" /><span>{d.copy}</span></button>
-          </div>
-          <pre><code><span class="p" aria-hidden="true">$ </span>{cmd}</code></pre>
+      <div class="main reveal" data-ways>
+        <div class="tabs" role="tablist" aria-label={d.variantsLabel} hidden>
+          {ways.map((w, i) => (
+            <button type="button" role="tab" id={`way-tab-${w}`} aria-controls={`install-${w}`} aria-selected={i === 0 ? "true" : "false"}
+              tabindex={i === 0 ? 0 : -1} data-way={w}><Icon name={icons[w]} /><span>{d.variants[w].tab}</span></button>
+          ))}
         </div>
-        <p class="bn">{d.browserNote}</p>
-        <h3 class="sub">{d.stepsTitle}</h3>
-        <ol class="ol">{d.steps.map((s) => <li>{s}</li>)}</ol>
-        <p class="after">{d.after}</p>
+
+        <div class="way" id="install-docker" data-way-panel="docker" aria-labelledby="way-h-docker">
+          <h3 class="way__h" id="way-h-docker">{d.variants.docker.tab} <span class="badge">{d.recommended}</span></h3>
+          <p class="for">{d.variants.docker.for}</p>
+          <Cmd label={d.commandLabel} code={cmd} copy={d.copy} copied={d.copied} />
+          <p class="bn">{d.browserNote}</p>
+          <h4 class="sub">{d.stepsTitle}</h4>
+          <ol class="ol">{d.steps.map((s) => <li>{s}</li>)}</ol>
+          <p class="after">{d.after}</p>
+          {tut && tutSources.length > 0 && (
+            <figure class="tut">
+              <video controls preload="none" playsinline data-lazy-poster={tut.poster.webp || tut.poster.jpg} aria-label={tut.alt[lang] || tut.alt.en}>
+                {tutSources.map((v) => v && <source src={v.src} type={v.type} />)}
+                {tut.tracks.map((tr) => <track kind="subtitles" src={tr.src} srclang={tr.srclang} label={tr.label} />)}
+              </video>
+              <figcaption>{d.videoCaption}</figcaption>
+            </figure>
+          )}
+        </div>
+
+        <div class="way" id="install-compose" data-way-panel="compose" aria-labelledby="way-h-compose">
+          <h3 class="way__h" id="way-h-compose">{d.variants.compose.tab}</h3>
+          <p class="for">{d.variants.compose.for}</p>
+          <ol class="csteps">
+            {d.composeSteps.map(([title, text], i) => (
+              <li><p><strong>{title}.</strong> {text}</p><Cmd label={d.terminal} code={composeCode[i]} copy={d.copy} copied={d.copied} /></li>
+            ))}
+          </ol>
+          <p class="hub"><Icon name="cloud" /><span>{d.hubNote[0]} <code>{d.hubNote[1]}</code> {d.hubNote[2]}</span></p>
+          <p class="after">{d.after}</p>
+          <p><a class="more" href={lang === "de" ? GITHUB.manualDe : GITHUB.manual} rel="noopener">{d.composeDocs.replace(/\s+\S+$/, "")} <span class="nw">{d.composeDocs.split(" ").at(-1)}<Icon name="external" class="ext" /></span></a></p>
+        </div>
+
+        <div class="way" id="install-proxmox" data-way-panel="proxmox" aria-labelledby="way-h-proxmox">
+          <h3 class="way__h" id="way-h-proxmox">{d.variants.proxmox.tab}</h3>
+          <p class="for">{d.variants.proxmox.for}</p>
+          <Cmd label={px.commandLabel} code={PROXMOX_CMD} copy={d.copy} copied={d.copied} />
+          <p class="bn">{d.browserNote}</p>
+          <h4 class="sub">{px.stepsTitle}</h4>
+          <ol class="ol">{px.steps.map((s) => <li>{s}</li>)}</ol>
+          <p class="after">{d.after}</p>
+          <div class="tpl">
+            <div><h4>{px.templateTitle}</h4><p>{px.templateText}</p></div>
+            <a class="btn btn--glass" href={GITHUB.releasesLatest} rel="noopener"><Icon name="download" /><span>{px.templateButton}</span></a>
+          </div>
+          <p class="upd">{px.update}</p>
+          <p><a class="more" href={lang === "de" ? GITHUB.proxmoxDe : GITHUB.proxmox} rel="noopener">{px.docs.replace(/\s+\S+$/, "")} <span class="nw">{px.docs.split(" ").at(-1)}<Icon name="external" class="ext" /></span></a></p>
+        </div>
+
         <div class="notice notice--warn" role="note"><Icon name="warn" /><div><strong>{d.warnTitle}</strong> <span>{d.warnText}</span></div></div>
-        {tut && tutSources.length > 0 && (
-          <figure class="tut">
-            <video controls preload="none" playsinline data-lazy-poster={tut.poster.webp || tut.poster.jpg} aria-label={tut.alt[lang] || tut.alt.en}>
-              {tutSources.map((v) => v && <source src={v.src} type={v.type} />)}
-              {tut.tracks.map((tr) => <track kind="subtitles" src={tr.src} srclang={tr.srclang} label={tr.label} />)}
-            </video>
-            <figcaption>{d.videoCaption}</figcaption>
-          </figure>
-        )}
       </div>
       <aside class="side reveal">
         <div class="card">
@@ -51,6 +94,8 @@ const tutSources = tut ? ["video/webm", "video/mp4"].map((ty) => tut.video.filte
           <a href={lang === "de" ? GITHUB.installDe : GITHUB.install} rel="noopener"><Icon name="code" />{lang === "de" ? d.docsDe : d.docsEn}<Icon name="external" class="ext" /></a>
           <a href={lang === "de" ? GITHUB.install : GITHUB.installDe} rel="noopener" hreflang={lang === "de" ? "en" : "de"}><Icon name="globe" />{lang === "de" ? d.docsEn : d.docsDe}<Icon name="external" class="ext" /></a>
           <a href={GITHUB.docker} rel="noopener"><Icon name="server" />{d.docker}<Icon name="external" class="ext" /></a>
+          <a href={GITHUB.dockerHub} rel="noopener"><Icon name="cloud" />{d.dockerHub}<Icon name="external" class="ext" /></a>
+          <a href={lang === "de" ? GITHUB.proxmoxDe : GITHUB.proxmox} rel="noopener"><Icon name="chip" />{d.proxmoxDocs}<Icon name="external" class="ext" /></a>
           <a href={tutorialUrl} rel="noopener"><Icon name="youtube" />{d.video}<Icon name="external" class="ext" /></a>
           <a href={GITHUB.repo} rel="noopener"><Icon name="github" />{d.repo}<Icon name="external" class="ext" /></a>
         </nav>
@@ -62,14 +107,39 @@ const tutSources = tut ? ["video/webm", "video/mp4"].map((ty) => tut.video.filte
 <style>
   .grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: clamp(1.5rem, 4vw, 3rem); align-items: start; }
   .main { display: grid; gap: 1.3rem; min-width: 0; }
-  .cmd { border: 1px solid var(--line-2); border-radius: var(--r-md); background: #070a12; overflow: hidden; box-shadow: 0 0 60px rgba(56, 217, 255, .06); }
-  .cmd__bar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .55rem .6rem .55rem 1.1rem; border-bottom: 1px solid var(--line); font: 500 .74rem/1 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); }
-  .cmd__bar .btn { text-transform: none; letter-spacing: 0; }
-  .cmd__bar .btn[hidden] { display: none; }
-  pre { margin: 0; padding: 1.2rem 1.1rem; overflow-x: auto; font: 400 .95rem/1.6 var(--f-mono); color: var(--text); white-space: pre-wrap; word-break: break-all; }
-  .p { color: var(--cyan); user-select: none; }
   .bn { font-size: .9rem; color: var(--text-3); }
-  .sub { font-size: 1.15rem; margin-top: .6rem; }
+  .way h4 { font-family: var(--f-display); font-weight: 700; letter-spacing: -.01em; line-height: 1.2; text-wrap: balance; }
+  .sub { font-size: 1.1rem; margin: .5rem 0 -.4rem; }
+  .tabs { display: inline-flex; justify-self: start; gap: .3rem; padding: .3rem; border: 1px solid var(--line-2); border-radius: 14px; background: var(--glass); flex-wrap: wrap; }
+  .tabs[hidden] { display: none; }
+  .tabs button { display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; padding: .5rem 1rem; border: 0; border-radius: 10px; background: transparent; color: var(--text-2); font: 600 .95rem/1.1 var(--f-text); cursor: pointer; }
+  .tabs button :global(svg) { width: 18px; height: 18px; flex: none; }
+  .tabs button[aria-selected="true"] { background: var(--text); color: var(--ink-0); }
+  .tabs button:hover:not([aria-selected="true"]) { color: var(--text); background: var(--glass-2); }
+  .way { display: grid; gap: 1.2rem; min-width: 0; }
+  .way[hidden] { display: none; }
+  .way + .way { padding-top: 2rem; border-top: 1px solid var(--line); }
+  .js-ways .way + .way { padding-top: 0; border-top: 0; }
+  .way__h { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .7rem; font-size: 1.35rem; margin: 0; }
+  .js-ways .way__h { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .way__h .badge { font-size: .72rem; }
+  .for { margin: 0; padding: .9rem 1.1rem; border-left: 2px solid var(--cyan); border-radius: 0 var(--r-sm) var(--r-sm) 0; background: var(--glass); color: var(--text); line-height: 1.55; }
+  .csteps { margin: 0; padding: 0; list-style: none; counter-reset: c; display: grid; gap: 1.3rem; }
+  .csteps li { counter-increment: c; display: grid; gap: .65rem; min-width: 0; }
+  .csteps p { margin: 0; color: var(--text-2); line-height: 1.55; }
+  .csteps p::before { content: counter(c) " "; font: 600 .85rem/1 var(--f-mono); color: var(--cyan); margin-right: .35rem; }
+  .csteps strong { color: var(--text); }
+  .tpl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem 1.5rem; align-items: center; padding: 1.2rem 1.3rem; border: 1px solid var(--line-2); border-radius: var(--r-md); background: rgba(255,255,255,.03); }
+  .tpl h4 { margin: 0 0 .35rem; font-size: 1.02rem; }
+  .tpl p { margin: 0; color: var(--text-2); font-size: .93rem; line-height: 1.55; }
+  .hub { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .7rem; margin: 0; padding: .9rem 1.1rem; border: 1px dashed var(--line-2); border-radius: var(--r-sm); color: var(--text-2); font-size: .93rem; line-height: 1.6; }
+  .hub :global(svg) { width: 18px; height: 18px; color: var(--violet); margin-top: .2rem; }
+  .hub code { font: 400 .86rem/1.4 var(--f-mono); color: var(--text); background: rgba(255,255,255,.06); padding: .1rem .35rem; border-radius: 6px; overflow-wrap: anywhere; }
+  .upd { color: var(--text-2); margin: 0; font-size: .95rem; }
+  .more { font-weight: 500; }
+  .nw { white-space: nowrap; }
+  .nw :global(svg) { display: inline-block; }
+  .more :global(.ext) { width: 14px; height: 14px; margin-left: .4rem; vertical-align: -.1em; color: var(--text-3); }
   .ol { margin: 0; padding-left: 1.5rem; display: grid; gap: .6rem; color: var(--text-2); }
   .ol li::marker { color: var(--cyan); font-family: var(--f-mono); }
   .ol li { padding-left: .25rem; line-height: 1.55; }
@@ -87,4 +157,10 @@ const tutSources = tut ? ["video/webm", "video/mp4"].map((ty) => tut.video.filte
   .links :global(svg) { width: 18px; height: 18px; color: var(--cyan); }
   .links :global(.ext) { width: 14px; height: 14px; color: var(--text-3); }
   @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  @media (max-width: 640px) { .tpl { grid-template-columns: 1fr; } .tpl .btn { justify-self: start; } }
+  @media (max-width: 520px) {
+    .tabs { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; }
+    .tabs[hidden] { display: none; }
+    .tabs button { flex-direction: column; justify-content: center; gap: .3rem; padding: .55rem .3rem; font-size: .84rem; text-align: center; }
+  }
 </style>

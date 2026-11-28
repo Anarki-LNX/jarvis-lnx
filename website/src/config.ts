@@ -7,9 +7,15 @@ export const GITHUB = {
   issues: "https://github.com/Anarki-LNX/nuorb/issues",
   pulls: "https://github.com/Anarki-LNX/nuorb/pulls",
   releases: "https://github.com/Anarki-LNX/nuorb/releases",
+  releasesLatest: "https://github.com/Anarki-LNX/nuorb/releases/latest",
+  proxmox: "https://github.com/Anarki-LNX/nuorb/blob/main/docs/proxmox.md",
+  proxmoxDe: "https://github.com/Anarki-LNX/nuorb/blob/main/docs/proxmox.de.md",
+  manual: "https://github.com/Anarki-LNX/nuorb/blob/main/INSTALL.md#6-manual-installation-alternative",
+  manualDe: "https://github.com/Anarki-LNX/nuorb/blob/main/INSTALL.de.md#6-manuelle-installation-alternative",
   install: "https://github.com/Anarki-LNX/nuorb/blob/main/INSTALL.md",
   installDe: "https://github.com/Anarki-LNX/nuorb/blob/main/INSTALL.de.md",
   docker: "https://github.com/Anarki-LNX/nuorb/blob/main/docker/README.md",
+  dockerHub: "https://hub.docker.com/r/anarkilnx/nuorb",
   contributing: "https://github.com/Anarki-LNX/nuorb/blob/main/CONTRIBUTING.md",
   aiDeclaration: "https://github.com/Anarki-LNX/nuorb/blob/main/AI_DECLARATION.md",
   license: "https://github.com/Anarki-LNX/nuorb/blob/main/LICENSE",
@@ -17,8 +23,20 @@ export const GITHUB = {
   api: "https://api.github.com/repos/Anarki-LNX/nuorb",
 };
 
-export const INSTALL_CMD = "curl -fsSL https://raw.githubusercontent.com/Anarki-LNX/nuorb/main/install.sh | bash";
+// Ab v0.7.0 aus den Release-Dateien (geprüft gegen SHA256SUMS); die alten raw/main-Links bleiben als Weiterleitung gültig.
+const REL = "https://github.com/Anarki-LNX/nuorb/releases/latest/download";
+export const INSTALL_CMD = `curl -fsSL ${REL}/install.sh | bash`;
 export const INSTALL_CMD_DE = INSTALL_CMD + " -s -- --lang de";
+
+// Proxmox VE: Einzeiler für die Host-Shell (wie docs/proxmox.md)
+export const PROXMOX_CMD = `bash -c "$(curl -fsSL ${REL}/nuorb-lxc.sh)"`;
+
+// Docker Compose von Hand (wie INSTALL.md, Abschnitt 6), in drei kopierbaren Schritten, Dateien aus dem Release
+export const COMPOSE_CMDS = {
+  fetch: `mkdir -p ~/nuorb && cd ~/nuorb\ncurl -fsSLO ${REL}/compose.yaml\ncurl -fsSL ${REL}/SHA256SUMS | grep " compose.yaml$" | sha256sum -c\ncurl -fsSL ${REL}/env.example -o .env`,
+  edit: "nano .env",
+  start: "docker compose up -d\ndocker compose logs -f nuorb",
+};
 
 // Öffentliche YouTube-Videos – nur verlinkt, nie eingebettet (keine Dritt-Embeds, kein Tracking).
 export const YOUTUBE = {

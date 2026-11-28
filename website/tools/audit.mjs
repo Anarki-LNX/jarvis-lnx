@@ -107,7 +107,7 @@ try {
           const wait = (ms) => new Promise(r => setTimeout(r, ms)); const res = {};
           document.getElementById("demo").scrollIntoView(); await wait(2500);
           const vid = () => document.querySelector("[data-panel]:not([hidden]) video");
-          res.startTab = document.querySelector('[role="tab"][aria-selected="true"]')?.dataset.tab;
+          res.startTab = document.querySelector('[data-tab][aria-selected="true"]')?.dataset.tab;
           res.autoplay = vid() ? { t: +vid().currentTime.toFixed(2), err: vid().error?.code ?? null, src: vid().currentSrc.split("/").pop() } : null;
           document.querySelector('[data-tab="phone"]').click(); await wait(300);
           const sc = [...document.querySelectorAll('[data-panel="phone"] [data-scene]')]; res.phoneScenes = sc.length;
@@ -121,6 +121,43 @@ try {
         if (x.autoplay && (x.autoplay.err || x.autoplay.t <= 0)) problems.push(`${vname} ${page}: Demo-Loop spielt nicht (${JSON.stringify(x.autoplay)})`);
         if (x.sound && (x.sound.muted || x.sound.t <= 0 || !x.sound.tracks)) problems.push(`${vname} ${page}: Ton-Fassung fehlerhaft (${JSON.stringify(x.sound)})`);
         if (x.phoneClick && (x.phoneClick.err || x.phoneClick.t <= 0)) problems.push(`${vname} ${page}: Szene startet nicht (${JSON.stringify(x.phoneClick)})`);
+      }
+      if (["/en/", "/de/"].includes(page) && ["w1440", "w390", "w360"].includes(vname)) {
+        // Installation: drei Reiter, Tastatur, Kopierknöpfe, kein Überlauf; Bildschirmfoto je Reiter
+        const ways = ["docker", "compose", "proxmox"];
+        const lang = page.slice(1, 3);
+        for (const w of ways) {
+          const r = await send("Runtime.evaluate", { returnByValue: true, awaitPromise: true, expression: `(async () => {
+            const wait = (ms) => new Promise(r => setTimeout(r, ms));
+            const bar = document.querySelector("[data-ways] [role=tablist]"); const tab = bar.querySelector('[data-way="${w}"]');
+            tab.click(); await wait(150);
+            const sec = document.getElementById("install"); sec.scrollIntoView({ behavior: "instant" }); await wait(450);
+            const vis = [...document.querySelectorAll("[data-way-panel]")].filter((p) => !p.hidden).map((p) => p.dataset.wayPanel);
+            const panel = document.querySelector('[data-way-panel="${w}"]');
+            const copies = [...panel.querySelectorAll("[data-copy]")].filter((b) => !b.hidden && b.offsetWidth > 0).length;
+            const over = [...panel.querySelectorAll("*")].filter((e) => e.getBoundingClientRect().right > innerWidth + 1).map((e) => e.tagName + "." + e.className).slice(0, 3);
+            const barOver = bar.scrollWidth > bar.clientWidth + 1;
+            const rr = sec.getBoundingClientRect();
+            return { vis, sel: bar.querySelector("[aria-selected=true]").dataset.way, copies, over, barOver, barShown: !bar.hidden, top: rr.top + scrollY, h: rr.height }; })()` });
+          const x = r.result.value; notes.push(`${vname} ${page}: Install ${w} ${JSON.stringify({ ...x, top: undefined, h: undefined })}`);
+          const want = { docker: 1, compose: 3, proxmox: 1 }[w];
+          if (!x.barShown || x.vis.join() !== w || x.sel !== w || x.copies !== want || x.over.length || x.barOver) problems.push(`${vname} ${page}: Install-Reiter ${w} fehlerhaft ${JSON.stringify(x)}`);
+          const shot = await send("Page.captureScreenshot", { format: "jpeg", quality: 75, captureBeyondViewport: true, clip: { x: 0, y: x.top, width: v.iw, height: Math.min(x.h, 6000), scale: dpr > 1 ? 1 / dpr : 0.7 } });
+          writeFileSync(join(outDir, `install-${lang}-${vname}-${w}.jpg`), Buffer.from(shot.data, "base64"));
+        }
+        const k = await send("Runtime.evaluate", { returnByValue: true, awaitPromise: true, expression: `(async () => {
+          const wait = (ms) => new Promise(r => setTimeout(r, ms)); const bar = document.querySelector("[data-ways] [role=tablist]");
+          const t = bar.querySelector('[data-way="docker"]'); t.click(); t.focus();
+          t.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true })); await wait(80);
+          const wrap = document.activeElement.dataset.way;
+          document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true })); await wait(80);
+          const home = document.activeElement.dataset.way;
+          location.hash = "#install-compose"; await wait(150);
+          const hash = bar.querySelector("[aria-selected=true]").dataset.way;
+          history.replaceState(null, "", location.pathname); bar.querySelector('[data-way="docker"]').click(); scrollTo(0, 0);
+          return { wrap, home, hash }; })()` });
+        const y = k.result.value; notes.push(`${vname} ${page}: Install-Tastatur ${JSON.stringify(y)}`);
+        if (y.wrap !== "proxmox" || y.home !== "docker" || y.hash !== "compose") problems.push(`${vname} ${page}: Install-Tastatur/Anker fehlerhaft ${JSON.stringify(y)}`);
       }
       if (page === "/en/" && vname === "w390") {
         const m = await send("Runtime.evaluate", { returnByValue: true, awaitPromise: true, expression: `(async () => {

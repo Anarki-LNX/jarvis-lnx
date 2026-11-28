@@ -31,7 +31,8 @@ const rules = [
   [/\b(?:sk-ant-[\w-]{10,}|sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|github_pat_\w{20,}|AKIA[0-9A-Z]{16}|xox[bap]-[\w-]{10,})/g, () => true, "Schlüssel/Token"],
   [/-----BEGIN [A-Z ]*PRIVATE KEY-----/g, () => true, "privater Schlüssel"],
   [/\/home\/[a-z_][\w-]*/g, () => true, "lokaler Pfad"],
-  [/\bnuorb\b/gi, () => true, "alter Name „NuOrb“"],
+  // gleiches Muster wie .github/workflows/name-check.yml (auch technische Bezeichner und Schreibweisen mit Punkten)
+  [/j\.?a\.?r\.?v\.?i\.?s/gi, () => true, "alter Name"],
 ];
 const scan = (file, text) => {
   for (const [re, keep, what] of rules) for (const m of text.match(re) || []) if (keep(m)) err(`Datenschutz: ${what} „${m}“ in ${relative(web, file)}`);
