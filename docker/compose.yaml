@@ -18,7 +18,7 @@ services:
     security_opt:
       - no-new-privileges:true
     cap_drop: [ALL]
-    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID, KILL]
+    cap_add: [CHOWN, DAC_OVERRIDE, DAC_READ_SEARCH, FOWNER, SETUID, SETGID, KILL]
     pids_limit: 2048          # gemessen im e2e-Lauf: höchstens ~300 Prozesse
     # Speichergrenze: gemessen höchstens ~1,5 GB (Sprache, Hermes, Smart Home). 4 GB lassen Luft für erweiterte
     # Werkzeuge mit Browser. Eigener Wert in der .env: NUORB_MEM_LIMIT=6g. Keine feste CPU-Grenze (Spracherkennung

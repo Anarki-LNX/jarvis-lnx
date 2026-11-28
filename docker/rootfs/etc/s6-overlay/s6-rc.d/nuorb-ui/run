@@ -1,4 +1,7 @@
 #!/command/with-contenv sh
 . /opt/nuorb/bin/nuorb-env
 exec 2>&1
-exec s6-setuidgid hermes /opt/nuorb/bin/start-ui
+# v0.7.4: als nuorb mit nur einer Fähigkeit, DAC_READ_SEARCH (lesen und Ordner durchsuchen, nie schreiben). Grund: Hermes
+# setzt sein Datenverzeichnis /opt/data beim Start auf 0700 (secure_parent_dir), und die Dateien der Oberfläche liegen darin.
+exec setpriv --reuid=nuorb --regid=nuorb --init-groups --inh-caps=+dac_read_search --ambient-caps=+dac_read_search \
+  /opt/nuorb/bin/start-ui

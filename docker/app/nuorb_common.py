@@ -32,6 +32,80 @@ APP = Path(__file__).resolve().parent
 DEVICES = CONF / "devices.json"
 PAIRING = CONF / "pairing.json"
 
+# ------------------------------------------------------------------ getrennte Benutzer (v0.7.4)
+# Admin-Panel und Oberfläche laufen als „nuorb“, Hermes und damit die Werkzeuge des Sprachmodells als „hermes“.
+# Die Geheimnisse von NuOrb (J ohne die Ausnahmen unten) gehören nur nuorb. Was nuorb im Bereich von Hermes schreibt,
+# geht an hermes zurück, damit sich für Hermes nichts ändert. Hermes darf genau diese NuOrb-Dateien lesen:
+NUORB_USER, HERMES_USER = "nuorb", "hermes"
+HERMES_READS = ("mcp.token", "weather.json", "weather.env", "ui.json")   # in CONF: nuorb:hermes 0640 (ui.json: Stimme für die Spracherkennung, keine Geheimnisse)
+HERMES_AREAS_IN_J = ("policy", "cache", "logs/stt")                   # unter J, aber von Hermes-Prozessen geschrieben
+RECLAIM_SKIP = ("installs", "cache")                                  # Laufzeiten und Zwischenspeicher von Hermes, groß
+
+
+def user_ids(name: str) -> tuple[int, int] | None:
+    import pwd
+    try:
+        pw = pwd.getpwnam(name)
+    except KeyError:
+        return None
+    return pw.pw_uid, pw.pw_gid
+
+
+def separated() -> bool:
+    """True, wenn dieser Prozess als nuorb läuft (Image ab v0.7.4). In Tests und alten Images: False."""
+    ids = user_ids(NUORB_USER)
+    return ids is not None and os.geteuid() == ids[0]
+
+
+def in_nuorb_area(p: Path) -> bool:
+    """Gehört p zu den Dateien von nuorb (Geheimnisse, Einstellungen), nicht zum Bereich von Hermes?"""
+    try:
+        rel = Path(os.path.abspath(p)).relative_to(J)
+    except ValueError:
+        return False
+    return not any(rel == Path(a) or Path(a) in rel.parents for a in HERMES_AREAS_IN_J)
+
+
+def fix_owner(p: Path) -> None:
+    """Nach dem Schreiben als nuorb: Bereich von Hermes -> hermes, die Lesedateien für Hermes -> nuorb:hermes 0640.
+    Ohne Trennung (Tests, alte Images) passiert nichts. Fehler werden ignoriert: das Schreiben selbst hat geklappt."""
+    if not separated():
+        return
+    h = user_ids(HERMES_USER)
+    if not h:
+        return
+    with contextlib.suppress(OSError):
+        if in_nuorb_area(p):
+            if p.parent == CONF and p.name in HERMES_READS:
+                os.chown(p, os.geteuid(), h[1])
+                os.chmod(p, 0o640)
+            return
+        os.chown(p, h[0], h[1], follow_symlinks=False)
+
+
+def reclaim_hermes_files(root: Path = DATA) -> int:
+    """Alles, was nuorb im Bereich von Hermes angelegt hat (etwa über die Hermes-CLI), an hermes zurückgeben.
+    Überspringt den NuOrb-Bereich und die großen Ordner von Hermes. Gibt die Zahl der geänderten Einträge zurück."""
+    if not separated():
+        return 0
+    me, h = os.geteuid(), user_ids(HERMES_USER)
+    if not h:
+        return 0
+    n = 0
+    for dirpath, dirnames, filenames in os.walk(root):
+        d = Path(dirpath)
+        dirnames[:] = [x for x in dirnames if not (d == root and x in RECLAIM_SKIP) and not (d / x).is_symlink()
+                       and (not in_nuorb_area(d / x) or (d / x) == J)]
+        for name in [*dirnames, *filenames]:
+            f = d / name
+            if f == J or in_nuorb_area(f):
+                continue
+            with contextlib.suppress(OSError):
+                if os.lstat(f).st_uid == me:
+                    os.chown(f, h[0], h[1], follow_symlinks=False)
+                    n += 1
+    return n
+
 # ------------------------------------------------------------------ Werkzeuge von Hermes (S5/S6)
 # Enger Standard für die Plattform api_server (NuOrb-Oberfläche und App): was ein Sprachassistent braucht.
 # Alle aktiven MCP-Server kommen von Hermes automatisch dazu. „extended“ = alle Werkzeuge des API-Servers.
@@ -301,6 +375,7 @@ def _write_json(p: Path, data) -> None:
     tmp.write_text(json.dumps(data, indent=1, ensure_ascii=False), encoding="utf-8")
     os.chmod(tmp, 0o600)
     os.replace(tmp, p)
+    fix_owner(p)
 
 
 DEFAULT_NETS = "127.0.0.0/8,::1/128,10.0.0.0/8,192.168.0.0/16,100.64.0.0/10,fc00::/7,fe80::/10"

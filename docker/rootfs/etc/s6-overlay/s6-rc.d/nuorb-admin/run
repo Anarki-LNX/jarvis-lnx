@@ -1,4 +1,6 @@
 #!/command/with-contenv sh
 . /opt/nuorb/bin/nuorb-env
 exec 2>&1
-exec s6-setuidgid hermes /opt/nuorb/bin/start-admin
+# v0.7.4: als nuorb. DAC_OVERRIDE/CHOWN/FOWNER, um Dateien von Hermes zu bearbeiten und sie hermes zurückzugeben.
+exec setpriv --reuid=nuorb --regid=nuorb --init-groups --inh-caps=+chown,+dac_override,+fowner \
+  --ambient-caps=+chown,+dac_override,+fowner /opt/nuorb/bin/start-admin

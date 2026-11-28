@@ -314,14 +314,23 @@ def hermes_env(name: str) -> str:
     return val
 
 
+_last_key = {"v": ""}
+
+
 def hermes_key() -> str:
     key = os.environ.get("API_SERVER_KEY", "")
     env = HOME / ".hermes/.env"
     if not key and env.exists():
-        for line in env.read_text(encoding="utf-8", errors="ignore").splitlines():
+        try:
+            text = env.read_text(encoding="utf-8", errors="ignore")
+        except PermissionError:   # .env kurz nicht lesbar (Rechte): letzten Schlüssel weiter nutzen
+            return _last_key["v"]
+        for line in text.splitlines():
             m = re.match(r"\s*API_SERVER_KEY\s*=\s*(.*)\s*$", line)
             if m:
                 key = m.group(1).strip().strip('"').strip("'")
+    if key:
+        _last_key["v"] = key
     return key
 
 

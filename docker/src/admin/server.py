@@ -127,8 +127,18 @@ def audit(who: str, what: str) -> None:
         f.write(f"{now_iso()}\t{_log_field(who)}\t{_log_field(what)}\n")
 
 
+# Haken für die Docker-Hülle (getrennte Benutzer, v0.7.4): nach jedem Schreiben bzw. jedem Aufruf der Hermes-CLI
+# Besitz richtigstellen. Ohne Docker bleiben beide leer.
+AFTER_WRITE = None    # Callable[[Path], None]
+ENV_MODE = 0o600      # Docker ab v0.7.4: 0o640 (Gruppe hermes, die Oberfläche liest ihren Schlüssel ohne Sonderrechte)
+AFTER_HERMES = None   # Callable[[], object]
+
+
 def atomic_write(path: Path, data: str | bytes, mode: int | None = None) -> None:
+    new_parent = not path.parent.exists()
     path.parent.mkdir(parents=True, exist_ok=True)
+    if new_parent and AFTER_WRITE:
+        AFTER_WRITE(path.parent)
     tmp = path.with_name(f".{path.name}.tmp-{secrets.token_hex(4)}")
     if isinstance(data, str):
         data = data.encode("utf-8")
@@ -141,6 +151,8 @@ def atomic_write(path: Path, data: str | bytes, mode: int | None = None) -> None
         os.fsync(f.fileno())
     os.chmod(tmp, mode if mode is not None else (old_mode if old_mode is not None else 0o644))
     os.replace(tmp, path)
+    if AFTER_WRITE:
+        AFTER_WRITE(path)
 
 
 # ------------------------------------------------------------------ Secrets maskieren
@@ -653,6 +665,8 @@ async def run_hermes(*args: str, timeout: float = 90) -> tuple[int, str]:
                                                  env=env, cwd=str(HOME))
         out, _ = await asyncio.wait_for(p.communicate(), timeout)
         text = re.sub(r"\x1b\[[0-9;?]*[A-Za-z]", "", out.decode("utf-8", "replace"))
+        if AFTER_HERMES:
+            AFTER_HERMES()
         return p.returncode or 0, redact_text(text)[-6000:]
     except asyncio.TimeoutError:
         with contextlib.suppress(ProcessLookupError):
@@ -687,11 +701,13 @@ async def change_apply(pid: str, request: Request):
         with contextlib.suppress(OSError):
             path.parent.rmdir()
     else:
-        mode = 0o600 if kind == "env" else None
+        mode = ENV_MODE if kind == "env" else None
         atomic_write(path, p["new"], mode)
         if p.get("mark_own"):
             with contextlib.suppress(OSError):
                 (path.parent / ".nuorb-admin").write_text(now_iso() + "\n")
+                if AFTER_WRITE:
+                    AFTER_WRITE(path.parent / ".nuorb-admin")
     if p.get("after_ui"):
         try:
             write_ui_fields(p["after_ui"], "Gehirn-Modus (automatisch mitgeschrieben)")

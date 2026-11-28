@@ -46,8 +46,10 @@ def satz(c: str, zeitraum: str, lang: str, mock: str) -> str:
 
 
 def setze(c: str, settings: dict) -> None:
-    dexec(c, f"umask 077; cat > {CONF}/weather.json; rm -rf /opt/data/nuorb/cache/weather",
-          stdin=json.dumps(settings).encode())
+    # Einstellungen schreibt das Panel (nuorb, Gruppe hermes, 0640), den Zwischenspeicher leert das Wetter (hermes)
+    dexec(c, f"cat > {CONF}/weather.json && (chown nuorb:hermes {CONF}/weather.json 2>/dev/null || true) && chmod 640 {CONF}/weather.json",
+          user="root", stdin=json.dumps(settings).encode())
+    dexec(c, "rm -rf /opt/data/nuorb/cache/weather")
 
 
 def run(app: Client, frage: str) -> tuple[str, list]:
@@ -103,7 +105,7 @@ def main() -> int:
     check("MCP-Eintrag wetter registriert (nur lesend, trust full)", "nuorb_weather_mcp.py" in cfg and "trust: full" in
           cfg.split("  wetter:", 1)[-1][:600], block[:80])
     check("Skill nuorb/wetter installiert", "name: wetter" in dexec(C, "cat /opt/data/skills/nuorb/wetter/SKILL.md"))
-    dexec(C, f"rm -f {CONF}/weather.json {CONF}/weather.env")
+    dexec(C, f"rm -f {CONF}/weather.json {CONF}/weather.env", user="root")
     out = dexec(C, f"{PY} -I /opt/nuorb/app/nuorb_weather_mcp.py --satz jetzt de")
     check("Ohne Ort: ehrlicher Hinweis", "noch nicht eingerichtet" in out, out.strip()[:90])
 
@@ -206,7 +208,7 @@ def main() -> int:
         app.req("POST", "/api/unpair")
         adm.req("POST", "/api/setup/apply", {"mode": "local", "ollama_url": old_url, "ollama_model": model,
                                             "context": 65536, "remote_model": ""}, timeout=150)
-        dexec(C, f"rm -rf {CONF}/weather.json {CONF}/weather.env /opt/data/nuorb/cache/weather")
+        dexec(C, f"rm -rf {CONF}/weather.json {CONF}/weather.env /opt/data/nuorb/cache/weather", user="root")
         check("Aufgeräumt: Ort und Schlüssel gelöscht",
               "nicht eingerichtet" in dexec(C, f"{PY} -I /opt/nuorb/app/nuorb_weather_mcp.py --satz jetzt de"))
         if wmock:

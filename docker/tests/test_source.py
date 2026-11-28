@@ -91,21 +91,27 @@ class Quelle(unittest.TestCase):
         self.assertEqual(funde, [])
 
 
-class RueckwegVonV074(unittest.TestCase):
-    """v0.7.3 muss ein Volume von v0.7.4 (NuOrb-Bereich gehört dort nuorb) wieder lesbar machen. Das Verhalten prüft der
-    Image-Lauf „v0.7.4-Volume mit v0.7.3-Image“, hier nur, dass die Schritte in nuorb-init stehen und richtig gezielt sind."""
+class GetrennteBenutzerInit(unittest.TestCase):
+    """v0.7.4: nuorb-init setzt Besitz und Rechte vor und nach first_run, first_run läuft als nuorb mit den Fähigkeiten des
+    Admin-Panels. Das Verhalten prüft der Image-Lauf (.work/separation-check.sh), hier nur die Schritte."""
 
     def setUp(self):
         self.init = (DOCKER / "rootfs/opt/nuorb/bin/nuorb-init").read_text(encoding="utf-8")
 
-    def test_nuorb_bereich_zurueck_an_hermes(self):
-        self.assertIn("find /opt/data/nuorb -xdev ! -user hermes -exec chown -h hermes:hermes {} +", self.init)
+    def test_rechte_vor_und_nach_first_run(self):
+        fr = self.init.index("first_run.py")
+        self.assertIn("\nperms\n", self.init[:fr])
+        self.assertIn("\nperms\n", self.init[fr:])
 
-    def test_dateien_ohne_bekannten_besitzer_zurueck(self):
-        self.assertRegex(self.init, r"-path /opt/data/installs -o -path /opt/data/cache \\\) -prune[\s\\]*-o -nouser -exec chown -h hermes:hermes")
+    def test_first_run_als_nuorb_ohne_root(self):
+        self.assertIn('setpriv --reuid="$NU" --regid="$NU" --init-groups --inh-caps="$CAPS" --ambient-caps="$CAPS"', self.init)
+        self.assertIn("CAPS=+chown,+dac_override,+fowner", self.init)
 
-    def test_vor_dem_start_der_dienste(self):
-        self.assertLess(self.init.index("! -user hermes"), self.init.index("first_run.py"))
+    def test_bereich_von_hermes_zurueck_an_hermes(self):
+        self.assertRegex(self.init, r'-path /opt/data/installs -o -path /opt/data/cache \\\) -prune -o -user "\$NU"')
+
+    def test_update_anforderungen_nur_nuorb(self):
+        self.assertIn('chown "$NU:$NU" /opt/nuorb/control/request', self.init)
 
 
 class ComposeHaertung(unittest.TestCase):
@@ -118,7 +124,7 @@ class ComposeHaertung(unittest.TestCase):
     def test_rechte(self):
         self.assertIn("no-new-privileges:true", self.svc["security_opt"])
         self.assertEqual(self.svc["cap_drop"], ["ALL"])
-        self.assertEqual(sorted(self.svc["cap_add"]), ["CHOWN", "DAC_OVERRIDE", "FOWNER", "KILL", "SETGID", "SETUID"])
+        self.assertEqual(sorted(self.svc["cap_add"]), ["CHOWN", "DAC_OVERRIDE", "DAC_READ_SEARCH", "FOWNER", "KILL", "SETGID", "SETUID"])
         self.assertNotIn("privileged", self.svc)
 
     def test_schreibschutz_und_grenzen(self):

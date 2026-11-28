@@ -117,10 +117,19 @@ einmal neu koppeln.
 * **Bestätigungskarten:** Vor gefährlichen Aktionen fragt NuOrb nach (`approvals.mode: manual`).
 * **Container (ab v0.7.2):** Das Dateisystem des Images ist schreibgeschützt (`read_only`). Geschrieben wird nur in
   die Volumes und in tmpfs für `/run`, `/tmp` und `/var/tmp`. Speichergrenze 4 GB (`NUORB_MEM_LIMIT`), höchstens
-  2048 Prozesse, keine neuen Rechte zur Laufzeit. Von allen Linux-Fähigkeiten bleiben nur die, die der Start als root
-  braucht: `CHOWN` und `FOWNER` (Besitz und Rechte der Datenordner setzen), `DAC_OVERRIDE` (Ordner anderer Benutzer
-  anlegen), `SETUID` und `SETGID` (die Dienste als eigener Benutzer starten) und `KILL` (Dienste beenden). Die Dienste
-  selbst laufen nicht als root.
+  2048 Prozesse, keine neuen Rechte zur Laufzeit. Von allen Linux-Fähigkeiten bleiben nur sieben: `SETUID` und `SETGID`
+  (die Dienste als eigener Benutzer starten), `KILL` (Dienste beenden), `CHOWN`, `FOWNER` und `DAC_OVERRIDE` (Besitz und
+  Rechte der Daten setzen, für das Admin-Panel) und `DAC_READ_SEARCH` (nur lesen, für die Oberfläche). Die Dienste selbst
+  laufen nicht als root.
+* **Getrennte Benutzer (ab v0.7.4):** Hermes und damit alle Werkzeuge des Sprachmodells laufen als `hermes`, ohne
+  Fähigkeiten. Admin-Panel und Oberfläche laufen als eigener Benutzer `nuorb`. Die Geheimnisse von NuOrb (Admin-Passwort,
+  Sitzungen, interne Schlüssel, CA- und Server-Schlüssel, gekoppelte Geräte) gehören nur `nuorb`. Eine eingeschleuste
+  Anweisung an das Sprachmodell kommt also selbst mit eingeschalteter Shell nicht an sie heran. Das Admin-Panel hat dafür
+  `CHOWN`, `FOWNER` und `DAC_OVERRIDE`: Es bearbeitet die Dateien von Hermes und gibt sie danach an `hermes` zurück. Die
+  Oberfläche hat nur `DAC_READ_SEARCH`, weil Hermes sein Datenverzeichnis beim Start auf 0700 setzt und die Oberfläche
+  darin `config.yaml`, `.env` (Schlüssel für Hermes) und das Gedächtnis lesen muss. Sie kann Dateien von Hermes also lesen,
+  aber nicht ändern. Die Umstellung passiert beim Start automatisch, auch für bestehende Installationen. Zurück geht es
+  mit `install.sh --rollback`, ein älteres Image auf demselben Volume stellt die Besitzer ebenfalls zurück (ab v0.7.3).
 * **Werkzeuge (ab v0.7.1):** Das Sprachmodell bekommt standardmäßig nur, was ein Sprachassistent braucht: Websuche,
   Webseiten, Bilder, Gedächtnis, Erinnerungen, Skills und die NuOrb-Werkzeuge (Smart Home, Wetter, Name). Shell,
   Python, Dateien, Browser und Unteragenten sind aus. Einschalten im Admin-Panel unter **Werkzeuge**, mit Warnung:
@@ -308,6 +317,13 @@ keeps the old data and takes over password, memory and paired devices. Browsers 
 memory, reminders, skills, NuOrb tools). Shell, Python, files, browser and sub-agents are off, also after an update.
 Switch them on under “Tools” in the admin panel if you need them. After the assistant has read outside content, every
 action with an effect needs a confirmation card, and shell, Python and browser cannot reach your home network.
+
+**Separate users (from v0.7.4):** Hermes and all tools of the language model run as `hermes` without capabilities, the
+admin panel and the UI as their own user `nuorb`. NuOrb's secrets (admin password, sessions, internal keys, CA and
+server keys, paired devices) belong to `nuorb` only, so an injected instruction cannot read them even with the shell
+switched on. The UI keeps one read only capability, because Hermes sets its data folder to 0700 and the UI reads
+`config.yaml`, `.env` and the memory there: it can read Hermes' files but not change them. Existing installations switch
+over automatically at start.
 
 **Update check (from v0.7.3):** every admin page shows the server version with a button “Check for updates”. The panel
 asks github.com for the newest NuOrb release, at most every 6 hours and only while the admin panel is open. Switch the

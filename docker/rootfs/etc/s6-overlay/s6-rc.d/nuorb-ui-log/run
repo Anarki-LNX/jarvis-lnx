@@ -1,2 +1,2 @@
 #!/bin/sh
-exec s6-setuidgid hermes s6-log -b -- n5 s2000000 T /opt/data/nuorb/logs/ui 1
+exec setpriv --reuid=nuorb --regid=nuorb --init-groups --inh-caps=+dac_read_search --ambient-caps=+dac_read_search s6-log -b -- n5 s2000000 T /opt/data/nuorb/logs/ui 1

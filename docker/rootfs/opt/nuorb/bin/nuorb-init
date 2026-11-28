@@ -1,22 +1,57 @@
 #!/command/with-contenv sh
 # shellcheck shell=sh
-# NuOrb-Server: einmal pro Containerstart (root) – Ordner für hermes, dann Vorbereitung als hermes.
+# NuOrb-Server: einmal pro Containerstart (root).
+# Ab v0.7.4 getrennte Benutzer: Admin-Panel und Oberfläche laufen als nuorb, Hermes (und damit alle Werkzeuge des
+# Sprachmodells) als hermes. Die Geheimnisse von NuOrb (Admin-Passwort, Sitzungen, Tokens, CA- und Server-Schlüssel,
+# Geräte) gehören nur nuorb. Besitz und Rechte werden bei jedem Start nach festen Regeln gesetzt. Das ist idempotent und
+# migriert auch Volumes älterer Versionen (dort gehörte alles hermes).
 . /opt/nuorb/bin/nuorb-env
 set -e
-for d in /opt/models /opt/data/nuorb /opt/data/nuorb/logs /opt/data/nuorb/logs/ui /opt/data/nuorb/logs/admin /opt/data/nuorb/logs/stt; do
-  mkdir -p "$d"
-  [ "$(stat -c %U "$d")" = hermes ] || chown hermes:hermes "$d"
-done
-# Rückweg von einer neueren Version mit getrennten Benutzern (ab v0.7.4 gehört der NuOrb-Bereich dem Benutzer nuorb):
-# hier laufen alle Dienste als hermes, also alles im NuOrb-Bereich und alles, was einer fremden UID gehört, an hermes.
-# Ohne Kopie, idempotent (beim zweiten Start findet find nichts mehr). installs/ und cache/ von Hermes ausgenommen.
-find /opt/data/nuorb -xdev ! -user hermes -exec chown -h hermes:hermes {} +
-find /opt/data -xdev \( -path /opt/data/nuorb -o -path /opt/data/installs -o -path /opt/data/cache \) -prune \
-  -o -nouser -exec chown -h hermes:hermes {} +
-chmod 0700 /opt/data/nuorb
-# Update-Hilfe (v0.7.3): nur wenn ./control eingebunden ist. Anforderungen schreibt nur der Container.
+J=/opt/data/nuorb
+NU=nuorb
+HE=hermes
+CAPS=+chown,+dac_override,+fowner
+
+mkdir -p /opt/models "$J/logs/ui" "$J/logs/admin" "$J/logs/stt" "$J/config" "$J/admin" "$J/certs" "$J/policy" "$J/cache"
+chown "$HE:$HE" /opt/models
+
+# Update-Hilfe (v0.7.3): nur wenn ./control eingebunden ist. Anforderungen schreibt nur das Panel (nuorb), Hermes nicht.
 if [ -d /opt/nuorb/control ] && [ ! -L /opt/nuorb/control ]; then
   mkdir -p /opt/nuorb/control/request
-  [ -L /opt/nuorb/control/request ] || { chown hermes:hermes /opt/nuorb/control/request; chmod 755 /opt/nuorb/control/request; }
+  [ -L /opt/nuorb/control/request ] || { chown "$NU:$NU" /opt/nuorb/control/request; chmod 755 /opt/nuorb/control/request; }
 fi
-exec s6-setuidgid hermes $PY -I /opt/nuorb/app/first_run.py
+
+perms() {
+  # NuOrb-Bereich: gehört nuorb. Ausnahmen, die Prozesse von Hermes schreiben: policy (Hook), cache (Wetter),
+  # logs/stt und models-status.json (Spracherkennung).
+  chown "$NU:$HE" "$J"
+  chmod 1770 "$J"                     # Hermes darf hier eigene Dateien anlegen, aber keine von nuorb ändern (sticky)
+  find "$J" -xdev \( -path "$J/policy" -o -path "$J/cache" -o -path "$J/logs/stt" -o -path "$J/models-status.json" \) -prune \
+    -o ! -user "$NU" -exec chown -h "$NU:$NU" {} +
+  chown -R "$HE:$HE" "$J/policy" "$J/cache" "$J/logs/stt"
+  if [ -e "$J/models-status.json" ]; then chown "$HE:$HE" "$J/models-status.json"; fi
+  chmod 0700 "$J/admin" "$J/certs" "$J/policy"
+  chown "$NU:$HE" "$J/config" "$J/logs"
+  chmod 0750 "$J/config" "$J/logs"
+  for f in mcp.token weather.json weather.env ui.json; do  # genau diese liest Hermes (MCP „nuorb“, Wetter, Stimme)
+    if [ -f "$J/config/$f" ]; then chown "$NU:$HE" "$J/config/$f"; chmod 0640 "$J/config/$f"; fi
+  done
+  # .env von Hermes: Gruppe hermes darf lesen (die Oberfläche liest ihren Schlüssel ohne Sonderrechte)
+  if [ -f /opt/data/.env ]; then chown "$HE:$HE" /opt/data/.env; chmod 0640 /opt/data/.env; fi
+  # Bereich von Hermes: was nuorb dort angelegt hat (first_run, Hermes-CLI), gehört hermes. Große Ordner überspringen.
+  find /opt/data -xdev \( -path "$J" -o -path /opt/data/installs -o -path /opt/data/cache \) -prune -o -user "$NU" \
+    -exec chown -h "$HE:$HE" {} +
+  # installs/ und cache/ sind groß: nur durchgehen, wenn oben etwas nuorb gehört (bei einer Erstinstallation legt die
+  # Hermes-CLI aus first_run sie als nuorb an, danach schreibt sie nur noch Hermes selbst)
+  for d in /opt/data/installs /opt/data/cache; do
+    if [ -d "$d" ] && [ -n "$(find "$d" -xdev -maxdepth 3 -user "$NU" -print -quit)" ]; then
+      find "$d" -xdev -user "$NU" -exec chown -h "$HE:$HE" {} +
+    fi
+  done
+}
+
+perms
+# Vorbereitung als nuorb mit genau den Fähigkeiten des Admin-Panels (lesen und schreiben in beiden Bereichen, Besitz zurückgeben)
+setpriv --reuid="$NU" --regid="$NU" --init-groups --inh-caps="$CAPS" --ambient-caps="$CAPS" \
+  $PY -I /opt/nuorb/app/first_run.py
+perms

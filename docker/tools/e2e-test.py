@@ -313,6 +313,9 @@ def main() -> int:
     ask_ok(app, "Hallo")
     ans = ask_ok(app, 'Prüf den Admin. [[tool:terminal {"command": "curl -sk https://127.0.0.1:8444/api/auth/state"}]]')
     check("Shell darf das Heimnetz und den Container nicht ansprechen", "home network" in ans and "authenticated" not in ans, ans[:160])
+    ans, ev = ask_card(app, 'Wer bin ich? [[tool:terminal {"command": "id -u; grep CapEff /proc/self/status"}]]', "once")
+    check("Shell aus dem Agenten: UID von hermes, keine Fähigkeiten", "10000" in ans and "0000000000000000" in ans
+          and "10010" not in ans, ans[:200])
     st, tl = adm.req("POST", "/api/tools", {"mode": "narrow"})
     time.sleep(5)
     wait_brain(app, True)

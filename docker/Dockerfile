@@ -25,6 +25,10 @@ RUN apt-get update \
 COPY requirements.txt /opt/nuorb/requirements.txt
 # Eigenes venv mit Debians Python 3.13 (Hermes nutzt sein eigenes 3.14-venv, das bleibt unberührt).
 # requirements.txt ist aus requirements.in erzeugt und enthält jedes Paket mit Hash: pip bricht ab, wenn eine Datei abweicht.
+# v0.7.4: eigener Benutzer für Admin-Panel und Oberfläche, getrennt von hermes (Werkzeuge des Sprachmodells)
+RUN groupadd --system --gid 10010 nuorb \
+ && useradd --system --uid 10010 --gid nuorb --groups hermes --home-dir /opt/nuorb/home --no-create-home \
+      --shell /usr/sbin/nologin nuorb
 RUN /usr/bin/python3 -m venv /opt/nuorb/venv \
  && /opt/nuorb/venv/bin/pip install --no-cache-dir --disable-pip-version-check --require-hashes --no-deps -r /opt/nuorb/requirements.txt \
  && find /opt/nuorb/venv -name '__pycache__' -prune -exec rm -rf {} + \

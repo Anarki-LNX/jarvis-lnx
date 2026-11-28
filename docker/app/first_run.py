@@ -62,7 +62,7 @@ def env_set(values: dict[str, str]) -> None:
     lines += [f"{k}={v}" for k, v in values.items() if k not in seen]
     tmp = ENV.with_name(".env.tmp-nuorb")
     tmp.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    os.chmod(tmp, 0o600)
+    os.chmod(tmp, 0o640)   # Gruppe hermes: dazu gehören nur hermes und nuorb (die Oberfläche liest API_SERVER_KEY)
     os.replace(tmp, ENV)
 
 

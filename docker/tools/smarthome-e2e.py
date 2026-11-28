@@ -36,6 +36,15 @@ def dexec(c: str, cmd: str, user: str = "hermes", stdin: bytes | None = None, ti
     return (r.stdout + r.stderr).decode("utf-8", "replace")
 
 
+# Ab v0.7.4 läuft first_run wie in nuorb-init als nuorb mit den Fähigkeiten des Admin-Panels, danach gehört der Bereich
+# von Hermes wieder hermes. Ältere Images ohne Benutzer nuorb: direkt als hermes.
+FIRST_RUN = (". /opt/nuorb/bin/nuorb-env; if id nuorb >/dev/null 2>&1; then "
+             "setpriv --reuid=nuorb --regid=nuorb --init-groups --inh-caps=+chown,+dac_override,+fowner "
+             "--ambient-caps=+chown,+dac_override,+fowner $PY -I /opt/nuorb/app/first_run.py; "
+             "find /opt/data -xdev -path /opt/data/nuorb -prune -o -user nuorb -exec chown -h hermes:hermes {} +; "
+             "else su -s /bin/sh hermes -c \"$PY -I /opt/nuorb/app/first_run.py\"; fi")
+
+
 def env_datei(p: Path) -> dict:
     return dict(l.split("=", 1) for l in p.read_text().splitlines() if "=" in l and not l.startswith("#"))
 
@@ -138,7 +147,7 @@ def main() -> int:
 
     # ------------------------------------------------ Zugang + Einschalten
     dexec(C, "umask 077; cat > /opt/data/smarthome.env", stdin=zpfad.read_bytes())
-    out = dexec(C, ". /opt/nuorb/bin/nuorb-env; NUORB_SMARTHOME=1 $PY -I /opt/nuorb/app/first_run.py 2>&1 | grep -i smart")
+    out = dexec(C, f"export NUORB_SMARTHOME=1; ( {FIRST_RUN} ) 2>&1 | grep -i smart", user="root")
     cfg = dexec(C, "cat /opt/data/config.yaml")
     an = [b.split("trust:", 1)[0] for b in cfg.split("  smarthome")[1:]]
     check("NUORB_SMARTHOME=1 schaltet beide Einträge ein", len(an) >= 2 and all("enabled: true" in b for b in an[:2]), out.strip()[:120])
@@ -203,8 +212,7 @@ def main() -> int:
         app.req("POST", "/api/unpair")
         adm.req("POST", "/api/setup/apply", {"mode": "local", "ollama_url": old_url, "ollama_model": model,
                                             "context": 65536, "remote_model": ""}, timeout=150)
-        out = dexec(C, "rm -f /opt/data/smarthome.env; . /opt/nuorb/bin/nuorb-env; "
-                       "NUORB_SMARTHOME=0 $PY -I /opt/nuorb/app/first_run.py 2>&1 | grep -i smart")
+        out = dexec(C, f"rm -f /opt/data/smarthome.env; export NUORB_SMARTHOME=0; ( {FIRST_RUN} ) 2>&1 | grep -i smart", user="root")
         cfg = dexec(C, "cat /opt/data/config.yaml")
         an = [b.split("trust:", 1)[0] for b in cfg.split("  smarthome")[1:]]
         check("Aufgeräumt: Smart Home wieder aus, Zugang gelöscht", an and not any("enabled: true" in b for b in an[:2]), out.strip()[:100])
