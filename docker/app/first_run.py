@@ -223,6 +223,8 @@ def ensure_policy(existing: bool) -> None:
         adm.atomic_write(adm.FILES["config"][0], adm.dump_rt(data))
         log(f"Hermes tools and safety hooks set ({mode}).")
     jc.allow_policy_hooks()
+    if jc.ensure_policy_rules():
+        log("Tool rules file created (empty, built-in defaults apply). Admin panel: Files, Tool rules.")
 
 
 SMARTHOME = Path("/opt/nuorb/smarthome")

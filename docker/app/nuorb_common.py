@@ -39,8 +39,36 @@ TOOLS_FILE = CONF / "tools.json"
 TOOLSETS = {"narrow": ["web", "vision", "skills", "cronjob", "todo", "memory", "session_search"],
             "extended": ["hermes-api-server"]}
 POLICY_CMD = "/opt/nuorb/venv/bin/python -I /opt/nuorb/app/nuorb_policy.py"
-POLICY_PRE = r"^(terminal|process_manage|execute_code|write_file|patch|cronjob_manage|delegate_task|skill_manage|memory|image_generate|browser_.*|mcp__.*)$"
+POLICY_PRE = r".*"   # jeder Aufruf: Regeln aus rules.json können jedes Werkzeug betreffen (v0.7.2)
 POLICY_POST = r"^(web_search|web_extract|read_file|search_files|vision_analyze|browser_.*|mcp__.*)$"
+
+
+POLICY_DIR = J / "policy"
+POLICY_RULES = POLICY_DIR / "rules.json"
+POLICY_LOG = POLICY_DIR / "log.jsonl"
+POLICY_TEMPLATE = {
+    "_info": "NuOrb tool rules. The first matching rule wins. Without a matching rule: tools with an effect need a "
+             "confirmation after outside content was read, everything else is allowed. "
+             "level: allow | confirm | confirm_after_outside | deny. timeout (seconds) caps shell and Python. "
+             "outside: true marks the conversation like a web page does.",
+    "rules": [],
+    "examples": [
+        {"match": "terminal", "level": "confirm", "timeout": 60},
+        {"match": "mcp__smarthome_schalten__*", "level": "confirm"},
+        {"match": "mcp__myserver__*", "level": "confirm_after_outside", "outside": True},
+        {"match": "image_generate", "level": "deny"},
+    ],
+}
+
+
+def ensure_policy_rules() -> bool:
+    """Leere Regeldatei mit Beispielen anlegen, wenn es keine gibt (leere Liste = Standardwerte wie v0.7.1)."""
+    if POLICY_RULES.exists():
+        return False
+    POLICY_DIR.mkdir(parents=True, exist_ok=True)
+    os.chmod(POLICY_DIR, 0o700)
+    _write_json(POLICY_RULES, POLICY_TEMPLATE)
+    return True
 
 
 def tools_state() -> dict:

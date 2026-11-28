@@ -55,3 +55,10 @@ h3 { font-size: 15px; margin: 14px 0 6px; }
 .choice:has(.c-title) input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .choice:has(.c-title) { position: relative; }
 .choice:has(input:focus-visible) { outline: 2px solid var(--cyan); outline-offset: 2px; }
+textarea { width: 100%; box-sizing: border-box; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line-strong);
+           background: var(--bg-2); color: var(--text); font: 13px/1.5 "JetBrains Mono", monospace; margin-top: 10px; }
+pre.diff { white-space: pre-wrap; overflow-wrap: anywhere; font: 12.5px/1.5 "JetBrains Mono", monospace; background: var(--bg-2);
+           border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; max-height: 320px; overflow: auto; }
+details summary { cursor: pointer; color: var(--cyan-soft); margin-top: 12px; }
+tr.muted td { color: var(--text-3); }
+

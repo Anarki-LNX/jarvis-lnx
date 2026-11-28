@@ -97,6 +97,116 @@ class Heimnetz(unittest.TestCase):
         self.assertEqual(pre("browser_exec", {"code": "goto('http://172.16.0.6/admin')"})["action"], "block")
 
 
+class Regeldatei(unittest.TestCase):
+    """v0.7.2: rules.json mit allow / confirm / confirm_after_outside / deny, Zeitlimit, Protokoll."""
+
+    TOOLS = ["terminal", "execute_code", "write_file", "cronjob_manage", "memory", "web_search", "web_extract",
+             "skills_list", "mcp__nuorb__name_setzen", "mcp__smarthome__geraete", "mcp__smarthome_schalten__schalten",
+             "mcp__wetter__wetter", "mcp__fremd__machwas", "tool_search"]
+
+    def setUp(self):
+        for f in pol.MARKS.glob("*.json") if pol.MARKS.exists() else []:
+            f.unlink()
+        pol.RULES_FILE.unlink(missing_ok=True)
+        pol.LOG_FILE.unlink(missing_ok=True)
+        (T / "config.yaml").write_text("model:\n  base_url: http://192.168.1.50:11434/v1\n")
+
+    def tearDown(self):
+        pol.RULES_FILE.unlink(missing_ok=True)
+
+    def regeln(self, rules):
+        pol.RULES_FILE.parent.mkdir(parents=True, exist_ok=True)
+        pol.RULES_FILE.write_text(json.dumps({"rules": rules}))
+
+    def v071(self, tool, markiert):
+        """Erwartung wie in v0.7.1: Wirkung nach fremdem Inhalt -> Karte, sonst nichts."""
+        return "approve" if markiert and pol.is_effect(tool) else None
+
+    def matrix(self):
+        out = {}
+        for markiert in (False, True):
+            for tool in self.TOOLS:
+                sess = f"m{markiert}-{tool}"
+                if markiert:
+                    post("web_extract", session=sess)
+                out[(tool, markiert)] = (pre(tool, session=sess) or {}).get("action")
+        return out
+
+    def test_ohne_regeldatei_exakt_wie_v071(self):
+        for (tool, markiert), got in self.matrix().items():
+            self.assertEqual(got, self.v071(tool, markiert), f"{tool} markiert={markiert}")
+
+    def test_leere_regelliste_wie_ohne_datei(self):
+        pol.RULES_FILE.parent.mkdir(parents=True, exist_ok=True)
+        pol.RULES_FILE.write_text(json.dumps(jc.POLICY_TEMPLATE))   # so legt first_run sie an
+        for (tool, markiert), got in self.matrix().items():
+            self.assertEqual(got, self.v071(tool, markiert), f"{tool} markiert={markiert}")
+
+    def test_deny_blockiert_immer(self):
+        self.regeln([{"match": "web_search", "level": "deny"}])
+        self.assertEqual(pre("web_search")["action"], "block")
+
+    def test_confirm_auch_ohne_fremden_inhalt(self):
+        self.regeln([{"match": "mcp__smarthome_schalten__*", "level": "confirm"}])
+        self.assertEqual(pre("mcp__smarthome_schalten__schalten")["action"], "approve")
+        self.assertIsNone(pre("mcp__smarthome__geraete"))
+
+    def test_allow_hebt_die_karte_nach_fremdem_inhalt_auf(self):
+        self.regeln([{"match": "cronjob_manage", "level": "allow"}])
+        post("web_extract")
+        self.assertIsNone(pre("cronjob_manage"))
+        self.assertEqual(pre("memory")["action"], "approve")   # andere bleiben bei der Standardregel
+
+    def test_erste_passende_regel_gewinnt(self):
+        self.regeln([{"match": "mcp__fremd__harmlos", "level": "allow"}, {"match": "mcp__fremd__*", "level": "deny"}])
+        self.assertIsNone(pre("mcp__fremd__harmlos"))
+        self.assertEqual(pre("mcp__fremd__anderes")["action"], "block")
+
+    def test_heimnetz_sperre_gilt_auch_bei_allow(self):
+        self.regeln([{"match": "terminal", "level": "allow"}])
+        self.assertEqual(pre("terminal", {"command": "curl http://192.168.178.50/"})["action"], "block")
+
+    def test_zeitlimit_begrenzt_shell(self):
+        self.regeln([{"match": "terminal", "level": "allow", "timeout": 30}])
+        out = pre("terminal", {"command": "sleep 1", "timeout": 600})
+        self.assertEqual(out["action"], "modify")
+        self.assertEqual(out["args"]["timeout"], 30)
+        self.assertIsNone(pre("terminal", {"command": "sleep 1", "timeout": 10}))
+
+    def test_outside_markiert_wie_eine_webseite(self):
+        self.regeln([{"match": "mcp__smarthome__geraete", "level": "allow", "outside": True}])
+        post("mcp__smarthome__geraete")
+        self.assertEqual(pre("cronjob_manage")["action"], "approve")
+
+    def test_ungueltige_regeln_werden_uebersprungen_und_protokolliert(self):
+        self.regeln([{"match": "terminal", "level": "verbieten"}, {"match": "web_search", "level": "deny"}])
+        self.assertIsNone(pre("terminal"))   # ungültige Regel: Standardwert
+        self.assertEqual(pre("web_search")["action"], "block")
+        self.assertIn("rules-problem", pol.LOG_FILE.read_text())
+
+    def test_kaputte_datei_gibt_standardwerte(self):
+        pol.RULES_FILE.parent.mkdir(parents=True, exist_ok=True)
+        pol.RULES_FILE.write_text("{kaputt")
+        post("web_extract")
+        self.assertEqual(pre("cronjob_manage")["action"], "approve")
+        self.assertIsNone(pre("web_search"))
+
+    def test_protokoll_schwaerzt_und_hasht(self):
+        pre("terminal", {"command": "curl -H 'Authorization: Bearer abcdefghijklmnop' https://example.org", "api_key": "geheim"},
+            session="meine-sitzung")
+        line = json.loads(pol.LOG_FILE.read_text().splitlines()[-1])
+        self.assertNotIn("abcdefghijklmnop", line["args"])
+        self.assertNotIn("geheim", line["args"])
+        self.assertNotIn("meine-sitzung", json.dumps(line))
+        self.assertEqual(pol.LOG_FILE.stat().st_mode & 0o077, 0)
+
+    def test_pruefung_der_regeln_fuer_das_admin_panel(self):
+        _, err = pol.parse_rules({"rules": [{"match": "x", "level": "allow", "timeout": 0}, {"match": "y", "level": "allow", "foo": 1}]})
+        self.assertEqual(len(err), 2)
+        rules, err = pol.parse_rules({"rules": [{"match": "x", "level": "confirm", "timeout": 60, "note": "ok"}]})
+        self.assertEqual((len(rules), err), (1, []))
+
+
 class Konfiguration(unittest.TestCase):
     def test_enger_standard_und_hooks(self):
         data: dict = {"hooks": {"pre_tool_call": [{"command": "/eigener/hook.sh"}]}}

@@ -535,11 +535,61 @@ async def api_assistant(request: Request):
 
 
 # ------------------------------------------------------------------ Werkzeuge von Hermes (S5/S6)
+# Regeldatei im Datei-Editor (Vorschau, Sicherung, Rückgängig wie alle Änderungen), Entscheidungen bei den Protokollen
+adm.FILES["policy"] = (jc.POLICY_RULES, "json")
+adm.FILE_LABELS["policy"] = "Werkzeug-Regeln (rules.json)"
+adm.LOG_SOURCES["policy"] = ("file", jc.POLICY_LOG, "Werkzeuge: Entscheidungen der Regeln")
+
+
+def policy_overview(limit: int = 40) -> dict:
+    """Wirksame Regeln für die Seite Werkzeuge und die letzten Entscheidungen (neueste zuerst)."""
+    sys.path.insert(0, str(jc.APP))
+    import nuorb_policy as pol
+    rules, problem = pol.load_rules()
+    log: list[dict] = []
+    try:
+        lines = jc.POLICY_LOG.read_text(encoding="utf-8").splitlines()[-limit:]
+        for line in reversed(lines):
+            try:
+                log.append(json.loads(line))
+            except ValueError:
+                continue
+    except OSError:
+        pass
+    defaults = [{"match": "(tools with an effect)", "level": "confirm_after_outside", "builtin": True},
+                {"match": "*", "level": "allow", "builtin": True}]
+    try:
+        text = jc.POLICY_RULES.read_text(encoding="utf-8")
+    except OSError:
+        text = json.dumps(jc.POLICY_TEMPLATE, indent=2, ensure_ascii=False) + "\n"
+    return {"rules": rules, "defaults": defaults, "problem": problem, "log": log, "text": text}
+
+
+async def tools_rules(request: Request):
+    """Neue rules.json prüfen und als Vorschau anlegen; Übernehmen über /api/change/{id}/apply (Sicherung, Rückgängig)."""
+    sys.path.insert(0, str(jc.APP))
+    import nuorb_policy as pol
+    d = await adm.body(request)
+    text = str(d.get("text") or "")
+    try:
+        raw = json.loads(text)
+    except ValueError as exc:
+        raise HTTPException(400, jc.tr(f"Kein gültiges JSON: {exc}", f"Not valid JSON: {exc}")) from None
+    _, errors = pol.parse_rules(raw)
+    if errors:
+        raise HTTPException(400, "; ".join(errors))
+    jc.ensure_policy_rules()
+    return adm.make_preview("policy", text if text.endswith("\n") else text + "\n",
+                            jc.tr("Werkzeug-Regeln ändern", "Change tool rules"),
+                            jc.tr("Gilt ab dem nächsten Werkzeugaufruf, ohne Neustart.", "Applies from the next tool call, no restart."))
+
+
 async def tools_api(request: Request):
     """Enger Standard oder erweiterte Werkzeuge. Schreibt platform_toolsets und die Policy-Hooks, startet Hermes neu."""
     st = jc.tools_state()
     if request.method == "GET":
-        return {**st, "toolsets": jc.TOOLSETS[st["mode"]], "brand": jc.brand(), "ui_lang": jc.ui_lang_setting()}
+        return {**st, "toolsets": jc.TOOLSETS[st["mode"]], "brand": jc.brand(), "ui_lang": jc.ui_lang_setting(),
+                "policy": policy_overview()}
     d = await adm.body(request)
     if set(d) - {"mode", "notice_seen"} or ("mode" in d and d["mode"] not in jc.TOOLSETS):
         raise HTTPException(400, jc.tr("Erlaubt: mode (narrow oder extended), notice_seen.", "Allowed: mode (narrow or extended), notice_seen."))
@@ -591,6 +641,7 @@ NEW = [
     APIRoute("/api/pairing/revoke", pairing_revoke, methods=["POST"]),
     *weather_admin.routes(),
     APIRoute("/api/tools", tools_api, methods=["GET", "POST"]),
+    APIRoute("/api/tools/rules", tools_rules, methods=["POST"]),
     APIRoute("/static/docker/{name}", docker_page, methods=["GET"]),
     APIRoute("/", index_plus, methods=["GET"]),
 ]

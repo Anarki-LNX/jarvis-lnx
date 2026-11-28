@@ -27,6 +27,27 @@
   </section>
 
   <section class="panel">
+    <h2 data-t="h_table">Tool rules</h2>
+    <p class="muted" data-t="table_note">The first matching rule wins. Without a matching rule the built-in defaults apply (grey).</p>
+    <p class="warn" id="rulesProblem" hidden></p>
+    <table><thead><tr><th data-t="th_match">Tool or pattern</th><th data-t="th_level">Level</th><th data-t="th_timeout">Time limit</th><th data-t="th_outside">Outside content</th></tr></thead>
+      <tbody id="rulesBody"></tbody></table>
+    <details id="rulesEdit"><summary data-t="edit">Edit rules (rules.json)</summary>
+      <textarea id="rulesText" rows="14" spellcheck="false" aria-label="rules.json"></textarea>
+      <p><button class="btn" id="rulesPreview" type="button" data-t="preview">Preview</button> <span id="rulesMsg" class="muted"></span></p>
+      <pre class="diff" id="rulesDiff" hidden></pre>
+      <p><button class="btn primary" id="rulesApply" type="button" hidden data-t="apply">Apply</button></p>
+    </details>
+  </section>
+
+  <section class="panel">
+    <h2 data-t="h_log">Latest decisions</h2>
+    <table><thead><tr><th data-t="th_time">Time</th><th data-t="th_tool">Tool</th><th data-t="th_result">Result</th><th data-t="th_reason">Reason</th></tr></thead>
+      <tbody id="logBody"></tbody></table>
+    <p class="muted" data-t="log_note">All decisions are also under Logs, source “Tools: rule decisions”.</p>
+  </section>
+
+  <section class="panel">
     <h2 data-t="h_rules">Rules that always apply</h2>
     <p data-t="rule_outside">After the assistant has read outside content (web search, web page, file, image, an added MCP server), every action with an effect needs your confirmation on a card. This applies to the whole conversation.</p>
     <p data-t="rule_net">Shell, Python and browser may not reach addresses in your home network. Only the addresses you entered for the brain, MCP servers and smart home are allowed.</p>
