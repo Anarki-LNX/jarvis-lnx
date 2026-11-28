@@ -262,6 +262,44 @@ def cert_paths() -> tuple[Path, Path]:
     return CERTS / "server.crt", CERTS / "server.key"
 
 
+# Namensbeschränkung der Heim-CA (NameConstraints): Eine auf dem Smartphone installierte CA soll nur für das Heimnetz
+# gelten, nicht für jede Domain. Erlaubt: Heimnetz-Endungen, localhost, die DNS-Namen aus NUORB_HOSTS beim Anlegen der
+# CA und private IP-Bereiche. Bestehende CAs bleiben unverändert (sonst müssten alle Geräte neu koppeln).
+CA_DNS_SUFFIXES = ("local", "lan", "home", "home.arpa", "internal", "localdomain", "fritz.box", "localhost", "nuorb")
+CA_IP_NETS = ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10", "127.0.0.0/8", "169.254.0.0/16",
+              "::1/128", "fc00::/7", "fe80::/10")
+
+
+def ca_name_constraints(names: list[str]):
+    from cryptography import x509
+    dns = list(CA_DNS_SUFFIXES)
+    for h in names:
+        try:
+            ipaddress.ip_address(h)
+        except ValueError:
+            h = h.lower().rstrip(".")
+            if h and h not in dns and not any(h == d or h.endswith("." + d) for d in CA_DNS_SUFFIXES):
+                dns.append(h)
+    return x509.NameConstraints(
+        permitted_subtrees=[x509.DNSName(d) for d in dns] + [x509.IPAddress(ipaddress.ip_network(n)) for n in CA_IP_NETS],
+        excluded_subtrees=None)
+
+
+def ca_covers(ca_crt, name: str) -> bool:
+    """Deckt die Namensbeschränkung der CA diesen Namen ab? CAs ohne Beschränkung decken alles ab."""
+    from cryptography import x509
+    try:
+        nc = ca_crt.extensions.get_extension_for_class(x509.NameConstraints).value
+    except x509.ExtensionNotFound:
+        return True
+    try:
+        ip = ipaddress.ip_address(name)
+        return any(isinstance(g, x509.IPAddress) and ip in g.value for g in nc.permitted_subtrees or [])
+    except ValueError:
+        n = name.lower().rstrip(".")
+        return any(isinstance(g, x509.DNSName) and (n == g.value or n.endswith("." + g.value)) for g in nc.permitted_subtrees or [])
+
+
 def ensure_certs() -> None:
     """Heim-CA einmalig, Server-Zertifikat neu bei geänderten Namen oder < 30 Tage Restlaufzeit."""
     from cryptography import x509
@@ -288,6 +326,7 @@ def ensure_certs() -> None:
                .not_valid_after(now + dt.timedelta(days=3650))
                .add_extension(x509.BasicConstraints(ca=True, path_length=0), critical=True)
                .add_extension(x509.KeyUsage(False, False, False, False, False, True, True, False, False), critical=True)
+               .add_extension(ca_name_constraints(hosts()), critical=True)
                .add_extension(x509.SubjectKeyIdentifier.from_public_key(k.public_key()), critical=False)
                .sign(k, hashes.SHA256()))
         save_key(k, ca_key_p)
@@ -296,7 +335,11 @@ def ensure_certs() -> None:
         print(f"[nuorb] New home CA created, fingerprint {ca_fingerprint()}", flush=True)
     if tls_mode() != "selfsigned":
         return
-    want = sorted(set(hosts() + ["localhost", "127.0.0.1", "nuorb"]))
+    want_all = sorted(set(hosts() + ["localhost", "127.0.0.1", "nuorb"]))
+    ca_crt = x509.load_pem_x509_certificate(ca_crt_p.read_bytes())
+    # Nur Namen, die die CA abdeckt: ein einziger nicht erlaubter Name macht das ganze Zertifikat ungültig (RFC 5280)
+    nicht = [h for h in want_all if not ca_covers(ca_crt, h)]
+    want = [h for h in want_all if h not in nicht]
     srv_crt_p, srv_key_p = CERTS / "server.crt", CERTS / "server.key"
     with contextlib.suppress(Exception):
         cur = x509.load_pem_x509_certificate(srv_crt_p.read_bytes())
@@ -307,7 +350,6 @@ def ensure_certs() -> None:
             return
     ca_key = serialization.load_pem_private_key(ca_key_p.read_bytes(), None)
     assert isinstance(ca_key, ec.EllipticCurvePrivateKey), "Heim-CA mit EC-Schlüssel erwartet"
-    ca_crt = x509.load_pem_x509_certificate(ca_crt_p.read_bytes())
     k = ec.generate_private_key(ec.SECP256R1())
     alt: list[x509.GeneralName] = []
     for h in want:
@@ -315,8 +357,12 @@ def ensure_certs() -> None:
             alt.append(x509.IPAddress(ipaddress.ip_address(h)))
         except ValueError:
             alt.append(x509.DNSName(h))
+    if nicht:
+        print(f"[certs] WARNING: the home CA does not cover {', '.join(nicht)} (name constraints set when it was created). "
+              "Apps and browsers will reject the certificate for these names. Use a home network name or IP, "
+              "or start with a new CA (delete certs/ in the data volume, then pair all devices again).", flush=True)
     crt = (x509.CertificateBuilder()
-           .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, want[0] if hosts() else "localhost")]))
+           .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, next((h for h in hosts() if h in want), "localhost"))]))
            .issuer_name(ca_crt.subject).public_key(k.public_key()).serial_number(x509.random_serial_number())
            .not_valid_before(now - dt.timedelta(minutes=5)).not_valid_after(now + dt.timedelta(days=825))
            .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)

@@ -129,6 +129,13 @@ Zertifikat für die Namen in `NUORB_HOSTS`. Die App bekommt den **Fingerabdruck 
 genau diesem Server, ohne Warnung. Browser warnen einmal; wer das nicht will, importiert die CA
 (`https://<server-ip>:8443/nuorb-ca.crt`) und vergleicht den Fingerabdruck mit dem im Admin-Panel.
 
+**Heim-CA nur fürs Heimnetz:** Die selbst erzeugte CA (ab v0.7.1) trägt eine Namensbeschränkung. Sie gilt nur für
+Heimnetz-Namen (`.local`, `.lan`, `.home`, `.home.arpa`, `.internal`, `.fritz.box`), private IP-Adressen und die
+DNS-Namen, die beim ersten Start in `NUORB_HOSTS` stehen. Auf dem Smartphone installiert, kann sie also keine fremden
+Webseiten ausstellen. Eigene öffentliche Namen deshalb vor dem ersten Start eintragen. Ein später ergänzter Name, den
+die CA nicht abdeckt, kommt nicht ins Zertifikat, das Protokoll nennt ihn. Eine ältere CA ohne Beschränkung bleibt
+unverändert, damit niemand neu koppeln muss.
+
 Eigenes Zertifikat (z. B. `tailscale cert`, eigene CA, Let's Encrypt per DNS): `NUORB_TLS=custom` und den Ordner
 mit `fullchain.pem`/`privkey.pem` in `compose.yaml` unter `/certs` einbinden. Hinter einem Reverse-Proxy (z. B.
 Caddy): `NUORB_TLS=off`, `NUORB_BIND=127.0.0.1`, `NUORB_PUBLIC_URL` auf die Proxy-Adresse und
