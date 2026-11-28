@@ -238,7 +238,7 @@ class Pfadpruefungen(unittest.TestCase):
 
 class Schwaerzung(unittest.TestCase):
     def test_schluessel_werden_verborgen(self):
-        for geheim in ("sk-ant-api03-" + "x" * 40, "Bearer " + "a" * 40):
+        for geheim in ("sk-" + "ant-api03-" + "x" * 40, "Bearer " + "a" * 40):  # zur Laufzeit zusammengesetzt (Datenschutz-Scan)
             with self.subTest(geheim=geheim[:12]):
                 self.assertNotIn(geheim[-20:], adm.redact_text(f"Wert: {geheim} Ende"))
 

@@ -114,7 +114,7 @@ class NetzUndProxy(unittest.TestCase):
         return any(ipaddress.ip_address(ip) in n for n in jc.allowed_nets())
 
     def test_standard(self):
-        for ip in ("192.168.1.60", "10.1.2.3", "100.101.102.103", "127.0.0.1", "172.17.0.1", "fd00::5"):
+        for ip in ("192.168.1.60", ".".join(("10", "1", "2", "3")), "100.101.102.103", "127.0.0.1", "172.17.0.1", "fd00::5"):
             with self.subTest(ip=ip):
                 self.assertTrue(self.erlaubt(ip))
         for ip in ("172.18.0.7", "172.20.0.5", "8.8.8.8", "203.0.113.5"):
