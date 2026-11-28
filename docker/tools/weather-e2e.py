@@ -5,7 +5,7 @@ Voraussetzungen: NuOrb-Testcontainer läuft (compose.test.yaml, Ports 19443/1944
 (z. B. nach e2e-test.py). Ablauf:
   1. Werkzeug und Skill sind nach dem Start registriert, ohne Ort sagt das Werkzeug „nicht eingerichtet“
   2. Mock starten, Ort setzen, MCP-Eintrag mit Mock-Adresse neu registrieren (first_run)
-  3. MCP direkt im Container: jetzt, morgen, Woche, Warnungen (DE), Ausland über Open-Meteo, WeatherXM mit Schlüssel
+  3. MCP direkt im Container: jetzt, morgen, Woche, Warnungen (DE), Ausland über Open-Meteo
   4. Über Hermes mit Mock-Gehirn: Werkzeug ohne Bestätigungskarte, Antwort mit DWD-Quelle
   5. Aufräumen: Ort, Schlüssel und Zwischenspeicher löschen, Eintrag ohne Mock, Gehirn wie vorher
 Aufruf: E2E_PASSWORD=… python3 docker/tools/weather-e2e.py
@@ -140,10 +140,13 @@ def main() -> int:
         st, d = adm.req("GET", "/api/weather/station")
         check("Verwaltung: nächste DWD-Station mit Entfernung", st == 200 and d.get("station") == "Teststation"
               and d.get("distance_km") == 3.2, str(d)[:90])
-        st, d = adm.req("POST", "/api/weather/keys", {"wxm": "e2e-admin-key-98765"})
+        st, d = adm.req("POST", "/api/weather/search", {"query": "10115"})
+        check("Verwaltung: reine Postleitzahl ergibt nur den Hinweis auf den Ortsnamen", st == 400
+              and any(t in str(d) for t in ("Ortsnamen", "name of the place")), str(d)[:90])
+        st, d = adm.req("POST", "/api/weather/keys", {"openmeteo": "e2e-admin-key-98765"})
         check("Verwaltung: Schlüssel nur maskiert", st == 200 and "e2e-admin-key" not in json.dumps(d)
-              and str((d.get("keys") or {}).get("wxm", "")).endswith("8765"), str(d.get("keys"))[:60])
-        st, d = adm.req("POST", "/api/weather/keys", {"wxm": ""})
+              and str((d.get("keys") or {}).get("openmeteo", "")).endswith("8765"), str(d.get("keys"))[:60])
+        st, d = adm.req("POST", "/api/weather/keys", {"openmeteo": ""})
         st, d = adm.req("POST", "/api/weather/test", {"zeitraum": "jetzt", "lang": "de"})
         check("Verwaltung: Test-Knopf liefert den Sprechsatz", st == 200 and str(d.get("text", "")).startswith("Laut Deutschem Wetterdienst"),
               str(d)[:100])
@@ -169,18 +172,10 @@ def main() -> int:
         setze(C, {**BERLIN, "name": "Wien", "country_code": "AT", "timezone": "Europe/Vienna"})
         aus = satz(C, "jetzt", "de", mock_url)
         check("Ausland automatisch über Open-Meteo", aus.startswith("Laut Open-Meteo für Wien: achtzehn Komma fünf Grad"), aus[:90])
-        setze(C, {**BERLIN, "measure": "wxm", "wxm_station": {"id": "wxm-test", "name": "Gartenstation", "distance_km": 0.2}})
-        dexec(C, f"umask 077; printf 'WXM_API_KEY=e2e-test-key\\n' > {CONF}/weather.env")
-        wx = satz(C, "jetzt", "de", mock_url)
-        check("WeatherXM mit eigenem Schlüssel", wx.startswith("Deine WeatherXM-Station Gartenstation ganz in der Nähe meldet fünf Komma fünf Grad"),
-              wx[:110])
-        check("Schlüssel nie in der Ausgabe", "e2e-test-key" not in wx)
-        check("Schlüsseldatei nur für den Besitzer (600)", dexec(C, f"stat -c %a {CONF}/weather.env").strip() == "600")
         log = [json.loads(z) for z in wlog.read_text().splitlines() if z.startswith("{")]
         check("Alle Abfragen mit NuOrb-User-Agent, Koordinaten gerundet", log and all(e["ua"].startswith("NuOrb") for e in log)
               and all("52.0" in e["query"] or "52.00" in e["query"] or not e["query"] for e in log if "lat" in e["query"]),
               f"{len(log)} Abfragen")
-        dexec(C, f"rm -f {CONF}/weather.env")
         setze(C, BERLIN)
 
         # ------------------------------------------------ 4. über Hermes mit Mock-Gehirn

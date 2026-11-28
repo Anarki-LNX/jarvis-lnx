@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Mini-Mock für Wettertests: tut so, als wäre es Bright Sky (DWD), Open-Meteo, die Ortssuche und WeatherXM Pro.
+"""Mini-Mock für Wettertests: tut so, als wäre es Bright Sky (DWD), Open-Meteo und die Open-Meteo-Ortssuche.
 Keine echten Abfragen. NuOrb nutzt ihn mit NUORB_WEATHER_MOCK=http://127.0.0.1:<port> (nur Tests/e2e).
 Start: python3 docker/tools/mock-weather.py [port]   (Standard 18435, nur 127.0.0.1)
-Jede Anfrage wird als eine Zeile JSON auf stdout protokolliert (Pfad, Query, User-Agent, ob ein Schlüssel kam).
+Jede Anfrage wird als eine Zeile JSON auf stdout protokolliert (Pfad, Query, User-Agent).
 """
 from __future__ import annotations
 
@@ -55,8 +55,7 @@ class H(BaseHTTPRequestHandler):
 
     def do_GET(self):
         u = urllib.parse.urlsplit(self.path)
-        print(json.dumps({"path": u.path, "query": u.query, "ua": self.headers.get("User-Agent", ""),
-                          "key": bool(self.headers.get("X-API-KEY"))}), flush=True)
+        print(json.dumps({"path": u.path, "query": u.query, "ua": self.headers.get("User-Agent", "")}), flush=True)
         if not self.headers.get("User-Agent", "").startswith("NuOrb"):
             return self.send(400, {"error": "user agent"})
         p = u.path
@@ -67,17 +66,6 @@ class H(BaseHTTPRequestHandler):
         if p.startswith("/geocode"):
             return self.send(200, {"results": [{"name": "Teststadt", "latitude": 52.0, "longitude": 13.0, "country_code": "DE",
                                                 "admin1": "Testland", "country": "Deutschland", "timezone": "Europe/Berlin"}]})
-        if p.startswith("/nominatim"):
-            return self.send(200, [{"lat": "52.0", "lon": "13.0", "name": "Teststadt",
-                                    "address": {"town": "Teststadt", "state": "Testland", "postcode": "12345", "country_code": "de"}}])
-        if p.startswith("/wxm/"):
-            if not self.headers.get("X-API-KEY"):
-                return self.send(401, {"error": "key"})
-            if p.endswith("/stations/near"):
-                return self.send(200, [{"id": "wxm-test", "name": "Gartenstation", "location": {"lat": 52.001, "lon": 13.001}}])
-            if p.endswith("/latest"):
-                return self.send(200, {"observation": {"timestamp": now().isoformat(), "temperature": 5.5, "humidity": 77,
-                                                       "wind_speed": 2.0, "wind_direction": 180, "icon": "cloudy"}})
         self.send(404, {"error": "not found"})
 
     def send(self, code: int, body):

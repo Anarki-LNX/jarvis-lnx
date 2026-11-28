@@ -1,4 +1,5 @@
-"""Unit-Tests für docker/app/weather_admin.py (Verwaltungsseite „Wetter“): Ortssuche, Speichern, Schlüssel nur maskiert,
+"""Unit-Tests für docker/app/weather_admin.py (Verwaltungsseite „Wetter“): Ortssuche nur über den Namen, Speichern,
+Schlüssel nur maskiert,
 Prüfung der Eingaben, Test-Knopf. Wetterdienste gemockt, keine echten Abfragen. Anmeldung und CSRF macht der Wächter
 des Admin-Panels (test_admin.py), hier wird nur die Logik der Routen geprüft."""
 from __future__ import annotations
@@ -25,8 +26,8 @@ c = TestClient(app)
 
 GEO = {"results": [{"name": "Wien", "latitude": 48.2, "longitude": 16.37, "country_code": "AT", "admin1": "Wien",
                     "country": "Österreich", "timezone": "Europe/Vienna"}]}
-NOMI = [{"lat": "51.7333", "lon": "13.7667", "address": {"village": "Crinitz", "state": "Brandenburg", "postcode": "03246",
-                                                          "country_code": "de"}}]
+CRINITZ = {"results": [{"name": "Crinitz", "latitude": 51.7333, "longitude": 13.7667, "country_code": "DE",
+                        "admin1": "Brandenburg", "country": "Deutschland", "timezone": "Europe/Berlin"}]}
 CUR = {"weather": {"source_id": 1, "temperature": 3.0, "relative_humidity": 80, "icon": "cloudy"},
        "sources": [{"id": 1, "station_name": "Doberlug-Kirchhain", "distance": 12400}]}
 
@@ -57,16 +58,24 @@ class Ort(unittest.TestCase):
     def test_ohne_ort(self):
         d = c.get("/api/weather").json()
         self.assertIsNone(d["place"])
-        self.assertEqual({x["id"] for x in d["credits"]}, {"dwd", "brightsky", "openmeteo", "geonames", "osm", "wxm"})
+        self.assertEqual({x["id"] for x in d["credits"]}, {"dwd", "brightsky", "openmeteo", "geonames"})
         self.assertIn("Quelle: Deutscher Wetterdienst", [x["notice"] for x in d["credits"]])
 
-    def test_suche_postleitzahl_und_speichern(self):
-        calls = fake({"nominatim": NOMI, "/current_weather": CUR})
-        r = c.post("/api/weather/search", json={"query": "03246"})
+    def test_postleitzahl_freundlicher_hinweis_ohne_abfrage(self):
+        calls = fake({"geocoding-api": {"results": [{"name": "New York City", "latitude": 40.7, "longitude": -74.0}]}})
+        r = c.post("/api/weather/search", json={"query": "10115"})
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(r.json()["detail"], "Please enter the name of the place, for example Berlin.")
+        self.assertEqual(calls, [])
+
+    def test_suche_ortsname_und_speichern(self):
+        calls = fake({"geocoding-api": CRINITZ, "/current_weather": CUR})
+        r = c.post("/api/weather/search", json={"query": "Crinitz"})
         self.assertEqual(r.status_code, 200)
         hit = r.json()["results"][0]
         self.assertEqual((hit["name"], hit["country_code"]), ("Crinitz", "DE"))
-        self.assertIn("nominatim", calls[0])
+        self.assertNotIn("postcode", hit)
+        self.assertIn("geocoding-api.open-meteo.com", calls[0])
         d = c.post("/api/weather/place", json={"place": hit}).json()
         self.assertEqual(d["place"]["name"], "Crinitz")
         self.assertEqual(d["effective"], "dwd")
@@ -108,24 +117,14 @@ class Optionen(unittest.TestCase):
         d = c.post("/api/weather/options", json={"brightsky_url": ""}).json()
         self.assertEqual(d["brightsky_url"], "")
 
-    def test_wxm_braucht_schluessel_und_station(self):
-        self.assertEqual(c.post("/api/weather/options", json={"measure": "wxm"}).status_code, 400)
-        self.assertEqual(c.post("/api/weather/wxm-stations", json={}).status_code, 400)
-
     def test_schluessel_nur_maskiert_und_loeschbar(self):
-        d = c.post("/api/weather/keys", json={"wxm": "wxm-geheimer-schluessel-1234"}).json()
+        d = c.post("/api/weather/keys", json={"openmeteo": "om-geheimer-schluessel-1234"}).json()
         self.assertNotIn("geheimer", json.dumps(d))
-        self.assertTrue(d["keys"]["wxm"].endswith("1234"))
+        self.assertTrue(d["keys"]["openmeteo"].endswith("1234"))
+        self.assertEqual(set(d["keys"]), {"openmeteo"})
         self.assertEqual(stat.S_IMODE(nw.SECRETS_FILE.stat().st_mode), 0o600)
-        self.assertEqual(c.post("/api/weather/keys", json={"wxm": "bad key with spaces"}).status_code, 400)
-        fake({"/stations/near": [{"id": "st-9", "name": "Garten", "location": {"lat": 52.521, "lon": 13.41}}]})
-        st = c.post("/api/weather/wxm-stations", json={}).json()["stations"]
-        self.assertEqual(st[0]["id"], "st-9")
-        d = c.post("/api/weather/options", json={"wxm_station": st[0], "measure": "wxm"}).json()
-        self.assertEqual((d["measure"], d["wxm_station"]["name"]), ("wxm", "Garten"))
-        self.assertEqual(c.post("/api/weather/options", json={"wxm_station": {"id": "../etc"}}).status_code, 400)
-        d = c.post("/api/weather/keys", json={"wxm": ""}).json()
-        self.assertEqual((d["keys"]["wxm"], d["measure"]), ("", "dwd"))   # ohne Schlüssel zurück auf den Wetterdienst
+        self.assertEqual(c.post("/api/weather/keys", json={"openmeteo": "bad key with spaces"}).status_code, 400)
+        self.assertEqual(c.post("/api/weather/keys", json={"openmeteo": ""}).json()["keys"]["openmeteo"], "")
 
     def test_test_knopf_und_loeschen(self):
         fake({"/current_weather": CUR, "/alerts": {"alerts": []}})

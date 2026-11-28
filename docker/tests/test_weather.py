@@ -213,38 +213,6 @@ class Ausland(unittest.TestCase):
         self.assertTrue(f.calls[0][0].startswith("https://customer-api.open-meteo.com/"))
 
 
-class WeatherXM(unittest.TestCase):
-    SET = {**BERLIN, "measure": "wxm", "wxm_station": {"id": "st-1", "name": "Gartenstation", "distance_km": 0.4}}
-    OBS = {"observation": {"timestamp": iso(NOW), "temperature": 3.5, "feels_like": 0.5, "humidity": 88, "wind_speed": 5.0,
-                           "wind_gust": 9.0, "wind_direction": 270, "precipitation_rate": 0.0, "icon": "cloudy"}}
-
-    def test_messwerte_von_wxm_schluessel_nie_im_text(self):
-        f = neu({**DE_ROUTES(), "/stations/st-1/latest": self.OBS})
-        nw.save_secret("WXM_API_KEY", "geheim-wxm-schluessel")
-        text, err = nw.report("jetzt", "de", self.SET)
-        self.assertFalse(err)
-        self.assertTrue(text.startswith("Deine WeatherXM-Station Gartenstation ganz in der Nähe meldet "
-                                        "drei Komma fünf Grad, gefühlt null Komma fünf Grad"))
-        self.assertIn("Wind aus West mit achtzehn Kilometern pro Stunde", text)   # 5 m/s
-        self.assertNotIn("geheim", text)
-        self.assertEqual(f.calls[0][1].get("X-API-KEY"), "geheim-wxm-schluessel")
-        self.assertNotIn("geheim", f.calls[0][0])   # Schlüssel nur im Kopf, nie in der URL
-
-    def test_rueckfall_auf_dwd(self):
-        neu({**DE_ROUTES(), "/stations/st-1/latest": urllib.error.HTTPError("u", 401, "x", {}, io.BytesIO())})  # type: ignore[arg-type]
-        nw.save_secret("WXM_API_KEY", "falsch")
-        text, err = nw.report("jetzt", "de", self.SET)
-        self.assertFalse(err)
-        self.assertTrue(text.startswith("Laut Deutschem Wetterdienst"))
-
-    def test_naechste_stationen(self):
-        neu({"/stations/near": [{"id": "b", "name": "Weit", "location": {"lat": 52.60, "lon": 13.41}},
-                                {"id": "a", "name": "Nah", "location": {"lat": 52.525, "lon": 13.411}}]})
-        st = nw.wxm_near(52.5244, 13.4105, "k")
-        self.assertEqual([s["id"] for s in st], ["a", "b"])
-        self.assertLess(st[0]["distance_km"], 1)
-
-
 class Zwischenspeicher(unittest.TestCase):
     def test_innerhalb_der_frist_kein_neuer_abruf(self):
         f = neu(DE_ROUTES())
@@ -266,7 +234,6 @@ class Zwischenspeicher(unittest.TestCase):
         self.assertIn("Berlin-Tempelhof", text)
 
     def test_fristen(self):
-        self.assertEqual(nw.TTL["station"], 86400)
         self.assertLessEqual(nw.TTL["current"], 600)
         self.assertEqual(nw.TTL["alerts"], 600)
 
@@ -290,14 +257,22 @@ class Fehler(unittest.TestCase):
 
 
 class Ortssuche(unittest.TestCase):
-    def test_postleitzahl_ueber_nominatim(self):
-        f = neu({"nominatim": [{"lat": "51.73", "lon": "13.77", "name": "Crinitz",
-                                "address": {"village": "Crinitz", "state": "Brandenburg", "postcode": "03246", "country_code": "de"}}]})
-        r = nw.geocode("03246", "de")
-        self.assertEqual(r[0]["name"], "Crinitz")
-        self.assertEqual(r[0]["country_code"], "DE")
-        self.assertEqual(r[0]["timezone"], "Europe/Berlin")
-        self.assertIn("postalcode=03246", f.calls[0][0])
+    def test_reine_postleitzahl_wird_nicht_gesucht(self):
+        f = neu({"geocoding-api": {"results": [{"name": "New York City", "latitude": 40.7, "longitude": -74.0}]}})
+        for q in ("10115", "03246", " 1 0 1 1 5 "):
+            with self.assertRaises(nw.WeatherError) as ctx:
+                nw.geocode(q, "de")
+            self.assertEqual(ctx.exception.de, "Bitte den Ortsnamen eingeben, zum Beispiel Berlin.")
+            self.assertEqual(ctx.exception.en, "Please enter the name of the place, for example Berlin.")
+        self.assertEqual(f.calls, [])   # keine Abfrage, also auch kein Fehltreffer
+
+    def test_postleitzahl_neben_dem_namen_faellt_weg(self):
+        f = neu({"geocoding-api": {"results": [{"name": "Berlin", "latitude": 52.52, "longitude": 13.41, "country_code": "DE",
+                                                "admin1": "Berlin", "country": "Deutschland", "timezone": "Europe/Berlin"}]}})
+        r = nw.geocode("10115 Berlin", "de")
+        self.assertEqual(r[0]["name"], "Berlin")
+        q = urllib.parse.parse_qs(urllib.parse.urlsplit(f.calls[0][0]).query)
+        self.assertEqual(q["name"], ["Berlin"])
 
     def test_ortsname_ueber_open_meteo(self):
         f = neu({"geocoding-api": {"results": [{"name": "Wien", "latitude": 48.2, "longitude": 16.37, "country_code": "AT",
@@ -312,12 +287,12 @@ class Ortssuche(unittest.TestCase):
 class Dateien(unittest.TestCase):
     def test_schluesseldatei_nur_fuer_den_besitzer(self):
         neu({})
-        nw.save_secret("WXM_API_KEY", "abc")
+        nw.save_secret("OPENMETEO_API_KEY", "abc")
         nw.save_settings({"name": "X"})
         for p in (nw.SECRETS_FILE, nw.SETTINGS_FILE):
             self.assertEqual(stat.S_IMODE(p.stat().st_mode), 0o600)
-        nw.save_secret("WXM_API_KEY", "")
-        self.assertNotIn("WXM_API_KEY", nw.load_secrets())
+        nw.save_secret("OPENMETEO_API_KEY", "")
+        self.assertNotIn("OPENMETEO_API_KEY", nw.load_secrets())
 
 
 class Mcp(unittest.TestCase):

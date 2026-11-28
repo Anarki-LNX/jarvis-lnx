@@ -6,12 +6,11 @@ CSRF-Schutz (POST nur mit Kopf X-NuOrb: 1). Alle Abfragen an Wetterdienste laufe
 Schlüssel werden nur maskiert zurückgegeben und nie geloggt.
 
   GET  /api/weather                Einstellungen, ob Schlüssel gesetzt sind, Quellenhinweise
-  GET  /api/weather/station        nächste DWD-Station bzw. WeatherXM-Station mit Entfernung (Zwischenspeicher)
-  POST /api/weather/search         {query}                     Ortssuche (Ortsname oder Postleitzahl)
+  GET  /api/weather/station        nächste DWD-Station mit Entfernung (Zwischenspeicher)
+  POST /api/weather/search         {query}                     Ortssuche nur über den Ortsnamen (keine Postleitzahlen)
   POST /api/weather/place          {place}                     Ort übernehmen
-  POST /api/weather/options        {provider, brightsky_url, measure, wxm_station}
-  POST /api/weather/keys           {wxm?, openmeteo?}          setzen ("" = löschen)
-  POST /api/weather/wxm-stations   {}                          WeatherXM-Stationen in der Nähe (gespeicherter Schlüssel)
+  POST /api/weather/options        {provider, brightsky_url}
+  POST /api/weather/keys           {openmeteo}                 optionaler Open-Meteo-Schlüssel ("" = löschen)
   POST /api/weather/test           {zeitraum, lang?}           Satz wie beim Vorlesen
   POST /api/weather/clear          {}                          Ort, Schlüssel und Zwischenspeicher löschen
 """
@@ -36,7 +35,7 @@ import nuorb_weather as nw  # noqa: E402
 TR: Callable[[str, str], str] = lambda de, en: en   # noqa: E731  (admin_main setzt jc.tr: Sprache der Anfrage)
 LANG: Callable[[], str] = lambda: "de"              # noqa: E731  (admin_main setzt jc.lang: Sprache des Assistenten)
 KEY_RE = re.compile(r"[A-Za-z0-9._\-]{8,200}")
-_last_search = [0.0]   # Nominatim: höchstens eine Abfrage pro Sekunde
+_last_search = [0.0]   # Ortssuche: höchstens eine Abfrage pro Sekunde (schont Open-Meteo)
 
 
 def credits() -> list[dict]:
@@ -50,10 +49,6 @@ def credits() -> list[dict]:
          "license": "CC BY 4.0", "license_url": "https://open-meteo.com/en/licence"},
         {"id": "geonames", "name": "GeoNames", "notice": "Location data based on GeoNames", "url": "https://www.geonames.org",
          "license": "CC BY 4.0", "license_url": "https://creativecommons.org/licenses/by/4.0/"},
-        {"id": "osm", "name": "OpenStreetMap", "notice": "© OpenStreetMap contributors", "url": "https://www.openstreetmap.org/copyright",
-         "license": "ODbL", "license_url": "https://opendatacommons.org/licenses/odbl/"},
-        {"id": "wxm", "name": "WeatherXM Pro", "notice": "WeatherXM terms apply (own key)", "url": "https://pro.weatherxm.com",
-         "license": "WeatherXM terms", "license_url": "https://pro.weatherxm.com"},
     ]
 
 
@@ -76,11 +71,9 @@ def _mask(v: str | None) -> str:
 def state() -> dict:
     s = nw.load_settings()
     sec = nw.load_secrets()
-    place = {k: s.get(k) for k in ("name", "region", "postcode", "country_code", "lat", "lon", "timezone")} if s.get("lat") is not None else None
+    place = {k: s.get(k) for k in ("name", "region", "country_code", "lat", "lon", "timezone")} if s.get("lat") is not None else None
     return {"place": place, "provider": s.get("provider") or "auto", "effective": nw.provider_for(s) if place else None,
-            "brightsky_url": s.get("brightsky_url") or "", "measure": s.get("measure") or "dwd",
-            "wxm_station": s.get("wxm_station"), "keys": {"wxm": _mask(sec.get("WXM_API_KEY")),
-                                                          "openmeteo": _mask(sec.get("OPENMETEO_API_KEY"))},
+            "brightsky_url": s.get("brightsky_url") or "", "keys": {"openmeteo": _mask(sec.get("OPENMETEO_API_KEY"))},
             "credits": credits(), "periods": list(nw.PERIODS)}
 
 
@@ -99,15 +92,14 @@ async def weather_station(request: Request):
 async def weather_search(request: Request):
     d = await _body(request)
     q = str(d.get("query") or "").strip()[:80]
-    if len(q) < 2:
-        raise HTTPException(400, TR("Bitte Ort oder Postleitzahl eingeben.", "Please enter a place or postcode."))
+    if len(nw.place_name(q)) < 2:
+        raise HTTPException(400, TR(nw.NUR_ZIFFERN.de, nw.NUR_ZIFFERN.en))
     wait = 1.1 - (time.monotonic() - _last_search[0])
     if wait > 0:
         await asyncio.sleep(wait)
     _last_search[0] = time.monotonic()
-    country = str(d.get("country") or "DE").upper()[:2]
     try:
-        hits = await asyncio.to_thread(nw.geocode, q, LANG(), country if re.fullmatch(r"[A-Z]{2}", country) else "DE")
+        hits = await asyncio.to_thread(nw.geocode, q, LANG())
     except nw.WeatherError as e:
         raise _err(e)
     return {"results": hits}
@@ -127,7 +119,7 @@ def _place(p: dict) -> dict:
     except (ZoneInfoNotFoundError, ValueError):
         tz = "UTC"
     return {"name": str(p.get("name") or "")[:80].strip() or TR("Mein Ort", "My place"),
-            "region": str(p.get("region") or "")[:120], "postcode": str(p.get("postcode") or "")[:12],
+            "region": str(p.get("region") or "")[:120],
             "country_code": cc if re.fullmatch(r"[A-Z]{2}", cc) else "", "lat": round(lat, 4), "lon": round(lon, 4), "timezone": tz}
 
 
@@ -163,54 +155,19 @@ async def weather_options(request: Request):
             s["brightsky_url"] = u
         else:
             s.pop("brightsky_url", None)
-    if "measure" in d:
-        if d["measure"] not in ("dwd", "wxm"):
-            raise HTTPException(400, TR("Unbekannte Messquelle.", "Unknown measurement source."))
-        s["measure"] = d["measure"]
-    if "wxm_station" in d:
-        st = d.get("wxm_station")
-        if st is None:
-            s.pop("wxm_station", None)
-        elif isinstance(st, dict) and re.fullmatch(r"[A-Za-z0-9\-]{1,64}", str(st.get("id") or "")):
-            s["wxm_station"] = {"id": str(st["id"]), "name": str(st.get("name") or st["id"])[:80],
-                                "distance_km": float(st["distance_km"]) if isinstance(st.get("distance_km"), (int, float)) else None}
-        else:
-            raise HTTPException(400, TR("Ungültige Station.", "Invalid station."))
-    if s.get("measure") == "wxm" and not (s.get("wxm_station") and nw.load_secrets().get("WXM_API_KEY")):
-        raise HTTPException(400, TR("Für WeatherXM zuerst Schlüssel speichern und eine Station wählen.",
-                                    "For WeatherXM, save a key and choose a station first."))
     nw.save_settings(s)
     return state()
 
 
 async def weather_keys(request: Request):
     d = await _body(request)
-    for field, name in (("wxm", "WXM_API_KEY"), ("openmeteo", "OPENMETEO_API_KEY")):
-        if field not in d:
-            continue
-        v = str(d.get(field) or "").strip()
+    if "openmeteo" in d:
+        v = str(d.get("openmeteo") or "").strip()
         if v and not KEY_RE.fullmatch(v):
             raise HTTPException(400, TR("Der Schlüssel enthält ungültige Zeichen.", "The key contains invalid characters."))
-        nw.save_secret(name, v or None)
-        if field == "wxm" and not v:
-            s = nw.load_settings()
-            if s.get("measure") == "wxm":
-                s["measure"] = "dwd"
-                nw.save_settings(s)
+        nw.save_secret("OPENMETEO_API_KEY", v or None)
     shutil.rmtree(nw.CACHE_DIR, ignore_errors=True)
     return state()
-
-
-async def weather_wxm_stations(request: Request):
-    s = nw.load_settings()
-    key = nw.load_secrets().get("WXM_API_KEY")
-    if s.get("lat") is None or not key:
-        raise HTTPException(400, TR("Zuerst Ort und WeatherXM-Schlüssel speichern.", "Save your place and WeatherXM key first."))
-    try:
-        st = await asyncio.to_thread(nw.wxm_near, float(s["lat"]), float(s["lon"]), key)
-    except nw.WeatherError as e:
-        raise _err(e)
-    return {"stations": st[:10]}
 
 
 async def weather_test(request: Request):
@@ -236,7 +193,6 @@ def routes() -> list[APIRoute]:
         APIRoute("/api/weather/place", weather_place, methods=["POST"]),
         APIRoute("/api/weather/options", weather_options, methods=["POST"]),
         APIRoute("/api/weather/keys", weather_keys, methods=["POST"]),
-        APIRoute("/api/weather/wxm-stations", weather_wxm_stations, methods=["POST"]),
         APIRoute("/api/weather/test", weather_test, methods=["POST"]),
         APIRoute("/api/weather/clear", weather_clear, methods=["POST"]),
     ]

@@ -18,12 +18,12 @@
     <h2 data-t="h_place">1 · Place</h2>
     <p id="placeNow"></p>
     <div class="row">
-      <div><label for="query" data-t="l_query">Place or postcode</label><input id="query" maxlength="80" spellcheck="false" autocomplete="off"></div>
+      <div><label for="query" data-t="l_query">Name of the place</label><input id="query" maxlength="80" spellcheck="false" autocomplete="off" placeholder="Berlin"></div>
       <div class="fit"><button class="btn" id="search" type="button" data-t="search">Search</button></div>
     </div>
     <div class="choices" id="results"></div>
     <p class="muted" id="placeMsg"></p>
-    <p class="muted" data-t="geo_note">Place names: Open-Meteo Geocoding, location data based on GeoNames (CC BY 4.0). Postcodes: OpenStreetMap Nominatim, © OpenStreetMap contributors (ODbL). The search runs only now, not during normal use.</p>
+    <p class="muted" data-t="geo_note">Search by the name of the place, not by postcode. Place search: Open-Meteo Geocoding, location data based on GeoNames (CC BY 4.0). The search runs only now, not during normal use.</p>
   </section>
 
   <section class="panel" id="pSource">
@@ -49,26 +49,8 @@
     <p class="muted" id="sourceMsg"></p>
   </section>
 
-  <section class="panel" id="pWxm">
-    <h2 data-t="h_wxm">3 · WeatherXM station (optional)</h2>
-    <p class="muted" data-t="wxm_note">Hyperlocal measurements from a WeatherXM station near you, with your own WeatherXM Pro API key. Forecast and warnings still come from the German Weather Service. The terms of WeatherXM apply to your account.</p>
-    <div class="row">
-      <div><label for="wxmkey" data-t="l_wxmkey">WeatherXM Pro API key</label><input id="wxmkey" type="password" autocomplete="off" spellcheck="false"></div>
-      <div class="fit"><button class="btn" id="saveWxm" type="button" data-t="save">Save</button></div>
-      <div class="fit"><button class="btn" id="findWxm" type="button" data-t="find">Find stations</button></div>
-    </div>
-    <p class="muted" id="wxmState"></p>
-    <div class="choices" id="wxmList"></div>
-    <div class="row">
-      <div><label for="measure" data-t="l_measure">Measurements from</label>
-        <select id="measure"><option value="dwd" data-t="m_dwd">Weather service (DWD or Open-Meteo)</option><option value="wxm" data-t="m_wxm">My WeatherXM station</option></select></div>
-      <div class="fit"><button class="btn" id="saveMeasure" type="button" data-t="save">Save</button></div>
-    </div>
-    <p class="muted" id="wxmMsg"></p>
-  </section>
-
   <section class="panel" id="pTest">
-    <h2 data-t="h_test">4 · Test</h2>
+    <h2 data-t="h_test">3 · Test</h2>
     <div class="row">
       <div><label for="period" data-t="l_period">Period</label>
         <select id="period">

@@ -5,13 +5,13 @@ Quellen (alle Abfragen laufen vom NuOrb-Server des Nutzers aus, keine zentrale S
   * Deutschland: Deutscher Wetterdienst über Bright Sky (api.brightsky.dev, ohne Schlüssel). Messwerte der
     nächstgelegenen DWD-Station, MOSMIX-Vorhersage, amtliche Warnungen. Daten: DWD, CC BY 4.0.
   * Außerhalb Deutschlands: Open-Meteo (frei nur nicht-kommerziell; optional eigener Schlüssel). CC BY 4.0.
-  * Optional WeatherXM Pro mit eigenem Schlüssel des Nutzers: nur die Messwerte, Vorhersage/Warnungen weiter vom DWD.
-  * Ortssuche einmalig bei der Einrichtung: Ortsname über Open-Meteo Geocoding (GeoNames), Postleitzahl über
-    OpenStreetMap Nominatim.
+  * Ortssuche einmalig bei der Einrichtung, nur über den Ortsnamen: Open-Meteo Geocoding (GeoNames).
+    Postleitzahlen werden bewusst nicht gesucht (kein Fehltreffer wie „10115“ = New York).
 
-Gespeichert wird nur lokal: CONF/weather.json (Ort, Koordinaten, Anbieter), Schlüssel in CONF/weather.env (600).
+Gespeichert wird nur lokal: CONF/weather.json (Ort, Koordinaten, Anbieter), ein optionaler Open-Meteo-Schlüssel
+in CONF/weather.env (600).
 Abfragen tragen nur gerundete Koordinaten (2 Nachkommastellen, etwa 1 km) und einen neutralen User-Agent.
-Zwischenspeicher: Stationen 24 h, Messwerte 10 min, Warnungen 10 min, Vorhersage 60 min.
+Zwischenspeicher: Messwerte 10 min, Warnungen 10 min, Vorhersage 60 min.
 
 Sätze: DE/EN, Zahlen ausgeschrieben, ohne Gedankenstriche und Semikolons, fehlende Werte fallen weg.
 Amtliche Warnungen werden unverändert wiedergegeben (Überschrift und Gültigkeit), siehe DWD-Bedingungen.
@@ -20,8 +20,8 @@ from __future__ import annotations
 
 import datetime as dt
 import json
-import math
 import os
+import re
 import time
 import urllib.error
 import urllib.parse
@@ -41,16 +41,14 @@ BRIGHTSKY_URL = "https://api.brightsky.dev"
 OPENMETEO_URL = "https://api.open-meteo.com/v1/forecast"
 OPENMETEO_PAID_URL = "https://customer-api.open-meteo.com/v1/forecast"
 GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
-NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
-WXM_URL = "https://pro.weatherxm.com/api/v1"
 # Für Tests und e2e: alle Adressen auf einen lokalen Mock umbiegen (nie in der CI ins Internet)
 _MOCK = os.environ.get("NUORB_WEATHER_MOCK", "").rstrip("/")
 if _MOCK.startswith("http://127.0.0.1:"):   # nur Loopback, nie eine fremde Adresse
     BRIGHTSKY_URL, OPENMETEO_URL, OPENMETEO_PAID_URL = f"{_MOCK}/brightsky", f"{_MOCK}/openmeteo", f"{_MOCK}/openmeteo"
-    GEOCODE_URL, NOMINATIM_URL, WXM_URL = f"{_MOCK}/geocode", f"{_MOCK}/nominatim", f"{_MOCK}/wxm"
+    GEOCODE_URL = f"{_MOCK}/geocode"
 
 USER_AGENT = "NuOrb weather (+https://github.com/anarki-lnx/nuorb)"
-TTL = {"station": 24 * 3600, "current": 600, "alerts": 600, "forecast": 3600}
+TTL = {"current": 600, "alerts": 600, "forecast": 3600}
 TIMEOUT = 10
 PERIODS = ("jetzt", "heute", "morgen", "woche", "warnungen")
 PROVIDERS = ("auto", "dwd", "openmeteo")
@@ -166,35 +164,26 @@ def _key(lat: float, lon: float, extra: str = "") -> str:
     return f"{_r(lat):.2f}_{_r(lon):.2f}{('_' + extra) if extra else ''}".replace("-", "m")
 
 
-def distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    p1, p2 = math.radians(lat1), math.radians(lat2)
-    a = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lon2 - lon1) / 2) ** 2
-    return 6371.0 * 2 * math.asin(math.sqrt(a))
-
-
 # ------------------------------------------------------------------ Ortssuche (nur bei der Einrichtung)
-def geocode(query: str, lang: str = "de", country: str = "DE") -> list[dict]:
-    """Postleitzahl (nur Ziffern) über Nominatim, sonst Ortsname über Open-Meteo. Liefert bis zu 5 Treffer."""
-    q = (query or "").strip()
-    if not q:
-        return []
-    if q.replace(" ", "").isdigit():
-        d = _get(NOMINATIM_URL, {"postalcode": q.replace(" ", ""), "country": country or "DE", "format": "jsonv2",
-                                 "addressdetails": 1, "limit": 5, "accept-language": lang})
-        out = []
-        for e in d if isinstance(d, list) else []:
-            a = e.get("address") or {}
-            name = a.get("city") or a.get("town") or a.get("village") or a.get("municipality") or e.get("name") or q
-            out.append({"name": name, "region": a.get("state") or "", "postcode": a.get("postcode") or q,
-                        "country_code": str(a.get("country_code") or country).upper(),
-                        "lat": float(e["lat"]), "lon": float(e["lon"]), "source": "nominatim",
-                        "timezone": "Europe/Berlin" if str(a.get("country_code") or country).upper() == "DE" else "UTC"})
-        return out
-    d = _get(GEOCODE_URL, {"name": q, "count": 5, "language": lang, "format": "json"})
-    return [{"name": e.get("name") or q, "region": ", ".join(x for x in (e.get("admin1"), e.get("country")) if x),
-             "postcode": (e.get("postcodes") or [""])[0], "country_code": str(e.get("country_code") or "").upper(),
-             "lat": float(e["latitude"]), "lon": float(e["longitude"]), "source": "open-meteo",
-             "timezone": e.get("timezone") or "UTC"}
+NUR_ZIFFERN = WeatherError("Bitte den Ortsnamen eingeben, zum Beispiel Berlin.",
+                           "Please enter the name of the place, for example Berlin.")
+
+
+def place_name(query: str) -> str:
+    """Nur der Name: Wörter mit Ziffern (Postleitzahlen) fallen weg, aus „10115 Berlin“ wird „Berlin“."""
+    return " ".join(w for w in re.split(r"[\s,]+", (query or "").strip()) if w and not any(ch.isdigit() for ch in w))
+
+
+def geocode(query: str, lang: str = "de") -> list[dict]:
+    """Ortsname über Open-Meteo Geocoding (GeoNames), bis zu 5 Treffer. Postleitzahlen werden nicht gesucht:
+    Ohne Namen (nur Ziffern) kommt der Hinweis, den Ortsnamen einzugeben, also nie ein Fehltreffer."""
+    name = place_name(query)
+    if not name:
+        raise NUR_ZIFFERN
+    d = _get(GEOCODE_URL, {"name": name, "count": 5, "language": lang, "format": "json"})
+    return [{"name": e.get("name") or name, "region": ", ".join(x for x in (e.get("admin1"), e.get("country")) if x),
+             "country_code": str(e.get("country_code") or "").upper(),
+             "lat": float(e["latitude"]), "lon": float(e["longitude"]), "timezone": e.get("timezone") or "UTC"}
             for e in (d.get("results") or []) if "latitude" in e]
 
 
@@ -365,37 +354,6 @@ def openmeteo_days(lat: float, lon: float, key: str | None = None) -> list[dict]
     return out
 
 
-def wxm_near(lat: float, lon: float, key: str, radius_m: int = 10000) -> list[dict]:
-    def load():
-        return _get(f"{WXM_URL}/stations/near", {"lat": _r(lat), "lon": _r(lon), "radius": radius_m}, {"X-API-KEY": key})
-    d = cached("station", _key(lat, lon, f"wxm{radius_m}"), load)
-    liste = d if isinstance(d, list) else (d.get("stations") or d.get("data") or []) if isinstance(d, dict) else []
-    out = []
-    for s in liste:
-        loc = s.get("location") or {}
-        if loc.get("lat") is None or loc.get("lon") is None or not s.get("id"):
-            continue
-        out.append({"id": s["id"], "name": s.get("name") or s["id"],
-                    "distance_km": round(distance_km(lat, lon, loc["lat"], loc["lon"]), 1)})
-    return sorted(out, key=lambda s: s["distance_km"])
-
-
-def wxm_current(station: dict, key: str) -> dict:
-    def load():
-        return _get(f"{WXM_URL}/stations/{urllib.parse.quote(station['id'], safe='')}/latest", {}, {"X-API-KEY": key})
-    d = cached("current", "wxm_" + "".join(c for c in station["id"] if c.isalnum())[:40], load)
-    o = d.get("observation") or {}
-    if o.get("temperature") is None:
-        raise WeatherError("Die WeatherXM-Station liefert gerade keine Messwerte.", "The WeatherXM station has no measurements right now.")
-
-    def kmh(v):
-        return v * 3.6 if isinstance(v, (int, float)) else None
-    return {"temp": o.get("temperature"), "feels": o.get("feels_like"), "humidity": o.get("humidity"),
-            "wind_kmh": kmh(o.get("wind_speed")), "gust_kmh": kmh(o.get("wind_gust")), "wind_dir": o.get("wind_direction"),
-            "precip_1h": o.get("precipitation_rate"), "pressure": o.get("pressure"), "sky": _sky_from_icon(o.get("icon")),
-            "ts": o.get("timestamp"), "station": station.get("name"), "distance_km": station.get("distance_km"), "source": "wxm"}
-
-
 # ------------------------------------------------------------------ Zahlen in Worten
 _DE = ["null", "eins", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn", "elf", "zwölf",
        "dreizehn", "vierzehn", "fünfzehn", "sechzehn", "siebzehn", "achtzehn", "neunzehn"]
@@ -512,8 +470,6 @@ def _source_intro(cur: dict, place: str, lang: str) -> str:
                 "Laut Deutschem Wetterdienst" if lang == "de" else
                 f"According to the German Weather Service, station {st}{entf}" if st else
                 "According to the German Weather Service")
-    if cur["source"] == "wxm":
-        return (f"Deine WeatherXM-Station {st}{entf} meldet" if lang == "de" else f"Your WeatherXM station {st}{entf} reports")
     return f"Laut Open-Meteo für {place}" if lang == "de" else f"According to Open-Meteo for {place}"
 
 
@@ -551,8 +507,7 @@ def sentence_now(cur: dict, place: str, lang: str, tz: str) -> str:
     intro = _source_intro(cur, place, lang)
     if not teile:
         return intro + (": gerade keine Messwerte." if lang == "de" else ": no measurements right now.")
-    trenner = " " if cur["source"] == "wxm" else ": "
-    satz = intro + trenner + ", ".join(teile) + "."
+    satz = intro + ": " + ", ".join(teile) + "."
     p = _num(cur.get("precip_1h"))
     if p is not None:
         if p >= 0.1:
@@ -656,8 +611,7 @@ def report(period: str = "jetzt", lang: str = "de", settings: dict | None = None
     lat, lon = float(s["lat"]), float(s["lon"])
     place, tz = s.get("name") or ("deinen Ort" if lang == "de" else "your place"), s.get("timezone") or "Europe/Berlin"
     prov = provider_for(s)
-    sec = load_secrets()
-    om_key = sec.get("OPENMETEO_API_KEY") or None
+    om_key = load_secrets().get("OPENMETEO_API_KEY") or None
     base = s.get("brightsky_url") or BRIGHTSKY_URL
     try:
         if period == "warnungen":
@@ -676,15 +630,7 @@ def report(period: str = "jetzt", lang: str = "de", settings: dict | None = None
                 text += sentence_alerts(_overlapping(_alerts_soft(lat, lon, base), ziel, tz), lang, tz, brief=True)
             return text, False
         # jetzt
-        cur = None
-        wxm = s.get("wxm_station") if s.get("measure") == "wxm" else None
-        if wxm and sec.get("WXM_API_KEY"):
-            try:
-                cur = wxm_current(wxm, sec["WXM_API_KEY"])
-            except WeatherError:
-                cur = None   # Rückfall auf DWD/Open-Meteo
-        if cur is None:
-            cur = brightsky_current(lat, lon, base) if prov == "dwd" else openmeteo_current(lat, lon, om_key)
+        cur = brightsky_current(lat, lon, base) if prov == "dwd" else openmeteo_current(lat, lon, om_key)
         text = sentence_now(cur, place, lang, tz)
         if prov == "dwd":
             text += sentence_alerts(_alerts_soft(lat, lon, base), lang, tz, brief=True)
@@ -726,10 +672,6 @@ def station_info(s: dict | None = None) -> dict:
         if prov == "dwd":
             cur = brightsky_current(float(s["lat"]), float(s["lon"]), s.get("brightsky_url") or BRIGHTSKY_URL)
             out.update(station=cur.get("station"), distance_km=round(cur.get("distance_km") or 0, 1))
-        sec = load_secrets()
-        if s.get("measure") == "wxm" and s.get("wxm_station"):
-            out["wxm_station"] = s["wxm_station"]
-            out["wxm_key_set"] = bool(sec.get("WXM_API_KEY"))
     except WeatherError as e:
         out["error"] = e.en
     return out
