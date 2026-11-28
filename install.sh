@@ -24,6 +24,7 @@ YES=0
 LANG_SEL=""
 FIREWALL=1
 UNINSTALL=0
+ROLLBACK=0
 SOURCE=""                    # local docker/ folder instead of download (development, offline)
 IMAGE=""                     # use this image instead of ghcr.io/anarki-lnx/nuorb (development)
 IP=""
@@ -76,6 +77,7 @@ NuOrb server installer (install, update, repair)
   --no-firewall     do not check or change the firewall
   --bind ADDRESS    publish the ports only on this address (default: all, needed for VPN access)
   --uninstall       remove NuOrb (asks; data only with an extra confirmation)
+  --rollback        restore the backup made before the last update (settings, compose files, data)
   --name NAME       other project/container name, for a second instance (default: nuorb)
   --release TAG     install this release, e.g. v0.7.0 (default: the newest release)
   --help
@@ -95,6 +97,7 @@ while [ $# -gt 0 ]; do
     --no-firewall) FIREWALL=0 ;;
     --bind) BIND="$2"; shift ;;
     --uninstall) UNINSTALL=1 ;;
+    --rollback) ROLLBACK=1 ;;
     --name) NAME="$2"; shift ;;
     --source) SOURCE="$2"; shift ;;
     --release) RELEASE="$2"; shift ;;
@@ -242,12 +245,36 @@ resolve_release() {
                  "Das neueste NuOrb-Release wurde nicht gefunden ($DL/latest). Internet? Oder eines wählen: --release v0.7.0")" ;;
   esac
 }
+# Vertrauenskette: Ab v0.7.2 ist SHA256SUMS jedes Releases vom Release-Workflow attestiert (GitHub Artifact
+# Attestations). Ist die GitHub-CLI angemeldet, prüft das Skript die Attestierung. NUORB_REQUIRE_ATTESTATION=1
+# macht die Prüfung zur Pflicht. Ohne gh bleibt es bei SHA256SUMS (wie bis v0.7.1).
+verify_sums() {   # verify_sums FILE
+  local f="$1"
+  if [ "$(printf '%s\n' v0.7.2 "$RELEASE" | sort -V | head -1)" != v0.7.2 ]; then return 0; fi   # vor v0.7.2: keine Attestierung
+  if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+    if gh attestation verify "$f" --repo "$REPO" >/dev/null 2>&1; then
+      ok "$(t "SHA256SUMS of $RELEASE is attested by the NuOrb release workflow" "SHA256SUMS von $RELEASE ist vom NuOrb-Release-Workflow attestiert")"
+      return 0
+    fi
+    fail "$(t "SHA256SUMS of $RELEASE has no valid attestation from $REPO. Nothing was changed, please report this." \
+              "SHA256SUMS von $RELEASE hat keine gültige Attestierung von $REPO. Es wurde nichts geändert, bitte melden.")"
+  fi
+  if [ "${NUORB_REQUIRE_ATTESTATION:-}" = 1 ]; then
+    fail "$(t "NUORB_REQUIRE_ATTESTATION=1 needs the GitHub CLI, logged in (gh auth login)." \
+              "NUORB_REQUIRE_ATTESTATION=1 braucht die GitHub-CLI, angemeldet (gh auth login).")"
+  fi
+  return 0
+}
 SUMS=""
 release_file() {   # release_file NAME DEST: aus dem Release laden und gegen SHA256SUMS prüfen
   local name="$1" dest="$2" want got
   if [ -z "$SUMS" ]; then
     SUMS=$(curl -fsSL --retry 3 "$DL/download/$RELEASE/SHA256SUMS") \
       || fail "$(t "Download failed: $DL/download/$RELEASE/SHA256SUMS" "Download fehlgeschlagen: $DL/download/$RELEASE/SHA256SUMS")"
+    local sf; sf=$(mktemp "${TMPDIR:-/tmp}/nuorb-sums.XXXXXX")
+    printf '%s\n' "$SUMS" > "$sf"
+    verify_sums "$sf" || { rm -f "$sf"; exit 1; }
+    rm -f "$sf"
   fi
   want=$(printf '%s\n' "$SUMS" | awk -v n="$name" '$2 == n || $2 == "*" n {print $1; exit}')
   [ -n "$want" ] || fail "$(t "$name is not listed in SHA256SUMS of $RELEASE." "$name steht nicht in SHA256SUMS von $RELEASE.")"
@@ -293,6 +320,70 @@ old_install_check() {
        "$(t "Move it over once with the migration script (keeps password, memory and paired apps):" \
             "Einmal mit dem Umzugsskript umziehen (Passwort, Gedächtnis und gekoppelte Apps bleiben):")" \
        "curl -fsSLO $mig && bash nuorb-umzug-0.7.0.sh --dir $DIR"
+}
+
+# ------------------------------------------------------------------ backup before an update, rollback
+BACKUPS_KEEP=5
+ulog() { mkdir -p "$DIR" && printf '%s %s\n' "$(date '+%F %T')" "$1" >> "$DIR/update.log" 2>/dev/null || true; }
+
+backup_before_update() {   # Einstellungen, Compose-Dateien und das Daten-Volume sichern, bevor etwas geändert wird
+  [ -f "$DIR/compose.yaml" ] && [ -f "$DIR/.env" ] || return 0      # Erstinstallation: nichts zu sichern
+  [ "${NUORB_NO_BACKUP:-}" = 1 ] && return 0
+  step "$(t "Backup before the update" "Sicherung vor dem Update")"
+  local old b img
+  old=$(get_env NUORB_VERSION); old="${old:-unknown}"
+  b="$DIR/backups/$(date +%Y%m%d-%H%M%S)-$old"
+  mkdir -p "$b" && chmod 700 "$DIR/backups" "$b"
+  cp -p "$DIR/.env" "$DIR/compose.yaml" "$b/"
+  [ -f "$DIR/compose.override.yaml" ] && cp -p "$DIR/compose.override.yaml" "$b/"
+  img=$(dc config --images 2>/dev/null | head -1 || true)
+  if [ -n "$img" ] && "${DOCKER[@]}" image inspect "$img" >/dev/null 2>&1 \
+     && "${DOCKER[@]}" volume inspect "${VOL_PREFIX}_data" >/dev/null 2>&1; then
+    local was_running; was_running=$(dc ps -q nuorb 2>/dev/null | head -1 || true)
+    [ -n "$was_running" ] && dc stop nuorb >/dev/null 2>&1
+    # mit dem vorhandenen NuOrb-Image (kein zusätzlicher Download), danach gehört die Datei wieder dem Nutzer
+    if "${DOCKER[@]}" run --rm --network none --user 0 --entrypoint sh -v "${VOL_PREFIX}_data:/d:ro" -v "$b:/b" "$img" \
+         -c "tar czf /b/data.tar.gz -C /d . && chown $(id -u):$(id -g) /b/data.tar.gz && chmod 600 /b/data.tar.gz" >/dev/null 2>&1; then
+      ok "$(t "Data volume saved" "Daten-Volume gesichert") ($(du -h "$b/data.tar.gz" | cut -f1))"
+    else
+      rm -f "$b/data.tar.gz"
+      warn "$(t "The data volume could not be saved, only settings and compose files." "Das Daten-Volume ließ sich nicht sichern, nur Einstellungen und Compose-Dateien.")"
+    fi
+    [ -n "$was_running" ] && dc start nuorb >/dev/null 2>&1
+  fi
+  ulog "backup $b (version $old)"
+  ok "$(t "Backup:" "Sicherung:") $b"
+  local n; n=$(find "$DIR/backups" -mindepth 1 -maxdepth 1 -type d | wc -l)
+  if [ "$n" -gt "$BACKUPS_KEEP" ]; then
+    find "$DIR/backups" -mindepth 1 -maxdepth 1 -type d | sort | head -n $((n - BACKUPS_KEEP)) | while IFS= read -r d; do rm -rf -- "$d"; done
+  fi
+}
+
+rollback() {   # die Sicherung vor dem letzten Update wiederherstellen
+  step "$(t "Restore the backup before the last update" "Sicherung vor dem letzten Update wiederherstellen")"
+  local b img
+  b=$(find "$DIR/backups" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort | tail -1)
+  [ -n "$b" ] || fail "$(t "No backup in $DIR/backups." "Keine Sicherung in $DIR/backups.")"
+  printf '  %s\n' "$b"
+  if [ "$YES" != 1 ]; then
+    confirm "$(t "Replace the current settings and data with this backup?" "Aktuelle Einstellungen und Daten durch diese Sicherung ersetzen?")" n || exit 0
+  fi
+  cp -p "$b/.env" "$b/compose.yaml" "$DIR/"
+  if [ -f "$b/compose.override.yaml" ]; then cp -p "$b/compose.override.yaml" "$DIR/"; else rm -f "$DIR/compose.override.yaml"; fi
+  if [ -f "$b/data.tar.gz" ]; then
+    dc stop nuorb >/dev/null 2>&1 || true
+    img=$(dc config --images 2>/dev/null | head -1 || true)
+    "${DOCKER[@]}" image inspect "$img" >/dev/null 2>&1 || dc pull --quiet nuorb \
+      || fail "$(t "The image of the old version is not available." "Das Image der alten Version ist nicht verfügbar.")"
+    "${DOCKER[@]}" run --rm --network none --user 0 --entrypoint sh -v "${VOL_PREFIX}_data:/d" -v "$b:/b:ro" "$img" \
+      -c 'find /d -mindepth 1 -delete && tar xzf /b/data.tar.gz -C /d' \
+      || fail "$(t "Restoring the data failed. The backup is still in $b." "Wiederherstellen der Daten fehlgeschlagen. Die Sicherung liegt weiter in $b.")"
+    ok "$(t "Data restored" "Daten wiederhergestellt")"
+  fi
+  dc up -d --remove-orphans 2>&1 | sed 's/^/    /' || true
+  ulog "rollback to $b"
+  ok "$(t "Back on version" "Zurück auf Version") $(get_env NUORB_VERSION)"
+  exit 0
 }
 
 # ------------------------------------------------------------------ files
@@ -572,6 +663,7 @@ start() {
     cmdline "sudo ufw allow from 172.16.0.0/12 to any port ${op:-11434} proto tcp   $(t "# with ufw on that machine" "# bei ufw auf diesem Rechner")"
   fi
   CNAME="$cname"
+  ulog "started version $(get_env NUORB_VERSION) ($st)"
 }
 
 finish() {
@@ -611,6 +703,8 @@ printf '%sNuOrb%s · %s\n' "$B" "$N" "$(t "self-hosted voice assistant · instal
 check_docker
 old_install_check
 [ "$UNINSTALL" = 1 ] && uninstall
+[ "$ROLLBACK" = 1 ] && rollback
+backup_before_update
 fetch_files
 configure
 check_ports

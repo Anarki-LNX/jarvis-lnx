@@ -27,6 +27,8 @@ curl -fsSL https://github.com/Anarki-LNX/nuorb/releases/latest/download/install.
 - Every change in the admin panel is shown as a preview, backed up and can be undone. Secrets are hidden in previews and exports.
 - The language model gets only the tools a voice assistant needs. Shell, files and browser are off unless switched on in the admin panel. After it has read outside content (web search, web page, file), every action with an effect needs a confirmation, checked by a rule outside the model.
 - Installer, Proxmox script and template load only from a release and check every file against `SHA256SUMS`. Speech models are checked against stored checksums.
+- From v0.7.2 every release and image is attested by GitHub (build provenance). The installer checks the attestation of `SHA256SUMS` when the GitHub CLI is logged in, `NUORB_REQUIRE_ATTESTATION=1` makes it mandatory. Before an update the installer saves settings and data, `--rollback` goes back.
+- Python packages are installed only with their pinned hashes. Every release is scanned (pip-audit, Grype) and ships an SBOM.
 - No telemetry.
 
 ## Please do not

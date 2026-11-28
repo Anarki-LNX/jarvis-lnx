@@ -205,7 +205,14 @@ der `compose.yaml` die Zeile `image:` auf `anarkilnx/nuorb:${NUORB_VERSION:-late
 ## 7. Update, Sicherung, Deinstallation
 
 - **Update:** den Installationsbefehl noch einmal ausführen, oder `cd ~/nuorb && docker compose pull && docker compose up -d`.
-- **Sicherung:** `docker run --rm -v nuorb_data:/d -v "$PWD":/b debian tar czf /b/nuorb-data.tgz -C /d .`
+  Ab v0.7.2 sichert der Installationsbefehl vorher `.env`, die Compose-Dateien und das Daten-Volume nach
+  `~/nuorb/backups/` (die letzten fünf bleiben) und schreibt jeden Schritt nach `~/nuorb/update.log`.
+- **Zurück zur vorigen Version:** `curl -fsSL …/install.sh | bash -s -- --rollback` stellt die Sicherung vor dem
+  letzten Update wieder her, samt Daten.
+- **Sicherung von Hand:** `docker run --rm -v nuorb_data:/d -v "$PWD":/b debian tar czf /b/nuorb-data.tgz -C /d .`
+- **Release selbst prüfen:** Ab v0.7.2 ist jedes Release von GitHub attestiert. Mit der GitHub-CLI:
+  `gh attestation verify SHA256SUMS --repo Anarki-LNX/nuorb` (das macht der Installer von selbst, wenn `gh` angemeldet ist)
+  und `gh attestation verify oci://ghcr.io/anarki-lnx/nuorb:<version> --repo Anarki-LNX/nuorb` für das Image.
 - **Deinstallation:** `curl -fsSL …/install.sh | bash -s -- --uninstall`: fragt vorher; Daten werden nur gelöscht,
   wenn du `LÖSCHEN` eintippst.
 - **Von v0.3.x oder älter** (Container `nuorb`): einfach den Installationsbefehl ausführen, er findet

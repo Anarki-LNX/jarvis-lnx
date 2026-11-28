@@ -211,3 +211,109 @@ class ReleaseDateien(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# Härtung 2, Phase 6: Sicherung vor dem Update und Rückkehr (install.sh --rollback). docker ist ein Stellvertreter,
+# der jeden Aufruf protokolliert; „run“ legt die Sicherungsdatei an bzw. merkt sich die Wiederherstellung.
+FAKE_DOCKER = r'''#!/usr/bin/env bash
+echo "$*" >> "$FAKE_LOG"
+case "$*" in
+  *"config --images"*) echo "ghcr.io/anarki-lnx/nuorb:$(sed -n 's/^NUORB_VERSION=//p' .env 2>/dev/null | tail -1)" ;;
+  *"ps -q"*) echo abc123 ;;
+  "run "*)
+    for a in "$@"; do case "$a" in *:/b|*:/b:ro) B="${a%%:/b*}" ;; esac; done
+    case "$*" in *"tar czf"*) echo daten > "$B/data.tar.gz" ;; *"tar xzf"*) echo "RESTORE $B" >> "$FAKE_LOG" ;; esac ;;
+esac
+exit 0
+'''
+
+
+class SicherungUndRueckkehr(unittest.TestCase):
+    def setUp(self):
+        self.d = Path(temp_ordner("update"))
+        self.log = self.d / "docker.log"
+        fake = self.d / "docker"
+        fake.write_text(FAKE_DOCKER)
+        fake.chmod(0o755)
+        (self.d / ".env").write_text("NUORB_VERSION=0.7.1\nNUORB_LANG=de\n")
+        (self.d / "compose.yaml").write_text("name: nuorb\n# 0.7.1\n")
+
+    def lauf(self, befehle: str) -> subprocess.CompletedProcess:
+        skript = (f'set --; NUORB_LIB_ONLY=1; . "{INSTALL}"; DIR="{self.d}"; DOCKER=("{self.d}/docker"); YES=1; '
+                  f'cd "{self.d}"; {befehle}')
+        env = {**os.environ, "FAKE_LOG": str(self.log), "HOME": str(self.d), "LANG": "C.UTF-8"}
+        return subprocess.run(["bash", "-c", skript], env=env, capture_output=True, text=True, timeout=60)
+
+    def test_erstinstallation_sichert_nichts(self):
+        (self.d / ".env").unlink()
+        r = self.lauf("backup_before_update; echo FERTIG")
+        self.assertIn("FERTIG", r.stdout, r.stderr)
+        self.assertFalse((self.d / "backups").exists())
+
+    def test_update_sichert_einstellungen_und_daten(self):
+        r = self.lauf("backup_before_update")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        (b,) = list((self.d / "backups").iterdir())
+        self.assertTrue(b.name.endswith("-0.7.1"))
+        for f in (".env", "compose.yaml", "data.tar.gz"):
+            self.assertTrue((b / f).is_file(), f)
+        self.assertEqual((self.d / "backups").stat().st_mode & 0o077, 0, "Sicherung nur für den Besitzer")
+        log = self.log.read_text()
+        self.assertIn("stop nuorb", log)
+        self.assertIn("start nuorb", log)   # NuOrb läuft weiter, bis das Update wirklich startet
+        self.assertIn("backup", (self.d / "update.log").read_text())
+
+    def test_hoechstens_fuenf_sicherungen(self):
+        for i in range(7):
+            (self.d / "backups" / f"20260101-00000{i}-0.6.{i}").mkdir(parents=True)
+        self.lauf("backup_before_update")
+        self.assertEqual(len(list((self.d / "backups").iterdir())), 5)
+
+    def test_rueckkehr_stellt_alte_version_und_daten_her(self):
+        self.lauf("backup_before_update")
+        (self.d / ".env").write_text("NUORB_VERSION=0.7.2\nNUORB_LANG=de\n")   # das Update
+        (self.d / "compose.yaml").write_text("name: nuorb\n# 0.7.2\n")
+        r = self.lauf("rollback")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("NUORB_VERSION=0.7.1", (self.d / ".env").read_text())
+        self.assertIn("# 0.7.1", (self.d / "compose.yaml").read_text())
+        log = self.log.read_text()
+        self.assertIn("RESTORE", log)
+        self.assertIn("up -d", log)
+        self.assertIn("rollback", (self.d / "update.log").read_text())
+
+    def test_rueckkehr_ohne_sicherung_bricht_ab(self):
+        r = self.lauf("rollback")
+        self.assertNotEqual(r.returncode, 0)
+
+
+class Attestierung(unittest.TestCase):
+    """verify_sums: ab v0.7.2 mit angemeldeter GitHub-CLI Pflicht, sonst SHA256SUMS wie bisher."""
+
+    def lauf(self, release: str, gh: str | None, require: str = "") -> subprocess.CompletedProcess:
+        d = Path(temp_ordner("attest"))
+        (d / "sums").write_text("x  install.sh\n")
+        g = d / "bin" / "gh"   # Stellvertreter: gh=None heißt „nicht angemeldet“
+        g.parent.mkdir()
+        auth = "1" if gh is None else "0"
+        g.write_text(f"#!/bin/sh\ncase \"$1\" in auth) exit {auth} ;; attestation) exit {gh or 1} ;; esac\nexit 0\n")
+        g.chmod(0o755)
+        path = f"{g.parent}:{os.environ.get('PATH', '')}"
+        skript = f'set --; NUORB_LIB_ONLY=1; . "{INSTALL}"; RELEASE={release}; verify_sums "{d}/sums"; echo WEITER'
+        env = {**os.environ, "PATH": path, "LANG": "C.UTF-8", "NUORB_REQUIRE_ATTESTATION": require}
+        return subprocess.run(["bash", "-c", skript], env=env, capture_output=True, text=True, timeout=30)
+
+    def test_gueltige_attestierung(self):
+        self.assertIn("WEITER", self.lauf("v0.7.2", "0").stdout)
+
+    def test_falsche_attestierung_bricht_ab(self):
+        r = self.lauf("v0.7.2", "1")
+        self.assertNotIn("WEITER", r.stdout)
+        self.assertNotEqual(r.returncode, 0)
+
+    def test_aeltere_releases_ohne_attestierung(self):
+        self.assertIn("WEITER", self.lauf("v0.7.1", "1").stdout)
+
+    def test_ohne_gh_wie_bisher_ausser_pflicht(self):
+        self.assertIn("WEITER", self.lauf("v0.7.2", None).stdout)
+        self.assertNotIn("WEITER", self.lauf("v0.7.2", None, "1").stdout)
