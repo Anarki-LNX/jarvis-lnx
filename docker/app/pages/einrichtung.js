@@ -41,6 +41,7 @@
           ok: "Fertig. {brand} denkt jetzt mit: ", probing: "Teste …", found: (sv, v, n) => `Verbunden: ${sv}${v ? " " + v : ""}, ${n} Modelle.`, err: "Fehler: ",
           noBrain: "⚠ Noch kein Gehirn eingerichtet. {brand} kann noch nicht antworten.", brain: (m) => `✓ Gehirn eingerichtet (${m}).`,
           load: (s) => s.total_mb ? `Lade Sprachmodelle: ${s.item || ""} ${s.done_mb || 0} / ${s.total_mb} MB` : `Verbinde für den Download der Sprachmodelle${s.item ? " (" + s.item + ")" : ""} …`, ready: "✓ Sprachmodelle bereit (Spracherkennung und Stimme).",
+          checksum: "Eine geladene Modelldatei stimmt nicht mit der hinterlegten Prüfsumme überein und wurde gelöscht. Neuer Versuch läuft automatisch. Bleibt der Fehler, bitte ein Issue auf GitHub öffnen.",
           offline: "Der Container hat keine Internetverbindung: Die Sprachmodelle (~530 MB) konnten nicht geladen werden. Neuer Versuch läuft automatisch. Häufigste Ursache ist die Firewall des Rechners (ufw: „sudo ufw default allow routed && sudo ufw reload“), sonst DNS oder Proxy.",
           fw: "Firewall am Rechner des Servers? Seinen Port für Docker freigeben (172.16.0.0/12), z. B. sudo ufw allow from 172.16.0.0/12 to any port 11434 proto tcp (Port anpassen).",
           lkeySet: "API-Key gespeichert (leer lassen = behalten).",
@@ -49,6 +50,7 @@
           ok: "Done. {brand} now thinks with: ", probing: "Testing …", found: (sv, v, n) => `Connected: ${sv}${v ? " " + v : ""}, ${n} models.`, err: "Error: ",
           noBrain: "⚠ No brain configured yet. {brand} cannot answer yet.", brain: (m) => `✓ Brain configured (${m}).`,
           load: (s) => s.total_mb ? `Downloading speech models: ${s.item || ""} ${s.done_mb || 0} / ${s.total_mb} MB` : `Connecting to download the speech models${s.item ? " (" + s.item + ")" : ""} …`, ready: "✓ Speech models ready (recognition and voice).",
+          checksum: "A downloaded model file does not match its checksum on record and was deleted. Retrying automatically. If this keeps happening, please open an issue on GitHub.",
           offline: "The container has no internet connection: the speech models (~530 MB) could not be downloaded. Retrying automatically. Most common cause is the host firewall (ufw: “sudo ufw default allow routed && sudo ufw reload”), otherwise DNS or proxy.",
           fw: "Firewall on the server's machine? Allow its port from Docker (172.16.0.0/12), e.g. sudo ufw allow from 172.16.0.0/12 to any port 11434 proto tcp (adjust the port).",
           lkeySet: "API key stored (leave empty to keep it).",
@@ -131,7 +133,7 @@
   function showModels(x) {
     const st = $("modelState");
     if (x.stt_ready && x.voice_ready && x.state !== "loading") { st.className = "ok"; st.textContent = m.ready; $("bar").hidden = true; return false; }
-    if (x.state === "error") { st.className = "err"; st.textContent = x.error_code === "offline" ? m.offline : I.tr(x.error); $("bar").hidden = true; return true; }
+    if (x.state === "error") { st.className = "err"; st.textContent = x.error_code === "offline" ? m.offline : x.error_code === "checksum" ? m.checksum : I.tr(x.error); $("bar").hidden = true; return true; }
     st.className = "muted"; st.textContent = m.load(x);
     $("bar").hidden = !x.total_mb; $("barFill").style.width = (x.total_mb ? Math.min(100, 100 * x.done_mb / x.total_mb) : 0) + "%";
     return true;
