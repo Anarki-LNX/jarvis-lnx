@@ -151,6 +151,14 @@ class UpdateAnfordern(unittest.TestCase):
         (uc.CONTROL / "status" / "status.json").write_text(json.dumps({"state": "running", "release": "v0.7.4", "time": jetzt}))
         self.assertIsNone(uc.state()["pending"])                # die Hilfe hat geantwortet
 
+    def test_ohne_hilfe_kein_wartezustand(self):
+        self.hilfe()
+        uc.request_update("v0.7.4")
+        (uc.CONTROL / "status" / "helper.json").unlink()      # Hilfe inzwischen entfernt
+        st = uc.state()
+        self.assertIsNone(st["pending"])
+        self.assertIn("install.sh", st["commands"]["update"])
+
     def test_symlinks_werden_nicht_gelesen(self):
         self.hilfe()
         (uc.CONTROL / "status" / "helper.json").unlink()

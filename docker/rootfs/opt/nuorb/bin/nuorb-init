@@ -7,6 +7,13 @@ for d in /opt/models /opt/data/nuorb /opt/data/nuorb/logs /opt/data/nuorb/logs/u
   mkdir -p "$d"
   [ "$(stat -c %U "$d")" = hermes ] || chown hermes:hermes "$d"
 done
+# Rückweg von einer neueren Version mit getrennten Benutzern (ab v0.7.4 gehört der NuOrb-Bereich dem Benutzer nuorb):
+# hier laufen alle Dienste als hermes, also alles im NuOrb-Bereich und alles, was einer fremden UID gehört, an hermes.
+# Ohne Kopie, idempotent (beim zweiten Start findet find nichts mehr). installs/ und cache/ von Hermes ausgenommen.
+find /opt/data/nuorb -xdev ! -user hermes -exec chown -h hermes:hermes {} +
+find /opt/data -xdev \( -path /opt/data/nuorb -o -path /opt/data/installs -o -path /opt/data/cache \) -prune \
+  -o -nouser -exec chown -h hermes:hermes {} +
+chmod 0700 /opt/data/nuorb
 # Update-Hilfe (v0.7.3): nur wenn ./control eingebunden ist. Anforderungen schreibt nur der Container.
 if [ -d /opt/nuorb/control ] && [ ! -L /opt/nuorb/control ]; then
   mkdir -p /opt/nuorb/control/request

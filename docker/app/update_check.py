@@ -109,7 +109,7 @@ def request_update(release: str) -> dict:
 def pending(c: dict) -> dict | None:
     """Offene Anforderung: angefordert vor weniger als REQUEST_GAP und die Hilfe hat seitdem keinen Status geschrieben."""
     t = float(c.get("requested", 0))
-    if not t or time.time() - t > REQUEST_GAP:
+    if not t or time.time() - t > REQUEST_GAP or not helper():   # ohne Hilfe wartet niemand: Befehl statt Wartezustand
         return None
     st = helper().get("status") or {}
     try:   # die Hilfe schreibt UTC (…Z)

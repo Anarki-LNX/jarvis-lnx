@@ -30,7 +30,8 @@ window.NuDonate = (function () {
     t.points.forEach((p) => ul.append(mk("li", "", p)));
     tx.append(kick, h, mk("p", "", t.text), ul);
     const act = mk("div", "donate-action");
-    const btn = ext(mk("a", "donate-btn"), PAYPAL); btn.append(deco("♡ "), mk("span", "", t.btn), deco(" ↗"));
+    // Abstände über gap in donate.css (Leerzeichen am Rand von Flex-Elementen fallen weg)
+    const btn = ext(mk("a", "donate-btn"), PAYPAL); btn.append(deco("♡"), mk("span", "", t.btn), deco("↗"));
     const star = ext(mk("a", "donate-star"), GITHUB); star.append(deco("☆ "), mk("span", "", t.star));
     act.append(btn, mk("span", "donate-note", t.note), star);
     card.append(tx, act);
